@@ -61,7 +61,7 @@ typedef struct _pb_graph {
  *
  * @return An empty graph, or NULL on failure (out of memory).
  */
-pb_graph* pb_create_graph();
+pb_graph* pb_graph_create();
 
 /**
  * Adds a vertex to the graph.

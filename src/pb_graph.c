@@ -76,7 +76,7 @@ int pb_vertex_remove_edge(pb_vertex *start, pb_vertex *dest) {
     return 0;
 }
 
-pb_graph* pb_create_graph() {
+pb_graph* pb_graph_create() {
     pb_graph *graph = NULL;
     pb_vertex **vertices = NULL;
 
