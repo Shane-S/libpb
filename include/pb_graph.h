@@ -7,7 +7,7 @@ typedef struct _pb_vertex pb_vertex;
  */
 struct _pb_vertex {
     void *data;
-    pb_vertex **adjacent;
+    size_t *adjacent; /* Stores indices of other vertices in the graph */
     size_t adj_size;
     size_t adj_capacity;
 };
@@ -32,20 +32,20 @@ void pb_vertex_free(pb_vertex* vert, int free_data);
 /**
  * Adds a vertex to this vertex's adjacency list.
  * @param start The start vertex.
- * @param dest  The destination vertex.
+ * @param dest  The destination vertex's index.
  *
  * @return 0 on success, -1 on failure (out of memory).
  */
-int pb_vertex_add_edge(pb_vertex *start, pb_vertex *dest);
+int pb_vertex_add_edge(pb_vertex *start, size_t dest);
 
 /**
  * Removes a vertex from this vertex's adjacency list. The neighour will not be freed.
  * @param start The start vertex.
- * @param dest  The destination vertex.
+ * @param dest  The destination vertex's index.
  *
  * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
  */
-int pb_vertex_remove_edge(pb_vertex *start, pb_vertex *dest);
+int pb_vertex_remove_edge(pb_vertex *start, size_t dest);
 
 /**
  * A graph, which is basically a collection of vertices and adjacency lists.
