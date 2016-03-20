@@ -90,7 +90,7 @@ pb_graph* pb_create_graph() {
         goto err_return;
     }
 
-    graph->vertices = malloc(sizeof(pb_vertex*) * 2);
+    graph->vertices = vertices;
     graph->size = 0;
     graph->capacity = 2;
 
@@ -111,7 +111,7 @@ int pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert) {
     }
     
     graph->vertices[graph->size++] = vert;
-    return graph->size;
+    return graph->size - 1;
 }
 
 pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
@@ -124,7 +124,7 @@ pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
     }
 
     /* Shift elements up */
-    for(i = vert + 1; i < graph->size; i++) {
+    for(i = vert + 1; i < graph->size; ++i) {
         graph->vertices[i - 1] = graph->vertices[i];
     }
 
@@ -143,7 +143,7 @@ int pb_graph_remove_edge(pb_graph *graph, size_t from, size_t to) {
 
 void pb_graph_free(pb_graph *graph, int free_data) {
     size_t i;
-    for(i = 0; i < graph->size; i++) {
+    for(i = 0; i < graph->size; ++i) {
         pb_vertex_free(graph->vertices[i], free_data);
     }
     free(graph->vertices);
