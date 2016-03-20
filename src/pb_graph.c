@@ -36,9 +36,9 @@ void pb_vertex_free(pb_vertex* vert, int free_data) {
     free(vert);
 }
 
-int pb_vertex_add_edge(pb_vertex *start, pb_vertex *dest) {
+int pb_vertex_add_edge(pb_vertex *start, size_t *dest) {
     if(start->adj_size == start->adj_capacity) {
-        pb_vertex **new_adjacent = realloc(start->adjacent, sizeof(pb_vertex*) * start->adj_capacity * 2);
+        size_t *new_adjacent = realloc(start->adjacent, sizeof(size_t) * start->adj_capacity * 2);
         if(!new_adjacent) return -1;
         start->adjacent = new_adjacent;
         start->adj_capacity *= 2;
@@ -48,7 +48,7 @@ int pb_vertex_add_edge(pb_vertex *start, pb_vertex *dest) {
     return 0;
 }
 
-int pb_vertex_remove_edge(pb_vertex *start, pb_vertex *dest) {
+int pb_vertex_remove_edge(pb_vertex *start, size_t dest) {
     int i;
     int dest_idx = -1;
 
@@ -76,7 +76,7 @@ int pb_vertex_remove_edge(pb_vertex *start, pb_vertex *dest) {
     return 0;
 }
 
-pb_graph* pb_create_graph() {
+pb_graph* pb_graph_create() {
     pb_graph *graph = NULL;
     pb_vertex **vertices = NULL;
 
@@ -104,7 +104,7 @@ err_return:
 
 int pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert) {
     if(graph->size == graph->capacity) {
-        pb_vertex **new_vertices = realloc(graph->vertices, graph->capacity * 2 * sizeof(pb_vertex));
+        size_t **new_vertices = realloc(graph->vertices, graph->capacity * 2 * sizeof(pb_vertex*));
         if(!new_vertices) return -1;
         graph->vertices = new_vertices;
         graph->capacity *= 2;
@@ -120,7 +120,7 @@ pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
     /* Remove any edges containing the given vertex */
     for(i = 0; i < graph->size; ++i) {
         if(i == vert) continue;
-        pb_vertex_remove_edge(graph->vertices[i], to_remove);
+        pb_vertex_remove_edge(graph->vertices[i], vert);
     }
 
     /* Shift elements up */
@@ -134,11 +134,11 @@ pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
 }
 
 int pb_graph_add_edge(pb_graph *graph, size_t from, size_t to) {
-    return pb_vertex_add_edge(graph->vertices[from], graph->vertices[to]);
+    return pb_vertex_add_edge(graph->vertices[from], to);
 }
 
 int pb_graph_remove_edge(pb_graph *graph, size_t from, size_t to) {
-    return pb_vertex_remove_edge(graph->vertices[from], graph->vertices[to]);
+    return pb_vertex_remove_edge(graph->vertices[from], to);
 }
 
 void pb_graph_free(pb_graph *graph, int free_data) {
