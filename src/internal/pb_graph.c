@@ -1,22 +1,22 @@
 #include <stdlib.h>
-#include "pb_graph.h"
+#include <pb/internal/pb_graph.h>
 
 pb_vertex* pb_vertex_create(void *data) {
     pb_vertex *vert = NULL;
-    pb_vertex **adjacent = NULL;
+    size_t *adjacent = NULL;
 
     vert = malloc(sizeof(pb_vertex));
     if(!vert) {
         goto err_return;
     }
 
-    adjacent = malloc(sizeof(pb_vertex*) * 2);
+    adjacent = malloc(sizeof(size_t) * 2);
     if(!adjacent) {
         goto err_return;
     }
 
     vert->data = data;
-    vert->adjacent = malloc(sizeof(pb_vertex*) * 2);
+    vert->adjacent = adjacent;
     vert->adj_size = 0;
     vert->adj_capacity = 2;
 
@@ -36,7 +36,7 @@ void pb_vertex_free(pb_vertex* vert, int free_data) {
     free(vert);
 }
 
-int pb_vertex_add_edge(pb_vertex *start, size_t *dest) {
+int pb_vertex_add_edge(pb_vertex *start, size_t dest) {
     if(start->adj_size == start->adj_capacity) {
         size_t *new_adjacent = realloc(start->adjacent, sizeof(size_t) * start->adj_capacity * 2);
         if(!new_adjacent) return -1;
@@ -104,7 +104,7 @@ err_return:
 
 int pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert) {
     if(graph->size == graph->capacity) {
-        size_t **new_vertices = realloc(graph->vertices, graph->capacity * 2 * sizeof(pb_vertex*));
+        pb_vertex **new_vertices = realloc(graph->vertices, graph->capacity * 2 * sizeof(pb_vertex*));
         if(!new_vertices) return -1;
         graph->vertices = new_vertices;
         graph->capacity *= 2;
@@ -117,6 +117,7 @@ int pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert) {
 pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
     pb_vertex *to_remove = graph->vertices[vert];
     size_t i;
+
     /* Remove any edges containing the given vertex */
     for(i = 0; i < graph->size; ++i) {
         if(i == vert) continue;

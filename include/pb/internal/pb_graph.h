@@ -23,7 +23,7 @@
 #define PH_GRAPH_H
 
 #include <stddef.h>
-#include "exports.h"
+#include <pb/pb_exports.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +39,14 @@ struct _pb_vertex {
     size_t *adjacent; /* Stores indices of other vertices in the graph */
     size_t adj_size;
     size_t adj_capacity;
+};
+
+/**
+ * Stores the weight and index into the graph of a given vertex.
+ */
+struct _pb_edge {
+    size_t weight;
+    size_t vert_idx;
 };
 
 /**

@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 2.8)
+
+project(check_tut)
+
+add_subdirectory(libmoney)
+
+add_executable(check_tut main.c)
+target_link_libraries(check_tut test)
+
+install(TARGETS check_tut DESTINATION bin)
