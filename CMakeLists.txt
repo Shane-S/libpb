@@ -5,4 +5,4 @@ set (libpb_VERSION_MAJOR 0)
 set (libpb_VERSION_MINOR 0)
 
 add_subdirectory(src)
-#add_subdirectory(test)
+add_subdirectory(test)

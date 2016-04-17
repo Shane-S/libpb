@@ -2,6 +2,16 @@
 #define PB_SQUARIFY_H
 
 /**
+ * @brief Determines the worst aspect ratio for an outer rectangle if attempting to fit the inner rectangles inside it.
+ *
+ * @param sum       The sum of the rectangles' areas.
+ * @param min_dim   The minimum dimension (w or h).
+ * @param rects     The list of rectangles for which to find the worst arrangement.
+ * @psram num_rects The number of rectangles in the list.
+ */
+float worst(float sum, float min_dim, pb_rect *rects, size_t num_rects);
+
+/**
  * Places the list of child rectangles into the specified outer rectangle, attempting
  * to minimise their aspect ratios.
  *
@@ -23,5 +33,6 @@ void pb_squarify(pb_rect *rect,
                  pb_rect *children, size_t num_children,
                  size_t last_in_row,
                  float prev_sum);
+
 
 #endif /* PB_SQUARIFY_H */
