@@ -76,6 +76,16 @@ int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
 int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
 
 /**
+ * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
+ * @param start  The start vertex.
+ * @param dest   The destination vertex.
+ * @param weight This will hold the edge edge weight if there was a neighbour to this vertex.
+ *
+ * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
+ */
+int pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight);
+
+/**
  * A graph, which is basically a collection of vertices and adjacency lists.
  */
 typedef struct _pb_graph {
@@ -132,6 +142,17 @@ int PBCALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t wei
  * @return 0 on success, -1 if the given edge didn't exist.
  */
 int PBCALL pb_graph_remove_edge(pb_graph* graph, size_t from, size_t to);
+
+/**
+ * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
+ * @param graph  The graph in which to find the edge weight.
+ * @param start  The start vertex's index.
+ * @param dest   The destination vertex's index.
+ * @param weight This will hold the edge edge weight if there was a neighbour to this vertex.
+ *
+ * @return 0 on sucess, -1 when no edge from start to dest exists.
+ */
+int PBCALL pb_graph_get_weight(pb_graph* graph, size_t start, size_t dest, size_t *weight);
 
 /**
  * Frees the graph and all of its vertices.

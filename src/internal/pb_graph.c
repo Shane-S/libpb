@@ -94,6 +94,18 @@ int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest) {
     return 0;
 }
 
+int pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight) {
+	size_t i;
+	for (i = 0; i < start->adj_size; ++i) {
+		if (start->adjacent[i] == dest) {
+			*weight = start->edge_weights[i];
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
 pb_graph* pb_graph_create() {
     pb_graph *graph = NULL;
     pb_vertex **vertices = NULL;
@@ -158,6 +170,10 @@ int pb_graph_add_edge(pb_graph *graph, size_t from, size_t to, size_t weight) {
 
 int pb_graph_remove_edge(pb_graph *graph, size_t from, size_t to) {
 	return pb_vertex_remove_edge(graph->vertices[from], graph->vertices[to]);
+}
+
+int pb_graph_get_weight(pb_graph *graph, size_t from, size_t to, size_t *weight) {
+	return pb_vertex_get_weight(graph->vertices[from], graph->vertices[to], weight);
 }
 
 void pb_graph_free(pb_graph *graph, int free_data) {

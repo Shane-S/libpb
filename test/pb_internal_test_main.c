@@ -12,11 +12,14 @@ int main(void)
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);
 #endif
 	SRunner *sr = srunner_create(make_pb_vertex_suite());
+	srunner_add_suite(sr, make_pb_graph_suite());
     int nf;
 
     srunner_run_all(sr, CK_ENV);
     nf = srunner_ntests_failed(sr);
     srunner_free(sr);
+
+	getchar();
 
     return nf == 0 ? 0 : 1;
 }
