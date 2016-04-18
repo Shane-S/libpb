@@ -33,17 +33,10 @@ typedef struct _pb_vertex pb_vertex;
  */
 struct _pb_vertex {
     void *data;
-    size_t *adjacent; /* Stores indices of other vertices in the graph */
+    pb_vertex **adjacent; /* Stores vertices to which it's connected */
+	size_t *edge_weights; /* Stores the edge weight for each connection. */
     size_t adj_size;
     size_t adj_capacity;
-};
-
-/**
- * Stores the weight and index into the graph of a given vertex.
- */
-struct _pb_edge {
-    size_t weight;
-    size_t vert_idx;
 };
 
 /**
@@ -65,21 +58,22 @@ void PBCALL pb_vertex_free(pb_vertex* vert, int free_data);
 
 /**
  * Adds a vertex to this vertex's adjacency list.
- * @param start The start vertex.
- * @param dest  The destination vertex's index.
+ * @param start  The start vertex.
+ * @param dest   The destination vertex.
+ * @param weight The weight of the edge from the start vertex to the destination vertex.
  *
  * @return 0 on success, -1 on failure (out of memory).
  */
-int pb_vertex_add_edge(pb_vertex *start, size_t dest);
+int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
 
 /**
  * Removes a vertex from this vertex's adjacency list. The neighour will not be freed.
  * @param start The start vertex.
- * @param dest  The destination vertex's index.
+ * @param dest  The destination vertex to which the edge will be removed.
  *
  * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
  */
-int pb_vertex_remove_edge(pb_vertex *start, size_t dest);
+int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
 
 /**
  * A graph, which is basically a collection of vertices and adjacency lists.
@@ -126,7 +120,7 @@ pb_vertex* PBCALL pb_graph_remove_vertex(pb_graph* graph, size_t vert);
  *
  * @return 0 on success, -1 on failure (out of memory).
  */
-int PBCALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to);
+int PBCALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t weight);
 
 /**
  * Removes an edge from vertex "from" to vertex "to" in the given graph.

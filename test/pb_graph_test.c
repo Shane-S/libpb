@@ -1,7 +1,2 @@
 #include <check.h>
-
-STAET_TEST
-
-
-
-END_TEST
+#include <pb/internal/pb_graph.h>
