@@ -208,6 +208,7 @@ START_TEST(get_nonexistent_edge_weight)
 	free(graph->vertices);
 	free(graph);
 }
+
 END_TEST
 
 Suite *make_pb_graph_suite(void) {

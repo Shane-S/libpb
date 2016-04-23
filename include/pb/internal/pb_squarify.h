@@ -1,6 +1,8 @@
 #ifndef PB_SQUARIFY_H
 #define PB_SQUARIFY_H
 
+#include <pb/pb_types.h>
+
 /**
  * @brief Determines the worst aspect ratio for an outer rectangle if attempting to fit the inner rectangles inside it.
  *

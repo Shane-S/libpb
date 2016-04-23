@@ -43,6 +43,7 @@ include_directories(${PB_API_INCLUDE_DIR})
 # Build the test executable for the internal API
 set(PB_INTERNAL_TEST_SOURCES pb_graph_test.c
                              pb_vertex_test.c
+                             pb_squarify_test.c
                              pb_internal_test_main.c
                              test_util.c)
 set(PB_INTERNAL_TEST_HEADERS pb_internal_test.h test_util.h)
