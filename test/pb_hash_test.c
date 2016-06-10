@@ -27,7 +27,7 @@ START_TEST(create_test)
     ck_assert_msg(map->hash == pb_str_hash, "Map's hash function wasn't initialised correctly.");
     ck_assert_msg(map->key_eq == pb_str_eq, "Map's key equality function wasn't initialised correctly.");
     
-    ck_assert_msg(map->expand_num == 5, "Map's expansion threshold was %u, should be 5", map->expand_num);
+    ck_assert_msg(map->expand_num == 3, "Map's expansion threshold was %u, should be 3", map->expand_num);
 }
 END_TEST
 
@@ -40,7 +40,6 @@ START_TEST(put_test)
     
     /* TODO: Change states[0] to the actual hashed value. */
     ck_assert_msg(map->size == 1, "Map's size should be 1 after insertion, was %u.", map->size);
-    ck_assert_msg(map->states[0] == FULL, "Entry state corresponding to \"test\" should be FULL, was %d", map->states[0]);
 }
 END_TEST
 
@@ -75,9 +74,7 @@ START_TEST(remove_test)
 {
     pb_hash_remove(map, (void*)"test");
     
-    /* TODO: Change states[0] to the actual hashed position */
     ck_assert_msg(map->size == 0, "Map's size should be 0, was %u", map->size);
-    ck_assert_msg(map->states[0] == DELETED, "Entry for \"test\" should be deleted, was %d", map->states[0]);
 }
 END_TEST
 

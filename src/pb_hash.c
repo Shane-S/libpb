@@ -281,6 +281,7 @@ int pb_hash_put(pb_hash* map, void* key, void* val) {
         if(map->states[probe_pos] != FULL) {
             map->entries[probe_pos].key = key;
             map->entries[probe_pos].val = val;
+            map->states[probe_pos] = FULL;
             map->size++;
             return 1;
         }
@@ -292,9 +293,10 @@ int pb_hash_put(pb_hash* map, void* key, void* val) {
 
 int pb_hash_get(pb_hash* map, void* key, void** val) {
     size_t pos;
-    if(!get_pos(map, key, &pos)) return NULL;
+    if(!get_pos(map, key, &pos)) return 0;
     
-    return map->entries[pos].val;
+    *val = map->entries[pos].val;
+    return 1;
 }
 
 int pb_hash_remove(pb_hash* map, void* key) {
