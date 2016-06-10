@@ -46,7 +46,7 @@ struct _pb_vertex {
  *
  * @return A pointer to a new vertex object on success, or NULL on failure (out of memory).
  */
-pb_vertex* PBCALL pb_vertex_create(void* data);
+pb_vertex* PB_CALL pb_vertex_create(void* data);
 
 /**
  * Frees a vertex and its adjacency list.
@@ -54,7 +54,7 @@ pb_vertex* PBCALL pb_vertex_create(void* data);
  * @param vert      The vertex to free.
  * @param free_data Whether to free the data contained in the vertex.
  */
-void PBCALL pb_vertex_free(pb_vertex* vert, int free_data);
+void PB_CALL pb_vertex_free(pb_vertex* vert, int free_data);
 
 /**
  * Adds a vertex to this vertex's adjacency list.
@@ -64,7 +64,7 @@ void PBCALL pb_vertex_free(pb_vertex* vert, int free_data);
  *
  * @return 0 on success, -1 on failure (out of memory).
  */
-int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
+int PB_CALL pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
 
 /**
  * Removes a vertex from this vertex's adjacency list. The neighour will not be freed.
@@ -73,7 +73,7 @@ int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
  *
  * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
  */
-int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
+int PB_CALL pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
 
 /**
  * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
@@ -83,7 +83,7 @@ int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
  *
  * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
  */
-int pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight);
+int PB_CALL pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight);
 
 /**
  * A graph, which is basically a collection of vertices and adjacency lists.
@@ -99,7 +99,7 @@ typedef struct _pb_graph {
  *
  * @return An empty graph, or NULL on failure (out of memory).
  */
-pb_graph* pb_graph_create();
+pb_graph* PB_CALL pb_graph_create();
 
 /**
  * Adds a vertex to the graph.
@@ -108,7 +108,7 @@ pb_graph* pb_graph_create();
  *
  * @return The index of the newly added vertex on success, -1 when out of memory.
  */
-int PBCALL pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert);
+int PB_CALL pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert);
 
 /**
  * Removes a vertex from the graph. The vertex isn't freed.
@@ -119,7 +119,7 @@ int PBCALL pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert);
  *
  * @return The removed vertex.
  */
-pb_vertex* PBCALL pb_graph_remove_vertex(pb_graph* graph, size_t vert);
+pb_vertex* PB_CALL pb_graph_remove_vertex(pb_graph* graph, size_t vert);
 
 /**
  * Adds an edge from vertex "from" to vertex "to" in the given graph.
@@ -130,7 +130,7 @@ pb_vertex* PBCALL pb_graph_remove_vertex(pb_graph* graph, size_t vert);
  *
  * @return 0 on success, -1 on failure (out of memory).
  */
-int PBCALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t weight);
+int PB_CALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t weight);
 
 /**
  * Removes an edge from vertex "from" to vertex "to" in the given graph.
@@ -141,7 +141,7 @@ int PBCALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t wei
  *
  * @return 0 on success, -1 if the given edge didn't exist.
  */
-int PBCALL pb_graph_remove_edge(pb_graph* graph, size_t from, size_t to);
+int PB_CALL pb_graph_remove_edge(pb_graph* graph, size_t from, size_t to);
 
 /**
  * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
@@ -152,14 +152,14 @@ int PBCALL pb_graph_remove_edge(pb_graph* graph, size_t from, size_t to);
  *
  * @return 0 on sucess, -1 when no edge from start to dest exists.
  */
-int PBCALL pb_graph_get_weight(pb_graph* graph, size_t start, size_t dest, size_t *weight);
+int PB_CALL pb_graph_get_weight(pb_graph* graph, size_t start, size_t dest, size_t *weight);
 
 /**
  * Frees the graph and all of its vertices.
  * @param graph     The graph to free.
  * @param free_data Whether to free the data associated with the vertices.
  */
-void PBCALL pb_graph_free(pb_graph* graph, int free_data);
+void PB_CALL pb_graph_free(pb_graph* graph, int free_data);
 
 #ifdef __cplusplus
 }

@@ -29,7 +29,6 @@ START_TEST(paper_test) /* The example dimensions given in the paper */
 		{ { 0.f, 0.f }, 1.f, 0.f }
 	};
 
-	/* The expected results, which will compare using the almost equal function */
 	pb_rect expected[] = {
 		{ { 0.f, 0.f }, 3.f, 2.f },
 		{ { 0.f, 2.f }, 3.f, 2.f },
@@ -45,7 +44,9 @@ START_TEST(paper_test) /* The example dimensions given in the paper */
 	
 	pb_squarify(&container, min_dim, 1, children, 7, 0, 0);
 	for (i = 0; i < num_children; i++) {
-		int equal = assert_close_enough(children[i].top_left.x, expected[i].top_left.x, 5);
+		int equal;
+
+		equal = assert_close_enough(children[i].top_left.x, expected[i].top_left.x, 5);
 		equal = equal && assert_close_enough(children[i].top_left.y, expected[i].top_left.y, 5);
 		equal = equal && assert_close_enough(children[i].w, expected[i].w, 5);
 		equal = equal && assert_close_enough(children[i].h, expected[i].h, 5);
@@ -59,6 +60,8 @@ END_TEST
 
 START_TEST(uniform_test)
 {
+	/* We're giving a bunch of rectangles with area 1, and the parent rectangle should fit them all
+	 * perfectly as a uniform grid of 1x1 squares */
 	pb_rect container = { { 0.f, 0.f }, 2.f, 3.f };
 	pb_rect children[] = {
 		{ { 0.f, 0.f }, 1.f, 0.f },

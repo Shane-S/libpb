@@ -6,5 +6,6 @@
 
 Suite *make_pb_generation_suite(void);
 Suite *make_pb_extrusion_suite(void);
+Suite *make_pb_hash_suite(void);
 
 #endif /* PB_PUBLIC_TEST_H */

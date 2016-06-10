@@ -53,11 +53,12 @@ target_link_libraries(pb_internal_test libpb_internal check compat)
 # Build the test executable for the public API
 set(PB_PUBLIC_TEST_SOURCES pb_generation_test.c
                            pb_extrusion_test.c
+                           pb_hash_test.c
                            pb_public_test_main.c
                            test_util.c)
 set(PB_PUBLIC_TEST_HEADERS pb_public_test.h test_util.h)
 add_executable(pb_public_test ${PB_PUBLIC_TEST_SOURCES} ${PB_PUBLIC_TEST_HEADERS})
-target_link_libraries(pb_public_test libpb_internal check compat)
+target_link_libraries(pb_public_test libpb check compat)
 
 # Run the two sets of test suites
 enable_testing()

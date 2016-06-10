@@ -1,33 +1,37 @@
 #ifndef PB_EXPORTS_H
 #define PB_EXPORTS_H
 
-/** Stolen shamelessly from SDL2. Defines exports and calling convention for functions in the library. */
-#ifndef DECLSPEC
-# if defined(__WIN32__) || defined(__WINRT__)
-#  ifdef __BORLANDC__
-#   ifdef BUILD_LIBPB
-#    define DECLSPEC
-#   else
-#    define DECLSPEC    __declspec(dllimport)
-#   endif
+/* Stolen from SDL2 (and modified to actually detect _WIN32). Defines exports and calling convention for functions in the library. */
+#ifndef PB_DECLSPEC
+# if defined(_WIN32) || defined(__WINRT__)
+#   ifdef __BORLANDC__
+#     ifdef BUILD_LIBPB
+#       define PB_DECLSPEC
+#     else
+#       define PB_DECLSPEC    __declspec(dllimport)
+#     endif
 #  else
-#   define DECLSPEC __declspec(dllexport)
+#    ifdef libpb_EXPORTS
+#      define PB_DECLSPEC __declspec(dllexport)
+#    else
+#      define PB_DECLSPEC __declspec(dllimport)
+#    endif
 #  endif
 # else
 #  if defined(__GNUC__) && __GNUC__ >= 4
-#   define DECLSPEC __attribute__ ((visibility("default")))
+#   define PB_DECLSPEC __attribute__ ((visibility("default")))
 #  else
-#   define DECLSPEC
+#   define PB_DECLSPEC
 #  endif
 # endif
 #endif
 
 /* Use the C calling convention */
-#ifndef PBCALL
-#if (defined(__WIN32__) || defined(__WINRT__)) && !defined(__GNUC__)
-#define PBCALL __cdecl
+#ifndef PB_CALL
+#if (defined(_WIN32) || defined(_WINRT) && !defined(__GNUC__))
+#define PB_CALL __cdecl
 #else
-#define PBCALL
+#define PB_CALL
 #endif
 #endif /* PBCALL */
 
