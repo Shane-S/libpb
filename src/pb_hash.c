@@ -1,6 +1,7 @@
 #include <pb/pb_hash.h>
+#include <stdlib.h>
 
-#define LOAD_FACTOR 0.5f
+#define LOAD_FACTOR 0.75f
 
 /**
  * See the StackOverflow answer here: http://stackoverflow.com/questions/4475996/given-prime-number-n-compute-the-next-prime
@@ -104,7 +105,7 @@ static int is_prime(uint32_t x)
     return 1;
 }
 
-static uint32_t* lower_bound(uint32_t* start, uint32_t* end, uint32_t num) {
+static uint32_t* lower_bound(const uint32_t* start, const uint32_t* end, uint32_t num) {
 	uint32_t* pos;
 	for (pos = start; pos != end; ++pos) {
 		if (num <= *pos) return pos;
@@ -194,16 +195,16 @@ void pb_hash_free(pb_hash* map) {
  */
 static int resize_hash(pb_hash* map, size_t new_cap) {
     size_t               cur_cap = map->cap;
+    size_t               cur_size = map->size;
     pb_hash_entry*       cur_entries = map->entries;
     pb_hash_entry_state* cur_states = map->states;
-    pb_hash_entry_state* new_states;
-    pb_hash_entry*       new_entries;
     size_t  i;
     
     /* Try to allocate a new array to contain the list of values */
     map->cap = new_cap;
-    map->entries = malloc(sizeof(pb_hash_entry) * map->cap);
-    map->states = malloc(sizeof(pb_hash_entry_state) * map->cap);
+    map->size = 0; /* We're calling pb_hash_put, so need to 0 size */
+    map->entries = malloc(map->cap * sizeof(pb_hash_entry)); 
+    map->states = calloc(map->cap, sizeof(pb_hash_entry_state));
     
     if(!map->entries || !map->states) {
         free(map->entries);
@@ -220,7 +221,7 @@ static int resize_hash(pb_hash* map, size_t new_cap) {
             pb_hash_put(map, cur_entries[i].key, cur_entries[i].val);
         }
     }
-    
+
     free(cur_entries);
     free(cur_states);
     return 1;
@@ -241,11 +242,16 @@ static int get_pos(pb_hash* map, void* key, size_t* out) {
         
     for(probe_pos = pos, i = 0; i < map->cap; ++probe_pos, ++i) {
         probe_pos %= map->cap;
-        if(map->states[probe_pos] == FULL && map->key_eq(map->entries[probe_pos].key, key)) {
-            *out = probe_pos;
-            return 1;
-        } else if(map->states[probe_pos] == EMPTY) {
+
+        if(map->states[probe_pos] == EMPTY) {
             return 0;
+        } else if(map->key_eq(map->entries[probe_pos].key, key)) {
+            if (map->states[probe_pos] == FULL) {
+                *out = probe_pos;
+                return 1;
+            } else {
+                return 0;
+            }
         }
     }
         
@@ -265,7 +271,7 @@ int pb_hash_put(pb_hash* map, void* key, void* val) {
     
     /* Expand if necessary */
     if(map->size == map->expand_num) {
-        size_t next_cap = next_prime((size_t)((map->size + 1) / LOAD_FACTOR));
+        size_t next_cap = next_prime((uint32_t)(map->cap / LOAD_FACTOR));
         map->size++;
         
         if(!resize_hash(map, next_cap)) {

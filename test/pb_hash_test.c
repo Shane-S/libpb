@@ -27,7 +27,7 @@ START_TEST(create_test)
     ck_assert_msg(map->hash == pb_str_hash, "Map's hash function wasn't initialised correctly.");
     ck_assert_msg(map->key_eq == pb_str_eq, "Map's key equality function wasn't initialised correctly.");
     
-    ck_assert_msg(map->expand_num == 3, "Map's expansion threshold was %u, should be 3", map->expand_num);
+    ck_assert_msg(map->expand_num == 5, "Map's expansion threshold was %u, should be 5", map->expand_num);
 }
 END_TEST
 
@@ -91,12 +91,16 @@ START_TEST(expand_test)
     pb_hash_put(map, (void*)"test1", (void*)0);
     pb_hash_put(map, (void*)"test2", (void*)0);
     pb_hash_put(map, (void*)"test3", (void*)0);
+    
+    /* Check that the map hasn't yet expanded since we haven't reached the threshold */
+    ck_assert_msg(map->cap == 7, "Capacity should have been 7, was %u", map->cap);
+
+    /* Check that the map did expand now that we've exceeded the threshold */
     pb_hash_put(map, (void*)"test4", (void*)0);
     pb_hash_put(map, (void*)"test5", (void*)0);
-    
-    ck_assert_msg(map->cap == 17 /* Next prime >= 2 * cap */, "Capacity should have been 17, was %u", map->cap);
+    ck_assert_msg(map->cap == 11 /* Next prime >= 1.5 * cap */, "Capacity should have been 11, was %u", map->cap);
     ck_assert_msg(map->size == 6, "Map's size should have been 6, was %u", map->size);
-    
+
     all_contained = pb_hash_get(map, (void*)"test0", (void*)&out) &&
 		            pb_hash_get(map, (void*)"test1", (void*)&out) &&
                     pb_hash_get(map, (void*)"test2", (void*)&out) &&
@@ -105,8 +109,6 @@ START_TEST(expand_test)
                     pb_hash_get(map, (void*)"test5", (void*)&out);
 
     ck_assert_msg(all_contained, "Values were not properly transferred to new array.");
-    
-    /* Somehow check that it only expands when necessary? */
 }
 END_TEST
 
@@ -124,7 +126,7 @@ Suite *make_pb_hash_suite(void)
 	tcase_add_test(tc_hash, get_test);
     tcase_add_test(tc_hash, overwrite_test);
     tcase_add_test(tc_hash, remove_test);
-    /*tcase_add_test(tc_hash, expand_test);*/
+    tcase_add_test(tc_hash, expand_test);
 
     tcase_add_unchecked_fixture(tc_hash, NULL, pb_hash_test_teardown);
     
