@@ -18,6 +18,7 @@ int main(void)
 	sr = srunner_create(make_pb_vertex_suite());
 	srunner_add_suite(sr, make_pb_graph_suite());
 	srunner_add_suite(sr, make_pb_squarify_suite());
+    srunner_add_suite(sr, make_pb_heap_suite());
 	srunner_set_tap(sr, "internal_test_results.tap");
 
     srunner_run_all(sr, CK_ENV);

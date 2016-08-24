@@ -88,16 +88,16 @@ START_TEST(expand_test)
     
     /* Load factor is hard-coded to 0.75, and since we're starting at 7, 6 will definitely exceed this */
     pb_hash_put(map, (void*)"test0", (void*)0);
-    pb_hash_put(map, (void*)"test1", (void*)0);
-    pb_hash_put(map, (void*)"test2", (void*)0);
-    pb_hash_put(map, (void*)"test3", (void*)0);
+    pb_hash_put(map, (void*)"test1", (void*)1);
+    pb_hash_put(map, (void*)"test2", (void*)2);
+    pb_hash_put(map, (void*)"test3", (void*)3);
     
     /* Check that the map hasn't yet expanded since we haven't reached the threshold */
     ck_assert_msg(map->cap == 7, "Capacity should have been 7, was %u", map->cap);
 
     /* Check that the map did expand now that we've exceeded the threshold */
-    pb_hash_put(map, (void*)"test4", (void*)0);
-    pb_hash_put(map, (void*)"test5", (void*)0);
+    pb_hash_put(map, (void*)"test4", (void*)4);
+    pb_hash_put(map, (void*)"test5", (void*)5);
     ck_assert_msg(map->cap == 11 /* Next prime >= 1.5 * cap */, "Capacity should have been 11, was %u", map->cap);
     ck_assert_msg(map->size == 6, "Map's size should have been 6, was %u", map->size);
 

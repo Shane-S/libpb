@@ -1,14 +1,17 @@
 cmake_minimum_required(VERSION 2.8)
 
-# This will only work if compiling for a desktop - if you wanted to compile for say, Windows Phone, then you'd have to
-# put the Check libraries for Windows phone somewhere and invoke CMake with -DCHECK_INSTALL_DIR:STRING="the path" where "the path"
-# points to the Check libraries compiled for Windows Phone
-if (WIN32)
+# If cross-compiling, invoke CMake with -DCHECK_INSTALL_DIR:STRING="the path" where "the path"
+# points to the Check libraries compiled for the target platform
+if(WIN32)
 
-    # Get the target architecture on windows so that we can try to set CHECK_INSTALL_DIR to something reasonable
-    include(GetTargetArch)
-    target_architecture(ARCH)
+    # Determine whether we're compiling for 64-bit
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(ARCH "x86_64")
+    else(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        set(ARCH "x86")
+    endif(CMAKE_SIZEOF_VOID_P EQUAL 8)
     
+    # Determine whether the machine itself is 64-bit
     set(IS_64BIT_MACHINE (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "AMD64" OR
                           ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "IA64" OR
                           ${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "EM64T"))
@@ -44,6 +47,7 @@ include_directories(${PB_API_INCLUDE_DIR})
 set(PB_INTERNAL_TEST_SOURCES pb_graph_test.c
                              pb_vertex_test.c
                              pb_squarify_test.c
+                             pb_heap_test.c
                              pb_internal_test_main.c
                              test_util.c)
 set(PB_INTERNAL_TEST_HEADERS pb_internal_test.h test_util.h)

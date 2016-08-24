@@ -34,24 +34,23 @@ Pre-conditions for the function (may deal with these later, but for now, that's 
  *
  * @param sum       The sum of all areas in the list.
  * @param min_dim   The value of the outer rectangle's minimum dimension.
- * @param rects     The rectangles containing the areas to be laid out. The area of a rectangle
- *                  must be set as its width.
+ * @param areas     The areas to be laid out.
  * @param num_rects The number of rectangles in the list.
  */
-float worst(float sum, float min_dim, pb_rect *rects, size_t num_rects) {
+float worst(float sum, float min_dim, float *areas, size_t num_rects) {
     float sum_sq = sum * sum;
     float min_dim_sq = min_dim * min_dim;
 
-    float min_area = rects[0].w;
-    float max_area = rects[0].w;
+    float min_area = areas[0];
+    float max_area = areas[0];
     size_t i;
     
     /* Determine the rectangles with the largest and smallest areas */
     for(i = 1; i < num_rects; ++i) {
-        if(rects[i].w < min_area) {
-			min_area = rects[i].w;
-        } else if(rects[i].w > max_area) {
-			max_area = rects[i].w;
+        if(areas[i] < min_area) {
+            min_area = areas[i];
+        } else if(areas[i] > max_area) {
+            max_area = areas[i];
         }
     }
 
@@ -63,6 +62,7 @@ void layout(pb_rect *rect,
             float prev_sum,
             float min_dim,
             int is_height,
+            float* areas,
             pb_rect *children,
             size_t num_to_layout) {
 
@@ -72,7 +72,7 @@ void layout(pb_rect *rect,
     size_t i;
 	for (i = 0; i < num_to_layout; ++i) {
         /* Length of the other dimension to make make correct area */ 
-        float other_dim = children[i].w / dim;
+        float other_dim = areas[i] / dim;
         if(is_height) {
             children[i].w = dim;
             children[i].h = other_dim;
@@ -106,7 +106,9 @@ void layout(pb_rect *rect,
 void pb_squarify(pb_rect *rect,
                  float min_dim,
                  int is_height,
-                 pb_rect *children, size_t num_children,
+                 float* areas,
+                 size_t num_areas,
+                 pb_rect *children,
                  size_t layout_size,
                  float prev_sum) {
 
@@ -115,23 +117,24 @@ void pb_squarify(pb_rect *rect,
 	float child_area;
 
     /* Added all children without messing up aspect ratio */ 
-	if (layout_size == num_children) {
-		layout(rect, prev_sum, min_dim, is_height, children, layout_size);
+    if (layout_size == num_areas) {
+		layout(rect, prev_sum, min_dim, is_height, areas, children, layout_size);
 		return;
 	}
 
-	child = children + layout_size;;
-	child_area = child->w;
+    /* Get a pointer to the child we're currently adding to the parent rectangle */
+	child = children + layout_size;
+    child_area = areas[layout_size];
 
     /* Determine whether adding the child to the current row would worsen the row's aspect ratios */
 	if (layout_size == 0 ||
-		worst(prev_sum, min_dim, children, layout_size) >= worst(prev_sum + child_area, min_dim, children, layout_size + 1)) {
+        worst(prev_sum, min_dim, areas, layout_size) >= worst(prev_sum + child_area, min_dim, areas, layout_size + 1)) {
         
 		layout_size++;
         prev_sum += child_area;     
-		pb_squarify(rect, min_dim, is_height, children, num_children, layout_size, prev_sum);
+        pb_squarify(rect, min_dim, is_height, areas, num_areas, children, layout_size, prev_sum);
     } else {
-		layout(rect, prev_sum, min_dim, is_height, children, layout_size);
+		layout(rect, prev_sum, min_dim, is_height, areas, children, layout_size);
         
         /* Move the layout rectangle to the appropriate spot */
         if(is_height) {
@@ -143,15 +146,16 @@ void pb_squarify(pb_rect *rect,
         }
         
         /* Only go until we have no more children to lay out */
-		num_children -= layout_size;
-        if(num_children == 0) return;
+        num_areas -= layout_size;
+        if (num_areas == 0) return;
 
-        /* Move to the next set of children */
+        /* Continue to the next set of children */
 		children += layout_size;
+        areas += layout_size;
 		layout_size = 0;
         prev_sum = 0;
 
         is_height = rect->h < rect->w;
-		pb_squarify(rect, is_height ? rect->h : rect->w, is_height, children, num_children, layout_size, prev_sum);
+        pb_squarify(rect, is_height ? rect->h : rect->w, is_height, areas, num_areas, children, layout_size, prev_sum);
     }
 }

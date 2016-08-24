@@ -100,30 +100,6 @@ START_TEST(adj_list_expansion)
 }
 END_TEST
 
-START_TEST(adj_list_impossible_size)
-{
-    pb_vertex vert = {0};
-	size_t alloc_size;
-
-#ifdef _WIN32
-	alloc_size = 0xfffdefff / 2; /* This was the ACTUAL max size that Windows broke at, so we're just going to have to hard-code it. */
-#else
-	alloc_size = 0x7FFFFFFFFFFFFFF;
-#endif
-
-    /* Manually initialise vertex */
-    vert.adjacent = malloc(sizeof(pb_vertex*));
-	vert.edge_weights = (malloc(sizeof(size_t) * 2));
-	vert.adj_capacity = alloc_size;
-	vert.adj_size = alloc_size;
-    
-    ck_assert_msg(pb_vertex_add_edge(&vert, NULL, 1) == -1, "Invalid memory allocation succeeded.");
-
-	free(vert.adjacent);
-	free(vert.edge_weights);
-}
-END_TEST
-
 START_TEST(remove_edge)
 {
 	pb_vertex *vert = pb_vertex_create(NULL);
@@ -204,7 +180,6 @@ Suite *make_pb_vertex_suite(void)
     suite_add_tcase(s, tc_adj_list);
     tcase_add_test(tc_adj_list, adj_list_equality);
 	tcase_add_test(tc_adj_list, adj_list_expansion);
-    tcase_add_test(tc_adj_list, adj_list_impossible_size);
 	tcase_add_test(tc_adj_list, remove_edge);
 	tcase_add_test(tc_adj_list, remove_non_existent_edge);
     
