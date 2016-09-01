@@ -15,10 +15,8 @@ int main(void)
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);
 #endif
 
-	sr = srunner_create(make_pb_vertex_suite());
-	srunner_add_suite(sr, make_pb_graph_suite());
-	srunner_add_suite(sr, make_pb_squarify_suite());
-    srunner_add_suite(sr, make_pb_heap_suite());
+    sr = srunner_create(make_pb_squarify_suite());
+    srunner_add_suite(sr, make_pb_sq_house_suite());
 	srunner_set_tap(sr, "internal_test_results.tap");
 
     srunner_run_all(sr, CK_ENV);

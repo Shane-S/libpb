@@ -1,6 +1,6 @@
 #include <libcompat.h>
 #include <check.h>
-#include <pb/internal/pb_graph.h>
+#include <pb/util/pb_graph.h>
 
 #ifdef _WIN32
 #include <malloc.h>

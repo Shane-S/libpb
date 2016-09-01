@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <pb/internal/pb_graph.h>
+#include <pb/util/pb_graph.h>
 
 pb_vertex* pb_vertex_create(void *data) {
     pb_vertex *vert = NULL;
@@ -47,8 +47,8 @@ void pb_vertex_free(pb_vertex* vert, int free_data) {
 
 int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight) {
     if(start->adj_size == start->adj_capacity) {
-		pb_vertex *new_adjacent = realloc(start->adjacent, sizeof(pb_vertex*) * start->adj_capacity * 2);
-		size_t new_edge_weights = realloc(start->edge_weights, sizeof(size_t) * start->adj_capacity * 2);
+		pb_vertex **new_adjacent = realloc(start->adjacent, sizeof(pb_vertex*) * start->adj_capacity * 2);
+		size_t *new_edge_weights = realloc(start->edge_weights, sizeof(size_t) * start->adj_capacity * 2);
 
 		/* If only one fails, then we'll just end up with one of them being bigger than the other. Not the worst thing. 
 		 * TODO: Consider trying to somehow free up memory in this situation (and every other OOM).
@@ -56,7 +56,7 @@ int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight) {
         if(!new_adjacent || !new_edge_weights) return -1;
         start->adjacent = new_adjacent;
 		start->edge_weights = new_edge_weights;
-        start->adj_capacity *= 2;
+        start->adj_capacity = start->adj_capacity * 2;
     }
 
     start->adjacent[start->adj_size] = dest;

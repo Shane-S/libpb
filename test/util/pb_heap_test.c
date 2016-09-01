@@ -1,13 +1,12 @@
 #include <libcompat.h>
 #include <check.h>
-#include <pb/internal/pb_heap.h>
-#include <pb/pb_types.h>
-#include "test_util.h"
+#include <pb/util/pb_heap.h>
+#include "../test_util.h"
 
 /* Heap to use for the tests. */
 pb_heap* heap;
 
-void pb_heap_test_teardown() {
+void pb_heap_test_teardown(void) {
     pb_heap_free(heap);
 }
 

@@ -1,4 +1,4 @@
-#include <pb/internal/pb_heap.h>
+#include <pb/util/pb_heap.h>
 #include <stdlib.h>
 
 pb_heap* pb_heap_create(pb_heap_cmp cmp, size_t init_cap) {

@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <pb/pb_exports.h>
+#include <pb/util/pb_util_exports.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,10 +15,10 @@ typedef enum pb_hash_entry_state {
     FULL
 } pb_hash_entry_state;
 
-typedef uint32_t (*pb_hash_func)(void*);
+typedef uint32_t (*pb_hash_func)(void const*);
 
 /* A function to compare keys for equality; non-zero return indicates equality. */
-typedef int      (*pb_hash_eq_func)(void*, void*);
+typedef int      (*pb_hash_eq_func)(void const*, void const*);
 
 typedef struct pb_hash_entry {
     void* key;   /* The key associated with the given value. */
@@ -41,14 +41,14 @@ typedef struct pb_hash {
  * @param key_eq A function that compares two keys for equality.
  * @return An empty hash map with the given hash and equals functions.
  */
-PB_DECLSPEC pb_hash* PB_CALL pb_hash_create(pb_hash_func hash, pb_hash_eq_func key_eq);
+PB_UTIL_DECLSPEC pb_hash* PB_UTIL_CALL pb_hash_create(pb_hash_func hash, pb_hash_eq_func key_eq);
 
 /**
  * Frees the given hash map, but not its contents (the actual keys and values).
  *
  * @param map The map to be freed.
  */
-PB_DECLSPEC void PB_CALL pb_hash_free(pb_hash* map);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_free(pb_hash* map);
 
 /**
  * Places an item in the hash map. If there's already a value associated with the given
@@ -59,7 +59,7 @@ PB_DECLSPEC void PB_CALL pb_hash_free(pb_hash* map);
  * @param val The item to insert into the map.
  * @return Whether it was inserted? I actually don't remember why this returns anything. Maybe it returns -1 on OOM or something
  */
-PB_DECLSPEC int PB_CALL pb_hash_put(pb_hash* map, void* key, void* val);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_put(pb_hash* map, void* key, void* val);
 
 /**
  * Gets the value associated with the given key, if any.
@@ -69,7 +69,7 @@ PB_DECLSPEC int PB_CALL pb_hash_put(pb_hash* map, void* key, void* val);
  * @param out A variable to hold the associated value on success.
  * @return 0 if the key is not found, 1 if it is.
  */
-PB_DECLSPEC int PB_CALL pb_hash_get(pb_hash* map, void* key, void** out);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void* key, void** out);
 
 /**
  * Removes the item associated with the given key from the map (if it's there).
@@ -78,7 +78,7 @@ PB_DECLSPEC int PB_CALL pb_hash_get(pb_hash* map, void* key, void** out);
  * @param key The key associated with the item to remove.
  * @return Whether there was actually an item with that key in the map.
  */
-PB_DECLSPEC int PB_CALL pb_hash_remove(pb_hash* map, void* key);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_remove(pb_hash* map, void* key);
 
 #ifdef __cplusplus
 }

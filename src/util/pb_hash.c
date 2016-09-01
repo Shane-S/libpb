@@ -1,4 +1,4 @@
-#include <pb/pb_hash.h>
+#include <pb/util/pb_hash.h>
 #include <stdlib.h>
 
 #define LOAD_FACTOR 0.75f
@@ -105,8 +105,8 @@ static int is_prime(uint32_t x)
     return 1;
 }
 
-static uint32_t* lower_bound(const uint32_t* start, const uint32_t* end, uint32_t num) {
-	uint32_t* pos;
+static uint32_t* lower_bound(uint32_t const* start, uint32_t const* end, uint32_t num) {
+	uint32_t const* pos;
 	for (pos = start; pos != end; ++pos) {
 		if (num <= *pos) return pos;
 	}

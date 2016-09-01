@@ -14,13 +14,12 @@ extern "C" {
  * Represents a room in a building.
  */
 typedef struct _pb_room {
-    char const *name;
+    char *name;
 
-    /* The rectangle occupied by the room. Currently there are no plans
-    * to support shapes other than rectangles, but it might be wise to
-    * change this to pb_shape in case I decide to add those later (or
-    * risk breaking code that relies on this version). */
-    pb_rect rect;
+    /* The polygon occupied by the room. */
+    pb_shape room_shape;
+
+    /* TODO: Add doors and windows */
 } pb_room;
 
 /**
@@ -33,6 +32,8 @@ typedef struct _pb_floor {
     /* The shape occupied by the floor. Contains all rooms in the
     * given floor. */
     pb_shape floor_shape;
+
+    /* TODO: Add doors and windows */
 } pb_floor;
 
 typedef struct _pb_building {

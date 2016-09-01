@@ -1,7 +1,7 @@
 #ifndef PB_HASH_UTILS
 #define PB_HASH_UTILS
 
-#include <pb/pb_exports.h>
+#include <pb/util/pb_util_exports.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
@@ -16,14 +16,14 @@ extern "C" {
     * @param len The length (in bytes) of the given key.
     * @return The hash value for the key.
     */
-PB_DECLSPEC uint32_t PB_CALL pb_murmurhash3(void* key, int len);
+PB_UTIL_DECLSPEC uint32_t PB_UTIL_CALL pb_murmurhash3(void const* key, int len);
 
 /**
     * Generates a hash value for a null-terminated string.
     * @param key The string to hash.
     * @return The hash value for the given string.
     */
-PB_DECLSPEC uint32_t PB_CALL pb_str_hash(void* key);
+PB_UTIL_DECLSPEC uint32_t PB_UTIL_CALL pb_str_hash(void const* key);
 
 /**
     * Wrapper around strcmp for use with pb_hash.
@@ -32,7 +32,7 @@ PB_DECLSPEC uint32_t PB_CALL pb_str_hash(void* key);
     * @param str2 The second null-terminated string.
     * @return Whether str1 and str2 are equal (non-zero return) or not equal (zero).
     */
-PB_DECLSPEC int PB_CALL pb_str_eq(void* str1, void* str2);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_str_eq(void const* str1, void const* str2);
 
 #ifdef __cplusplus
 }

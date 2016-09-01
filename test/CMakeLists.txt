@@ -43,28 +43,12 @@ endif(WIN32)
 set(PB_API_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 include_directories(${PB_API_INCLUDE_DIR})
 
-# Build the test executable for the internal API
-set(PB_INTERNAL_TEST_SOURCES pb_graph_test.c
-                             pb_vertex_test.c
-                             pb_squarify_test.c
-                             pb_heap_test.c
-                             pb_internal_test_main.c
-                             test_util.c)
-set(PB_INTERNAL_TEST_HEADERS pb_internal_test.h test_util.h)
-add_executable(pb_internal_test ${PB_INTERNAL_TEST_SOURCES} ${PB_INTERNAL_TEST_HEADERS})
-target_link_libraries(pb_internal_test libpb_internal check compat)
+add_subdirectory(public)
+add_subdirectory(internal)
+add_subdirectory(util)
 
-# Build the test executable for the public API
-set(PB_PUBLIC_TEST_SOURCES pb_generation_test.c
-                           pb_extrusion_test.c
-                           pb_hash_test.c
-                           pb_public_test_main.c
-                           test_util.c)
-set(PB_PUBLIC_TEST_HEADERS pb_public_test.h test_util.h)
-add_executable(pb_public_test ${PB_PUBLIC_TEST_SOURCES} ${PB_PUBLIC_TEST_HEADERS})
-target_link_libraries(pb_public_test libpb check compat)
-
-# Run the two sets of test suites
+# Run the sets of test suites
 enable_testing()
 add_test(NAME internal COMMAND pb_internal_test)
 add_test(NAME public COMMAND pb_public_test)
+add_test(NAME util COMMAND pb_util_test)

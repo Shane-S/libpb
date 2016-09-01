@@ -1,9 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
-#include <pb/pb_hash_utils.h>
+#include <pb/util/pb_hash_utils.h>
 
-#include <pb/internal/MurmurHash3.h>
+#include <pb/util/MurmurHash3.h>
 
 static uint32_t murmur_seed = 0;
 

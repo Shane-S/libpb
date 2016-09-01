@@ -2,6 +2,7 @@
 #define PB_HEAP_H
 
 #include <stddef.h>
+#include <pb/util/pb_util_exports.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -32,13 +33,13 @@ typedef struct pb_heap {
  *                    If 0, the heap will be initialised with PB_HEAP_DEFAULT_CAP.
  * @return An initialised heap on success, NULL on failure (out of memory).
  */
-pb_heap* pb_heap_create(pb_heap_cmp cmp, size_t init_cap);
+PB_UTIL_DECLSPEC pb_heap* PB_UTIL_CALL pb_heap_create(pb_heap_cmp cmp, size_t init_cap);
 
 /**
  * Deallocates the heap. Note that the elements in the heap won't be freed.
  * @param heap The heap to free.
  */
-void pb_heap_free(pb_heap* heap);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_heap_free(pb_heap* heap);
 
 /**
  * Adds the given item to the heap.
@@ -46,7 +47,7 @@ void pb_heap_free(pb_heap* heap);
  * @param item The item to add to the heap.
  * @return Non-zero on success, 0 on failure (out of memory).
  */
-int pb_heap_insert(pb_heap* heap, void* item);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_heap_insert(pb_heap* heap, void* item);
 
 /**
  * Retrieves the item with the lowest priority in the heap but does not remove it.
@@ -54,7 +55,7 @@ int pb_heap_insert(pb_heap* heap, void* item);
  * @param heap The heap from which to retrieve the item.
  * @return The item with the lowest priority or NULL if the heap is empty.
  */
-void* pb_heap_peek_min(pb_heap* heap);
+PB_UTIL_DECLSPEC void* PB_UTIL_CALL pb_heap_peek_min(pb_heap* heap);
 
 /**
  * Retrieves the item with the lowest priority from the heap and removes it,
@@ -63,7 +64,7 @@ void* pb_heap_peek_min(pb_heap* heap);
  * @param heap The heap from which to remove the item.
  * @return The item with the lowest priority or NULL if the heap is empty.
  */
-void* pb_heap_get_min(pb_heap* heap);
+PB_UTIL_DECLSPEC void* PB_UTIL_CALL pb_heap_get_min(pb_heap* heap);
 
 #ifdef __cplusplus
 }

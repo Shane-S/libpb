@@ -1,8 +1,7 @@
 #include <libcompat.h>
 #include <check.h>
 #include <pb/internal/pb_squarify.h>
-#include <pb/pb_types.h>
-#include "test_util.h"
+#include "../test_util.h"
 
 START_TEST(simple_test)
 {

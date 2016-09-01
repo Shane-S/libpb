@@ -1,6 +1,6 @@
 #include <libcompat.h>
 #include <check.h>
-#include <pb/internal/pb_graph.h>
+#include <pb/util/pb_graph.h>
 
 /* We're going to assume that pb_graph_free and pb_graph_create work.
  * If not, then we'll find out later while profiling memory usage :) */

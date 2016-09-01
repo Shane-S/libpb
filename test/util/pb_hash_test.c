@@ -1,7 +1,7 @@
 #include <libcompat.h>
 #include <check.h>
-#include <pb/pb_hash.h>
-#include <pb/pb_hash_utils.h>
+#include <pb/util/pb_hash.h>
+#include <pb/util/pb_hash_utils.h>
 
 /* Hash map to use for the tests. */
 pb_hash* map;

@@ -1,5 +1,4 @@
 #include <math.h>
-#include <pb/pb_types.h>
 #include <pb/internal/pb_squarify.h>
 
 /*
