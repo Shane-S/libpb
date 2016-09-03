@@ -2,9 +2,9 @@
 #define PB_SQ_HOUSE_H
 
 #include <pb/pb_exports.h>
-#include <pb/pb_geom.h>
 #include <pb/pb_extrusion.h>
 #include <pb/util/pb_hash.h>
+#include <pb/util/pb_geom.h>
 
 #include <stddef.h>
 #include <stdint.h>

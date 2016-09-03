@@ -1,7 +1,7 @@
 #ifndef PB_SQUARIFY_H
 #define PB_SQUARIFY_H
 
-#include <pb/pb_geom.h>
+#include <pb/util/pb_geom.h>
 
 /**
  * @brief Determines the worst aspect ratio for an outer rectangle if attempting to fit the inner rectangles inside it.
@@ -11,7 +11,7 @@
  * @param rects     The list of rectangles for which to find the worst arrangement.
  * @psram num_rects The number of rectangles in the list.
  */
-float worst(float sum, float min_dim, pb_shape *rects, size_t num_rects);
+float worst(float sum, float min_dim, float* areas, size_t num_rects);
 
 /**
  * Given a containing rectangle and a list of rectangles to be laid out inside it, attempts
@@ -26,12 +26,12 @@ float worst(float sum, float min_dim, pb_shape *rects, size_t num_rects);
  * @param layout_size  The size of the list of rectangles in the current layout. This should always start at 0.
  * @param prev_sum     The sum of all the areas in the current layout. Should always start at 0.
  */
-void pb_squarify(pb_rect *rect,
+void pb_squarify(pb_rect* rect,
                  float min_dim,
                  int is_height,
                  float* areas,
                  size_t num_areas,
-                 pb_rect *children,
+                 pb_rect* children,
                  size_t layout_size,
                  float prev_sum);
 

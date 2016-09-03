@@ -3,6 +3,7 @@ set(SOURCES pb_heap_test.c
             pb_hash_test.c
             pb_graph_test.c
             pb_vertex_test.c
+            pb_geom_test.c
             pb_util_test_main.c
             ../test_util.c)
 set(HEADERS pb_util_test.h

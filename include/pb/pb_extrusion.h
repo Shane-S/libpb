@@ -1,7 +1,7 @@
 #ifndef PB_EXTRUSION_H
 #define PB_EXTRUSION_H
 
-#include <pb/pb_geom.h>
+#include <pb/util/pb_geom.h>
 
 #include <stddef.h>
 #include <stdint.h>

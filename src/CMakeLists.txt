@@ -9,6 +9,7 @@ add_subdirectory(internal)
 # The header files won't show up in Visual Studio (and probably XCode) if they're not added to the source list
 set(HEADERS ${PB_API_INCLUDE_DIR}/pb/pb_sq_house.h
             ${PB_API_INCLUDE_DIR}/pb/pb_extrusion.h
+            ${PB_API_INCLUDE_DIR}/pb/pb_geom.h
             ${PB_API_INCLUDE_DIR}/pb/pb_exports.h)
 
 set(SOURCES pb_extrusion.c

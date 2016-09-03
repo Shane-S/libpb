@@ -17,6 +17,7 @@ int main(void)
     srunner_add_suite(sr, make_pb_heap_suite());
     srunner_add_suite(sr, make_pb_vertex_suite());
     srunner_add_suite(sr, make_pb_graph_suite());
+    srunner_add_suite(sr, make_pb_geom_suite());
 	srunner_set_tap(sr, "util_test_results.tap"); /* Write the test results to a TAP (Test Anything Protocol) file for test harness analysis */
 
     srunner_run_all(sr, CK_ENV);
