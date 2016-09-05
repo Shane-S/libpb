@@ -5,6 +5,7 @@
 #include <pb/internal/pb_sq_house_internal.h>
 #include <pb/util/pb_hash.h>
 #include <pb//util/pb_hash_utils.h>
+#include "../test_util.h"
 
 START_TEST(choose_rooms_single_room)
 {
@@ -175,6 +176,44 @@ START_TEST(layout_stairs_single_floor)
 }
 END_TEST
 
+START_TEST(layout_stairs_three_floors)
+{
+    /*
+    *  Given a house specification with {w = 30, h = 30, num_rooms = 3, stair_width = 7} and room specifications containing one room {max_instances = 3, area = 690}
+    *  When I invoke pb_sq_house_layout_stairs
+    *  Then the result should be 3 rectangles with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
+    */
+    pb_sq_house_house_spec h_spec;
+    pb_sq_house_room_spec living_room;
+    char* rooms[] = { "Living Room", "Living Room", "Living Room" };
+    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_rect* result;
+    pb_building house;
+
+    float expected_areas[3] = { 690.f, 480.f, 690.f };
+    size_t expected_num_rooms[] = { 2, 3, 2 };
+    int i;
+
+    h_spec.width = 30.f;
+    h_spec.height = 30.f;
+    h_spec.num_rooms = 3;
+    h_spec.stair_room_width = 7.f;
+
+    living_room.area = 690.f;
+    living_room.name = "Living Room";
+
+    pb_hash_put(room_specs, (void*)living_room.name, (void*)&living_room);
+
+    result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
+    ck_assert_msg(house.num_floors == 3, "House should have had 3 floors, but had %lu", house.num_floors);
+    for (i = 0; i < house.num_floors; ++i) {
+        float area = result[i].w * result[i].h;
+        ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.f, was %.f", i, expected_areas[i], area);
+        ck_assert_msg(house.floors[i].num_rooms == expected_num_rooms[i], "%ith floor should have had %lu rooms, had %lu rooms", i, expected_num_rooms[i], house.floors[i].num_rooms);
+    }
+}
+END_TEST
+
 Suite *make_pb_sq_house_suite(void)
 {
     Suite *s;
@@ -193,6 +232,7 @@ Suite *make_pb_sq_house_suite(void)
     tc_sq_house_layout_stairs = tcase_create("Stair layout tests");
     suite_add_tcase(s, tc_sq_house_layout_stairs);
     tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_single_floor);
+    tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_three_floors);
     
     return s;
 }

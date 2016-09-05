@@ -168,12 +168,18 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
     }
     house->num_floors = 1;
     house->floors[0].num_rooms = 0;
+    house->floors[0].rooms = NULL;
+
+    floor_rects = malloc(sizeof(pb_rect));
+    if (!floor_rects) {
+        goto err_return;
+    }
 
     /* If the stair room width occupies more than a quarter of the largest house dimension, resize it */
     max_house_dim = h_spec->width > h_spec->height ? h_spec->width : h_spec->height;
     stair_width = 0.25 * max_house_dim < h_spec->stair_room_width ? 0.25 * max_house_dim : h_spec->stair_room_width;
 
-    /* Add stairs to each floor and add remaining space on each floor to list of floor rects */
+    /* Add stairs to each floor and add rectangle containing remaining space on each floor to list of floor rects */
     while (1) {
         pb_rect next_floor_rect = { { 0.f, 0.f }, h_spec->width, h_spec->height };
         
@@ -181,15 +187,6 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
         
         int current_room = 1;
         pb_sq_house_room_spec* spec;
-
-        house->floors[current_floor].rooms = NULL;
-
-        /* Resize the list of floor rects to hold another rectangle */
-        pb_rect* new_floor_rects = realloc(floor_rects, sizeof(pb_rect) * (current_floor + 1));
-        if (!new_floor_rects) {
-            goto err_return;
-        }
-        floor_rects = new_floor_rects;
 
         pb_hash_get(room_specs, (void*)rooms[num_rooms_added], (void**)&spec);
         areas[0] = spec->area;
@@ -221,6 +218,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             /* Temp storage for reallocated arrays in case of allocation failure */
             pb_floor* new_floors;
             pb_room* new_rooms;
+            pb_rect* new_floor_rects;
 
             pb_rect stair_rect;
             pb_shape stair_shape;
@@ -296,7 +294,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
 
             /* No rooms fit on this floor with the stairs; this will be dealt with before squarification later, so say we added a single room for now */
             if (current_room == 0) {
-                current_room == 1;
+                current_room = 1;
             }
 
             num_rooms_added += current_room;
@@ -309,10 +307,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             if (!new_floor_rects) {
                 goto err_return;
             }
-
-            new_floors = realloc(house->floors, house->num_floors + 1);
-            if (!new_floors) goto err_return;
-            house->floors = new_floors;
+            floor_rects = new_floor_rects;
 
             new_rooms = realloc(house->floors[current_floor].rooms, sizeof(pb_room) * (house->floors[current_floor].num_rooms + current_room + 1));
             if (!new_rooms) goto err_return;
