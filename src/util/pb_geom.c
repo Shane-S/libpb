@@ -6,17 +6,21 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_to_pb_shape(pb_rect* rect, pb_shape* o
     if (!points) {
         return 0;
     }
+   
+    /* Top left point */
+    points[0].x = rect->bottom_left.x;
+    points[0].y = rect->bottom_left.y + rect->h;
 
-    points[0] = rect->top_left;
-    
-    points[1].x = rect->top_left.x;
-    points[1].y = rect->top_left.y - rect->h;
+    /* Bottom left point*/
+    points[1] = rect->bottom_left;
 
-    points[2].x = rect->top_left.x + rect->w;
-    points[2].y = points[1].y;
+    /* Bottom right point */
+    points[2].x = rect->bottom_left.x + rect->w;
+    points[2].y = rect->bottom_left.y;
 
-    points[3].x = points[2].x;
-    points[3].y = points[0].y;
+    /* Top right point */
+    points[3].x = rect->bottom_left.x + rect->w;
+    points[3].y = rect->bottom_left.y + rect->h;
 
     out->num_points = 4;
     out->points = points;
@@ -30,9 +34,9 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape_to_pb_rect(pb_shape* shape, pb_rect* 
         return 0;
     }
 
-    out->top_left = shape->points[0];
-    out->h = out->top_left.y - shape->points[1].y;
-    out->w = shape->points[2].x - out->top_left.x;
+    out->bottom_left = shape->points[1];
+    out->h = shape->points[1].y - out->bottom_left.y;
+    out->w = shape->points[2].x - out->bottom_left.x;
 
     return 1;
 }

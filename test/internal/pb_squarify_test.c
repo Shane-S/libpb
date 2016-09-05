@@ -37,14 +37,14 @@ START_TEST(paper_test) /* The example dimensions given in the paper */
 	for (i = 0; i < num_children; i++) {
 		int equal;
 
-		equal = assert_close_enough(children[i].top_left.x, expected[i].top_left.x, 5);
-		equal = equal && assert_close_enough(children[i].top_left.y, expected[i].top_left.y, 5);
+        equal = assert_close_enough(children[i].bottom_left.x, expected[i].bottom_left.x, 5);
+        equal = equal && assert_close_enough(children[i].bottom_left.y, expected[i].bottom_left.y, 5);
 		equal = equal && assert_close_enough(children[i].w, expected[i].w, 5);
 		equal = equal && assert_close_enough(children[i].h, expected[i].h, 5);
 
 		ck_assert_msg(equal, "Incorrect dimensions/position: expected (%f, %f), w %f, h %f; got (%f, %f), w %f, h %f",
-			expected[i].top_left.x, expected[i].top_left.y, expected[i].w, expected[i].h,
-			children[i].top_left.x, children[i].top_left.y, children[i].w, children[i].h);
+            expected[i].bottom_left.x, expected[i].bottom_left.y, expected[i].w, expected[i].h,
+            children[i].bottom_left.x, children[i].bottom_left.y, children[i].w, children[i].h);
 	}
 }
 END_TEST
@@ -73,9 +73,6 @@ END_TEST
 Suite *make_pb_squarify_suite(void)
 {
 
-	/* Life test case tests lifetime events (create and destroy);
-	 * Adjacency test case tests all functions related to the adjacency list
-	 */
 	Suite *s;
 	TCase *tc_squarify;
 

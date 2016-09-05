@@ -66,8 +66,8 @@ void layout(pb_rect *rect,
             size_t num_to_layout) {
 
     float dim = prev_sum / min_dim; /* Length of the side that will be the same for all rectangles */
-    float pos_x = rect->top_left.x;
-    float pos_y = rect->top_left.y;
+    float pos_x = rect->bottom_left.x;
+    float pos_y = rect->bottom_left.y;
     size_t i;
 	for (i = 0; i < num_to_layout; ++i) {
         /* Length of the other dimension to make make correct area */ 
@@ -75,33 +75,19 @@ void layout(pb_rect *rect,
         if(is_height) {
             children[i].w = dim;
             children[i].h = other_dim;
-            children[i].top_left.x = pos_x;
-            children[i].top_left.y = pos_y;
+            children[i].bottom_left.x = pos_x;
+            children[i].bottom_left.y = pos_y;
             pos_y += other_dim;
         } else {
             children[i].w = other_dim;
             children[i].h = dim;
-            children[i].top_left.x = pos_x;
-            children[i].top_left.y = pos_y;
+            children[i].bottom_left.x = pos_x;
+            children[i].bottom_left.y = pos_y;
             pos_x += other_dim;
         }
     }
 }
 
-/**
- * Given a containing rectangle and a list of rectangles to be laid out inside it, attempts
- * to lay out the rectangles while minimising their aspect ratios.
- *
- * @param rect         The outer rectangle into which children will be laid out.
- * @param min_dim      The value of the smallest dimension of the current layout rectangle.
- * @param is_height    Non-zero if min_dim is the rectangle's height.
- * @param children     A list of rectangles to be laid out. The rectangles actually represent a list
- *                     of areas to be laid out; their width MUST be set to the desired area for the
- *                     algorithm to work.
- * @param num_children The number of children in the given list.
- * @param layout_size  The size of the list of rectangles in the current layout. This should always start at 0.
- * @param prev_sum     The sum of all the areas in the current layout. Should always start at 0.
- */
 void pb_squarify(pb_rect *rect,
                  float min_dim,
                  int is_height,
@@ -138,10 +124,10 @@ void pb_squarify(pb_rect *rect,
         /* Move the layout rectangle to the appropriate spot */
         if(is_height) {
             rect->w -= children[0].w;
-            rect->top_left.x += children[0].w;
+            rect->bottom_left.x += children[0].w;
         } else {
             rect->h -= children[0].h;
-            rect->top_left.y += children[0].h;
+            rect->bottom_left.y += children[0].h;
         }
         
         /* Only go until we have no more children to lay out */

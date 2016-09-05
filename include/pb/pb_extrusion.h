@@ -14,7 +14,8 @@ extern "C" {
  * Represents a room in a building.
  */
 typedef struct _pb_room {
-    char *name;
+    /* Data supplied by the algorithm that created the building plan. */
+    void *data;
 
     /* The polygon occupied by the room. */
     pb_shape room_shape;
@@ -30,7 +31,7 @@ typedef struct _pb_floor {
     size_t num_rooms;
 
     /* The shape occupied by the floor. Contains all rooms in the
-    * given floor. */
+     * given floor. */
     pb_shape floor_shape;
 
     /* TODO: Add doors and windows */

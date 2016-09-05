@@ -19,8 +19,8 @@ START_TEST(rect_to_shape)
     };
     int i;
 
-    rect.top_left.x = 0;
-    rect.top_left.y = 10;
+    rect.bottom_left.x = 0;
+    rect.bottom_left.y = 0;
     rect.h = 10;
     rect.w = 20;
 
@@ -55,7 +55,7 @@ START_TEST(shape_to_rect_basic) {
     big_old_rectangle.points[3].y = 100;
 
     pb_shape_to_pb_rect(&big_old_rectangle, &out);
-    ck_assert_msg(out.top_left.x == 10 && out.top_left.y == 100, "Rectangle's top-left should have been {%10.0, %100.0}, was {%f, %f}", out.top_left.x, out.top_left.y);
+    ck_assert_msg(out.bottom_left.x == 10 && out.bottom_left.y == 0, "Rectangle's top-left should have been {%10.0, %100.0}, was {%f, %f}", out.bottom_left.x, out.bottom_left.y);
     ck_assert_msg(out.w == 110, "Width should have been 110, was %u", out.w);
     ck_assert_msg(out.h == 100, "Height should have been 100, was %u", out.h);
 

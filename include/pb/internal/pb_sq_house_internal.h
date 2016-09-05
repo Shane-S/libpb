@@ -4,6 +4,13 @@
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_squarify.h>
 
+typedef enum stair_location {
+    TOP = 0,
+    LEFT = 1,
+    BOTTOM = 2,
+    RIGHT = 3
+} stair_location;
+
 /**
  * Determines which rooms will go be in the house.
  *
@@ -21,7 +28,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
  * @param h_spec     The house specification (containing the total number of rooms).
  * @param house      The floor plan for the building.
  *
- * @returns A list of rectangles indicating the free space on the corresponding floor.
+ * @returns A list of rectangles indicating the free space on each corresponding floor.
  */
 pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house);
 

@@ -9,6 +9,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/* Names indicating a room for stairs and a hallway "room" in a house. These cannot be used as room names by client code. */
+#define PB_SQ_HOUSE_STAIRS "Stairs"
+#define PB_SQ_HOUSE_HALLWAY "Hallway"
+#define PB_SQ_HOUSE_OUTSIDE "Outside"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -16,6 +21,7 @@ extern "C" {
 typedef struct _pb_sq_house_room_spec {
     char const* name;
     char const** adjacent;
+    size_t num_adjacent;
     float area;
     int max_instances;
     int priority;
@@ -25,6 +31,14 @@ typedef struct _pb_sq_house_house_spec {
     float height;
     float width;
     int num_rooms;
+
+    /* The width (or height if the stairs run along the x-axis) of a room containing stairs.
+     * This may be adjusted to fit stairs within the house properly. */
+    float stair_room_width;
+
+    /* The width (or height where hallway sections run along the x-axis) of hallways. This may be adjusted 
+     * to fit the hallway on a given floor. */
+    float hallway_width;
 } pb_sq_house_house_spec;
 
 PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec, pb_hash* room_specs);

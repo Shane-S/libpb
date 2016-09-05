@@ -8,7 +8,7 @@ typedef struct _pb_point {
 } pb_point;
 
 typedef struct _pb_rect {
-    pb_point top_left;
+    pb_point bottom_left;
     float w;
     float h;
 } pb_rect;
