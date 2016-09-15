@@ -8,8 +8,11 @@ START_TEST(simple_test)
 	pb_rect container = { { 0.f, 0.f }, 1.f, 1.f };
     float areas[] = { 1.f };
     pb_rect children[1] = { 0.f };
+    pb_rect* last_row_start;
+    size_t last_row_size;
+    int rect_has_children;
 
-    pb_squarify(&container, 1.f, 1, areas, 1, children, 0, 0);
+    pb_squarify(&container, areas, 1, children, &last_row_start, &last_row_size, &rect_has_children);
 	ck_assert_msg(children[0].w == 1.f && children[0].h == 1.f, "First child's width and height should have been 1, were %f and %f", children[0].w, children[0].h);
 }
 END_TEST
@@ -30,10 +33,12 @@ START_TEST(paper_test) /* The example dimensions given in the paper */
 		{ { 27.f / 5.f, 7.f / 3.f }, 3.f / 5.f, 5.f / 3.f }
 	};
 	size_t num_children = 7;
-	size_t i;
-	float min_dim = 4.f;
+    size_t i;
+    pb_rect* last_row_start;
+    size_t last_row_size;
+    int rect_has_children;
 	
-    pb_squarify(&container, min_dim, 1, areas, 7, children, 0, 0);
+    pb_squarify(&container, areas, 7, children, &last_row_start, &last_row_size, &rect_has_children);
 	for (i = 0; i < num_children; i++) {
 		int equal;
 
@@ -60,8 +65,11 @@ START_TEST(uniform_test)
 	size_t num_children = 6;
 	size_t i;
 	float min_dim = 2.f;
+    pb_rect* last_row_start;
+    size_t last_row_size;
+    int rect_has_children;
 
-    pb_squarify(&container, min_dim, 0, areas, 6, children, 0, 0);
+    pb_squarify(&container, areas, 6, children, &last_row_start, &last_row_size, &rect_has_children);
 	for (i = 0; i < num_children; i++) {
 		int equal = children[i].w == 1 && children[i].h == 1;
 

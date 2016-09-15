@@ -177,7 +177,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
 
     /* If the stair room width occupies more than a quarter of the largest house dimension, resize it */
     max_house_dim = h_spec->width > h_spec->height ? h_spec->width : h_spec->height;
-    stair_width = 0.25 * max_house_dim < h_spec->stair_room_width ? 0.25 * max_house_dim : h_spec->stair_room_width;
+    stair_width = 0.25f * max_house_dim < h_spec->stair_room_width ? 0.25f * max_house_dim : h_spec->stair_room_width;
 
     /* Add stairs to each floor and add rectangle containing remaining space on each floor to list of floor rects */
     while (1) {
@@ -225,7 +225,6 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             int stair_index; /* The index into the rooms array where the stairs will be added for the current room */
 
             pb_rect next_floor_rect = { { 0.f, 0.f }, h_spec->width, h_spec->height };
-            size_t total_rooms_on_floor;
 
             new_floors = realloc(house->floors, sizeof(pb_floor) * (house->num_floors + 1));
             if (!new_floors) {
@@ -354,4 +353,116 @@ err_return:
     }
     free(house->floors);
     return NULL;
+}
+
+int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect) {
+    float* areas = NULL;
+    float total_area;
+
+    float floor_rect_area = floor_rect->w * floor_rect->h;
+    pb_rect* rects = NULL;
+
+    size_t num_stairs;
+    size_t i;
+
+    pb_rect* last_row_start;
+    size_t last_row_size;
+    int rect_has_children;
+
+    /* If there's only one room on the floor besides the stairs, it will take up the entire rectangle regardless */
+    if (num_rooms == 1) {
+        pb_shape room_shape;
+        if (!pb_rect_to_pb_shape(floor_rect, &floor->rooms[floor->num_rooms - 1].room_shape)) {
+            return -1;
+        }
+        floor->rooms[floor->num_rooms - 1].data = (void*)rooms[0];
+        return 0;
+    }
+
+    /* Otherwise, we have to squarify etc. */
+    areas = malloc(sizeof(float) * num_rooms);
+    if (!areas) {
+        goto err_return;
+    }
+
+    for (i = 0; i < num_rooms; ++i) {
+        pb_sq_house_room_spec spec;
+        pb_hash_get(room_specs, (void*)rooms[i], (void**)&spec);
+        areas[i] = spec.area;
+        total_area += areas[i];
+    }
+
+    pb_squarify(floor_rect, areas, num_rooms, rects, &last_row_start, &last_row_size, &rect_has_children);
+
+    /* The total area of the rooms does't add up to the floor rectangle; expand the last rooms */
+    if (total_area < floor_rect_area) {
+        pb_sq_house_fill_remaining_floor(floor_rect, rect_has_children, last_row_start, last_row_size, areas + (size_t)(last_row_start - rects));
+    }
+
+    /* num_rooms is the number of rooms from the room specification list; floor->num_rooms is that number
+     * PLUS the number of stairs already placed on the floor*/
+    num_stairs = floor->num_rooms - num_rooms;
+    /* Convert the rectangles from pb_squarify to pb_shapes for each room */
+    for (i = num_stairs; i < floor->num_rooms; ++i) {
+        floor->rooms[i].data = (void*)rooms[i - num_stairs];
+        floor->rooms[i].room_shape.points = NULL;
+
+        if (!pb_rect_to_pb_shape(&(rects[i - num_stairs]), &(floor->rooms[i].room_shape))) {
+            goto err_return;
+        }
+    }
+
+    free(areas);
+    free(rects);
+    return 0;
+
+err_return:
+    free(areas);
+    free(rects);
+
+    /* The caller will be responsible for cleaning all other floors up */
+    for (i = 0; i < floor->num_rooms; ++i) {
+        if (floor->rooms[i].room_shape.points == NULL) {
+            break;
+        } else {
+            free(floor->rooms[i].room_shape.points);
+        }
+    }
+
+    return -1;
+}
+
+void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size, float* areas) {
+    size_t current_rect;
+
+    /* Two possible cases: the remaining rectangle contains some of the rooms (because we ran out of rooms to lay out in it without messing up
+     * the aspect ratios in pb_squarify) or it contains none of the rooms because we just finished laying out a row.
+     */
+
+    /* Case 1 */
+    if (rect_has_children) {
+        int x_axis_min = last_row_start[0].bottom_left.y == last_row_start[1].bottom_left.y;
+        float delta = x_axis_min ? final_floor_rect->h - last_row_start->h : final_floor_rect->w - last_row_start->w;
+
+        for (current_rect = 0; current_rect < last_row_size; ++current_rect) {
+            if (x_axis_min) {
+                last_row_start[current_rect].h += delta;
+            } else {
+                last_row_start[current_rect].w += delta;
+            }
+        }
+
+    } else {
+        /* Case 2 */
+        /* pb_squarify always works towards the top-right corner, so the final rect will be either above or to the right */
+        int is_right = last_row_start[0].bottom_left.x < final_floor_rect->bottom_left.x;
+
+        for (current_rect = 0; current_rect < last_row_size; ++current_rect) {
+            if (is_right) {
+                last_row_start[current_rect].w += final_floor_rect->w;
+            } else {
+                last_row_start[current_rect].h += final_floor_rect->h;
+            }
+        }
+    }
 }

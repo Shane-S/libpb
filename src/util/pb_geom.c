@@ -35,7 +35,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape_to_pb_rect(pb_shape* shape, pb_rect* 
     }
 
     out->bottom_left = shape->points[1];
-    out->h = shape->points[1].y - out->bottom_left.y;
+    out->h = shape->points[0].y - out->bottom_left.y;
     out->w = shape->points[2].x - out->bottom_left.x;
 
     return 1;

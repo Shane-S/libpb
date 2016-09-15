@@ -235,7 +235,7 @@ static int resize_hash(pb_hash* map, size_t new_cap) {
  * @param out A variable to hold the position (if any).
  * @return 0 if the key wasn't found, 1 if it was (with the position stored in out).
  */
-static int get_pos(pb_hash* map, void* key, size_t* out) {
+static int get_pos(pb_hash* map, void const* key, size_t* out) {
     size_t pos = map->hash(key);
     size_t probe_pos;
     size_t i;
@@ -258,7 +258,7 @@ static int get_pos(pb_hash* map, void* key, size_t* out) {
     return 0;
 }
 
-int pb_hash_put(pb_hash* map, void* key, void* val) {
+int pb_hash_put(pb_hash* map, void const* key, void const* val) {
     size_t pos;
     size_t probe_pos;
     size_t i;
@@ -297,7 +297,7 @@ int pb_hash_put(pb_hash* map, void* key, void* val) {
     return 0;
 }
 
-int pb_hash_get(pb_hash* map, void* key, void** val) {
+int pb_hash_get(pb_hash* map, void const* key, void** val) {
     size_t pos;
     if(!get_pos(map, key, &pos)) return 0;
     
@@ -305,7 +305,7 @@ int pb_hash_get(pb_hash* map, void* key, void** val) {
     return 1;
 }
 
-int pb_hash_remove(pb_hash* map, void* key) {
+int pb_hash_remove(pb_hash* map, void const* key) {
     size_t pos;
     if(!get_pos(map, key, &pos)) return 0;
     

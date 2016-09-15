@@ -21,6 +21,7 @@
 
 #include <stddef.h>
 #include <pb/util/pb_util_exports.h>
+#include <pb/util/pb_hash.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,43 +29,50 @@ extern "C" {
 
 typedef struct _pb_vertex pb_vertex;
 
+typedef struct _pb_edge {
+    pb_vertex* from;
+    pb_vertex* to;
+    float weight;
+    void* data;
+} pb_edge;
+
 /**
  * A vertex, which contains some data and a list of vertices to which it is connected.
  */
 struct _pb_vertex {
+    pb_edge** edges;
     void *data;
-    pb_vertex **adjacent; /* Stores vertices to which it's connected */
-	size_t *edge_weights; /* Stores the edge weight for each connection. */
-    size_t adj_size;
-    size_t adj_capacity;
+    size_t edges_size;
+    size_t edges_capacity;
 };
 
 /**
- * Creates a new vertex with the given data and adjacency list.
+ * Creates a new vertex with the given data.
  *
- * @param data The data to include in this vertex.
- *
- * @return A pointer to a new vertex object on success, or NULL on failure (out of memory).
+ * @param data The data to store at this vertex.
+ * @return A vertex initialised with the given data and an empty edge list or NULL on failure (out of memory).
  */
 PB_UTIL_DECLSPEC pb_vertex* PB_UTIL_CALL pb_vertex_create(void* data);
 
 /**
- * Frees a vertex and its adjacency list.
+ * Frees the vertex and its internal structures.
+ * The vertex will be unusable after this operation.
  *
- * @param vert      The vertex to free.
- * @param free_data Whether to free the data contained in the vertex.
+ * @param vert The vertex to free.
  */
-PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vertex_free(pb_vertex* vert, int free_data);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vertex_free(pb_vertex* vert);
 
 /**
- * Adds a vertex to this vertex's adjacency list.
- * @param start  The start vertex.
- * @param dest   The destination vertex.
- * @param weight The weight of the edge from the start vertex to the destination vertex.
+ * Adds a vertex to this vertex's adjacency list. Note that this function doesn't check whether
+ * an edge to dest already exists; use pb_vertex_get_edge to modify existing edges.
  *
- * @return 0 on success, -1 on failure (out of memory).
+ * @param start The start vertex.
+ * @param dest  The destination vertex.
+ * @param edge  The edge to add. This function creates a shallow copy of edge.
+ *
+ * @return 0 on success, -1 on out of memory.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_add_edge(pb_vertex *vert, pb_edge* edge);
 
 /**
  * Removes a vertex from this vertex's adjacency list. The neighour will not be freed.
@@ -73,93 +81,102 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_add_edge(pb_vertex *start, pb_vertex
  *
  * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest);
-
-/**
- * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
- * @param start  The start vertex.
- * @param dest   The destination vertex.
- * @param weight This will hold the edge edge weight if there was a neighbour to this vertex.
- *
- * @return 0 on sucess, -1 when the vertex didn't have this neighbour.
- */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_remove_edge(pb_vertex *vert, pb_edge* edge);
 
 /**
  * A graph, which is basically a collection of vertices and adjacency lists.
  */
 typedef struct _pb_graph {
-    pb_vertex **vertices;
-    size_t size;
-    size_t capacity;
+    pb_hash* vertices;
+    pb_hash* edges;
 } pb_graph;
 
 /**
- * Creates an empty graph.
+ * Allocates and initialies a new, empty graph.
  *
- * @return An empty graph, or NULL on failure (out of memory).
+ * @param id_hash The hash function to use for vertex ID's.
+ * @param id_eq   The equality function to use for vertex ID's.
+ *
+ * @return An empty graph or NULL if out of memory.
  */
-PB_UTIL_DECLSPEC pb_graph* PB_UTIL_CALL pb_graph_create();
+PB_UTIL_DECLSPEC pb_graph* pb_graph_create(pb_hash_func id_hash, pb_hash_eq_func id_eq);
 
 /**
  * Adds a vertex to the graph.
- * @param graph The graph to which the vertex will be added.
- * @param vert  The vertex to be added to the graph. Cannot be NULL.
+ * @param graph   The graph to which the vertex will be added.
+ * @param vert_id A unique identifier for the vertex that will be hashed with the initially supplied
+ *                id_hash function.
+ * @param data    The data to store in the vertex.
  *
- * @return The index of the newly added vertex on success, -1 when out of memory.
+ * @return 0 on success, -1 when out of memory.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* vert_id, void* data);
 
 /**
- * Removes a vertex from the graph. The vertex isn't freed.
- * Pre-condition: The specified index is within the graph's size.
+ * Removes a vertex from the graph if the vertex was actually in the graph.
  *
- * @param graph The graph from which the vertex will be deleted.
- * @param vert  The index of the vertex to be deleted from the graph.
- *
- * @return The removed vertex.
+ * @param graph   The graph from which the vertex will be removed.
+ * @param vert_id The ID of the vertex to remove.
+ * @return 0 on success, -1 if the vertex didn't exist.
  */
-PB_UTIL_DECLSPEC pb_vertex* PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, size_t vert);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* vert_id);
+
+/**
+ * Gets the vertex associated with vert_id, if there is one.
+ *
+ * Note that the returned vertex is read-only; use the pb_graph_add_vertex and pb_graph_remove_vertex
+ * functions to add a new vertex to the graph.
+ *
+ * @param vert_id The unique identifier associated with the vertex.
+ * @return The associated vertex or NULL if there is no vertex associated with that ID.
+ */
+PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph* graph, void* vert_id);
 
 /**
  * Adds an edge from vertex "from" to vertex "to" in the given graph.
  *
- * @param graph The graph on which to operate.
- * @param from  The index of the start vertex.
- * @param to    The index of the end vertex.
+ * @param graph   The graph on which to operate.
+ * @param from_id The start vertex ID.
+ * @param to+id   The destination vertex ID.
+ * @param weight  The edge weight, if there is one.
+ * @param data    The (optional) data to associate with this edge.
  *
- * @return 0 on success, -1 on failure (out of memory).
+ * @return 0 on success, -1 on failure (out of memory or at least one of the given vertices didn't exist).
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph* graph, size_t from, size_t to, size_t weight);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph* graph, void* from_id, void* to_id, float weight, void* data);
 
 /**
  * Removes an edge from vertex "from" to vertex "to" in the given graph.
  *
- * @param graph The graph on which to operate.
- * @param from  The index of the start vertex.
- * @param to    The index of the end vertex.
+ * @param graph   The graph on which to operate.
+ * @param from_id The start vertex ID.
+ * @param to_id   The end vertex ID.
  *
  * @return 0 on success, -1 if the given edge didn't exist.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph* graph, size_t from, size_t to);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph* graph, void* from_id, void* to_id);
 
 /**
- * Gets the weight of the edge from vertex start to vertex dest. if there is no such edge, -1 is returned.
- * @param graph  The graph in which to find the edge weight.
- * @param start  The start vertex's index.
- * @param dest   The destination vertex's index.
- * @param weight This will hold the edge edge weight if there was a neighbour to this vertex.
+ * Gets the edge from vertex from to vertex to. If there is no such edge, return NULL.
  *
- * @return 0 on sucess, -1 when no edge from start to dest exists.
+ * Note that the edge can't be modified. Edges can only be changed via the pb_graph_add_edge
+ * and pb_graph_remove_edge functions.
+ *
+ * @param graph   The graph in which to find the edge weight.
+ * @param from_id The start vertex's ID.
+ * @param to_id   The destination vertex's ID.
+ *
+ * @return The edge on success, NULL if the edge didn't exist.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_get_weight(pb_graph* graph, size_t start, size_t dest, size_t *weight);
+PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph* graph, void* from_id, void* to_id);
 
 /**
- * Frees the graph and all of its vertices.
- * @param graph     The graph to free.
- * @param free_data Whether to free the data associated with the vertices.
+ * Frees the graph and its vertices.
+ * The graph will be unusable after this operation.
+ *
+ * @param graph The graph to free.
  */
-PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph* graph, int free_data);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph* graph);
 
 #ifdef __cplusplus
 }

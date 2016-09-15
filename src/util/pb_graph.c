@@ -1,185 +1,264 @@
 #include <stdlib.h>
+#include <string.h>
 #include <pb/util/pb_graph.h>
+#include <pb/util/pb_hash_utils.h>
 
-pb_vertex* pb_vertex_create(void *data) {
-    pb_vertex *vert = NULL;
-    pb_vertex **adjacent = NULL;
-	size_t *edge_weights = NULL;
+static void pb_graph_remove_edge_internal(pb_graph* graph, pb_edge* edge);
+
+PB_UTIL_DECLSPEC pb_vertex* PB_UTIL_CALL pb_vertex_create(void* data) {
+    pb_vertex* vert = NULL;
+    pb_edge** edges = NULL;
 
     vert = malloc(sizeof(pb_vertex));
-    if(!vert) {
-        goto err_return;
+    if (!vert) {
+        return NULL;
     }
 
-    adjacent = malloc(sizeof(pb_vertex*) * 2);
-    if(!adjacent) {
-        goto err_return;
+    edges = malloc(sizeof(pb_edge*) * 2);
+    if (!edges) {
+        free(vert);
+        return NULL;
     }
-
-	edge_weights = malloc(sizeof(size_t) * 2);
-	if (!edge_weights) {
-		goto err_return;
-	}
-
-    vert->data = data;
-    vert->adjacent = adjacent;
-	vert->edge_weights = edge_weights;
-    vert->adj_size = 0;
-    vert->adj_capacity = 2;
-
-    return vert;
     
-err_return:
-    free(vert);
-    free(adjacent);
-	free(edge_weights);
-    return NULL;
+    vert->edges = edges;
+    vert->edges_capacity = 2;
+    vert->edges_size = 0;
+    vert->data = data;
+    return vert;
 }
 
-void pb_vertex_free(pb_vertex* vert, int free_data) {
-    free(vert->adjacent);
-	free(vert->edge_weights);
-    if(free_data) {
-        free(vert->data);
-    }
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vertex_free(pb_vertex* vert) {
+    free(vert->edges);
     free(vert);
 }
 
-int pb_vertex_add_edge(pb_vertex *start, pb_vertex* dest, size_t weight) {
-    if(start->adj_size == start->adj_capacity) {
-		pb_vertex **new_adjacent = realloc(start->adjacent, sizeof(pb_vertex*) * start->adj_capacity * 2);
-		size_t *new_edge_weights = realloc(start->edge_weights, sizeof(size_t) * start->adj_capacity * 2);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_add_edge(pb_vertex *vert, pb_edge* edge) {
+    if (vert->edges_size == vert->edges_capacity) {
+        pb_edge** new_edges;
 
-		/* If only one fails, then we'll just end up with one of them being bigger than the other. Not the worst thing. 
-		 * TODO: Consider trying to somehow free up memory in this situation (and every other OOM).
-		 */
-        if(!new_adjacent || !new_edge_weights) return -1;
-        start->adjacent = new_adjacent;
-		start->edge_weights = new_edge_weights;
-        start->adj_capacity = start->adj_capacity * 2;
+        new_edges = realloc(vert->edges, sizeof(pb_edge*) * vert->edges_capacity * 2);
+        if (!new_edges) {
+            return -1;
+        }
+
+        vert->edges = new_edges;
+        vert->edges_capacity = vert->edges_capacity * 2;
     }
-
-    start->adjacent[start->adj_size] = dest;
-	start->edge_weights[start->adj_size] = weight;
-	start->adj_size++;
+    
+    vert->edges[vert->edges_size] = edge;
+	vert->edges_size++;
 	return 0;
 }
 
-int pb_vertex_remove_edge(pb_vertex *start, pb_vertex* dest) {
-    int i;
-    int dest_idx = -1;
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_remove_edge(pb_vertex *start, pb_edge* edge) {
+    size_t i;
+    int edge_idx = -1;
 
     /* I'm not sure where this leaves us for removal from a graph. O(|V||E|)? Not ideal, but probably won't be
        an issue with our graph sizes.*/
-    for(i = 0; i < start->adj_size; i++) {
-        if(start->adjacent[i] == dest) {
-            dest_idx = i;
+    for(i = 0; i < start->edges_size; i++) {
+        if(start->edges[i] == edge) {
+            edge_idx = i;
             break;
         }
     }
 
-    if(dest_idx == -1) {
+    if (edge_idx == -1) {
         return -1;
     }
 
     /* Shift all elements and corresponding edge weights up by one */
-    for(i = dest_idx + 1; i < start->adj_size; ++i) {
-        start->adjacent[i - 1] = start->adjacent[i];
-		start->edge_weights[i - 1] = start->edge_weights[i];
+    for (i = edge_idx + 1; i < start->edges_size; ++i) {
+        start->edges[i - 1] = start->edges[i];
     }
 
-    start->adj_size--;
+    start->edges_size--;
     /* TODO: Consider trimming the array size if it becomes too wasteful */
     
     return 0;
 }
 
-int pb_vertex_get_weight(pb_vertex *start, pb_vertex *dest, size_t *weight) {
-	size_t i;
-	for (i = 0; i < start->adj_size; ++i) {
-		if (start->adjacent[i] == dest) {
-			*weight = start->edge_weights[i];
-			return 0;
-		}
-	}
+static uint32_t edge_hash(void const* edge) {
+    pb_edge* actual = (pb_edge*)edge;
+    uint32_t hash = 23;
 
-	return -1;
+    /* Hash the addresses; every edge will have a different pair of vertices, so the combination of
+     * addresses will identify the edge */
+    hash += 31 * pb_murmurhash3((void*)actual->from, (int)sizeof(pb_vertex*));
+    hash += 31 * pb_murmurhash3((void*)actual->to, (int)sizeof(pb_vertex*));
+
+    return hash;
 }
 
-pb_graph* pb_graph_create() {
-    pb_graph *graph = NULL;
-    pb_vertex **vertices = NULL;
+static int edge_eq(void const* edge1, void const* edge2) {
+    pb_edge* actual1 = (pb_edge*)edge1;
+    pb_edge* actual2 = (pb_edge*)edge2;
 
-    graph = malloc(sizeof(pb_graph));
-    if(!graph) {
-        goto err_return;
+    return actual1->from == actual2->from && actual1->to == actual2->to;
+}
+
+PB_UTIL_DECLSPEC pb_graph* PB_UTIL_CALL pb_graph_create(pb_hash_func id_hash, pb_hash_eq_func id_eq) {
+    pb_graph* graph = malloc(sizeof(pb_graph));
+    pb_hash* vertices;
+    pb_hash* edges;
+    
+    if (!graph) {
+        return NULL;
     }
 
-    vertices = malloc(sizeof(pb_vertex*) * 2);
-    if(!vertices) {
-        goto err_return;
+    vertices = pb_hash_create(id_hash, id_eq);
+    if (vertices == NULL) {
+        free(graph);
+        return NULL;
+    }
+
+    edges = pb_hash_create(edge_hash, edge_eq);
+    if (!edges) {
+        pb_hash_free(vertices);
+        free(graph);
+        return NULL;
     }
 
     graph->vertices = vertices;
-    graph->size = 0;
-    graph->capacity = 2;
+    graph->edges = edges;
 
     return graph;
+}
 
-err_return:
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* vert_id, void* data) {
+    pb_vertex* vert = pb_vertex_create(data);
+    if (!vert) {
+        return -1;
+    }
+
+    if (pb_hash_put(graph->vertices, vert_id, (void*)vert) == -1) {
+        pb_vertex_free(vert);
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* vert_id) {
+    pb_vertex* vert;
+    size_t i;
+    if (!pb_hash_get(graph->vertices, vert_id, (void**)&vert)) {
+        return -1; /* There was no vertex with the given ID in this graph */
+    }
+
+    /* Remove all edges originating from the given vertex */
+    for (i = 0; i < vert->edges_size; ++i) {
+        pb_graph_remove_edge_internal(graph, vert->edges[i]);
+    }
+
+    /* Iterate over the edges list to remove all edges to the given vertex */
+    for (i = 0; i < graph->edges->cap; ++i) {
+        if (graph->edges->states[i] == FULL) {
+            pb_edge* edge = (pb_edge*)graph->edges->entries[i].val;
+            if (edge->to == vert) {
+                pb_graph_remove_edge_internal(graph, edge);
+            }
+        }
+    }
+
+    pb_hash_remove(graph->vertices, vert_id);
+    pb_vertex_free(vert);
+
+    return 0;
+}
+
+PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph* graph, void const* vert_id) {
+    pb_vertex* out;
+    if (!pb_hash_get(graph->vertices, vert_id, (void**)&out)) {
+        return NULL;
+    }
+
+    return out;
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph *graph, void const* from_id, void const* to_id, float weight, void* data) {
+    pb_edge* edge;
+    pb_vertex* from = (pb_vertex*)pb_graph_get_vertex(graph, from_id); /* Breaking my own const-ness rules here. Oops */
+    pb_vertex* to = (pb_vertex*)pb_graph_get_vertex(graph, to_id);
+
+    if (!from || !to) {
+        return -1;
+    }
+
+    edge = malloc(sizeof(pb_edge));
+    if (!edge) {
+        return -1;
+    }
+
+    edge->weight = weight;
+    edge->from = from;
+    edge->to = to;
+    edge->data = data;
+
+    if (pb_vertex_add_edge(from, edge) == -1) {
+        free(edge);
+        return -1;
+    }
+
+    if (pb_hash_put(graph->edges, edge, edge) == -1) {
+        pb_vertex_remove_edge(from, edge);
+        free(edge);
+        return -1;
+    }
+
+    return 0;
+}
+
+static void pb_graph_remove_edge_internal(pb_graph* graph, pb_edge* edge) {
+    pb_vertex_remove_edge(edge->from, edge);
+    pb_hash_remove(graph->edges, (void*)edge);
+    free(edge);
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph *graph, void const* from_id, void const* to_id) {
+    pb_edge* edge = (pb_edge*)pb_graph_get_edge(graph, from_id, to_id); /* Breaking const-ness again */
+    if (!edge) return -1;
+
+    pb_graph_remove_edge_internal(graph, edge);
+    return 0;
+}
+
+PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph *graph, void const* from_id, void const* to_id) {
+    pb_vertex* from;
+    pb_vertex* to;
+    pb_edge* out;
+    pb_edge temp;
+
+    if (!pb_hash_get(graph->vertices, from_id, (void**)&from) ||
+        !pb_hash_get(graph->vertices, to_id, (void**)&to)) {
+        return NULL;
+    }
+
+    temp.from = from;
+    temp.to = to;
+
+    if (!pb_hash_get(graph->edges, (void*)&temp, (void**)&out)) {
+        return NULL;
+    }
+
+    return out;
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
+    size_t i;
+    for(i = 0; i < graph->vertices->cap; ++i) {
+        if (graph->vertices->states[i] == FULL) {
+            pb_vertex_free((pb_vertex*)graph->vertices->entries[i].val);
+        }
+    }
+    pb_hash_free(graph->vertices);
+
+    for (i = 0; i < graph->edges->cap; ++i) {
+        if (graph->edges->states[i] == FULL) {
+            free(graph->edges->entries[i].val); /* Could just have easily done key, but whatever */
+        }
+    }
+    pb_hash_free(graph->edges);
+
     free(graph);
-    free(vertices);
-    return NULL;
-}
-
-int pb_graph_add_vertex(pb_graph* graph, pb_vertex* vert) {
-    if(graph->size == graph->capacity) {
-        pb_vertex **new_vertices = realloc(graph->vertices, graph->capacity * 2 * sizeof(pb_vertex*));
-        if(!new_vertices) return -1;
-        graph->vertices = new_vertices;
-        graph->capacity *= 2;
-    }
-    
-    graph->vertices[graph->size++] = vert;
-    return graph->size - 1;
-}
-
-pb_vertex* pb_graph_remove_vertex(pb_graph* graph, size_t vert) {
-    pb_vertex *to_remove = graph->vertices[vert];
-    size_t i;
-
-    /* Remove any edges containing the given vertex */
-    for(i = 0; i < graph->size; ++i) {
-        if(i == vert) continue;
-		pb_vertex_remove_edge(graph->vertices[i], graph->vertices[vert]);
-    }
-
-    /* Shift elements up */
-    for(i = vert + 1; i < graph->size; ++i) {
-        graph->vertices[i - 1] = graph->vertices[i];
-    }
-
-    graph->size--;
-
-    return to_remove;
-}
-
-int pb_graph_add_edge(pb_graph *graph, size_t from, size_t to, size_t weight) {
-	return pb_vertex_add_edge(graph->vertices[from], graph->vertices[to], weight);
-}
-
-int pb_graph_remove_edge(pb_graph *graph, size_t from, size_t to) {
-	return pb_vertex_remove_edge(graph->vertices[from], graph->vertices[to]);
-}
-
-int pb_graph_get_weight(pb_graph *graph, size_t from, size_t to, size_t *weight) {
-	return pb_vertex_get_weight(graph->vertices[from], graph->vertices[to], weight);
-}
-
-void pb_graph_free(pb_graph *graph, int free_data) {
-    size_t i;
-    for(i = 0; i < graph->size; ++i) {
-        pb_vertex_free(graph->vertices[i], free_data);
-    }
-    free(graph->vertices);
 }

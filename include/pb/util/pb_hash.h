@@ -59,7 +59,7 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_free(pb_hash* map);
  * @param val The item to insert into the map.
  * @return Whether it was inserted? I actually don't remember why this returns anything. Maybe it returns -1 on OOM or something
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_put(pb_hash* map, void* key, void* val);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_put(pb_hash* map, void const* key, void const* val);
 
 /**
  * Gets the value associated with the given key, if any.
@@ -69,7 +69,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_put(pb_hash* map, void* key, void* val
  * @param out A variable to hold the associated value on success.
  * @return 0 if the key is not found, 1 if it is.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void* key, void** out);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void const* key, void** out);
 
 /**
  * Removes the item associated with the given key from the map (if it's there).
@@ -78,7 +78,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void* key, void** ou
  * @param key The key associated with the item to remove.
  * @return Whether there was actually an item with that key in the map.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_remove(pb_hash* map, void* key);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_remove(pb_hash* map, void const* key);
 
 #ifdef __cplusplus
 }

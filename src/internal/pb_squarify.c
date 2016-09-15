@@ -88,14 +88,34 @@ void layout(pb_rect *rect,
     }
 }
 
-void pb_squarify(pb_rect *rect,
+/**
+ * Given a containing rectangle and a list of rectangles to be laid out inside it, attempts
+ * to lay out the rectangles with their aspect ratios close to 1.
+ *
+ * @param rect              The outer rectangle into which children will be laid out.
+ * @param min_dim      The size of the smallest dimension of the current layout rectangle.
+ * @param is_height    Non-zero if min_dim is the rectangle's height.
+ * @param areas             A list of areas to be laid out as rectangles. There must be at least 2 areas.
+ * @param num_areas         The number of areas to be laid out.
+ * @param children          A list of rectangles to store the resulting layout.
+ * @param last_row_start    Holds the pointer to the first rectangle in the last row to be laid out (i.e., that contains rectangles).
+ * @param last_row_size     Holds the number of rectangles in the last row to be laid out.
+ * @param rect_has_children Boolean indicating whether the current parent rectangle contained children upon return. If so, it contains
+ *                          the rectangles from last_row_start to last_row_start + last_row_size.
+ * @param layout_size       The size of the list of rectangles in the current layout. This should always start at 0.
+ * @param prev_sum          The sum of all the areas in the current layout. Should always start at 0.
+ */
+static void pb_squarify_internal(pb_rect *rect,
                  float min_dim,
                  int is_height,
                  float* areas,
                  size_t num_areas,
                  pb_rect *children,
                  size_t layout_size,
-                 float prev_sum) {
+                 float prev_sum,
+                 pb_rect** last_row_start,
+                 size_t* last_row_size,
+                 int* rect_has_children) {
 
 	/* Current child to be laid out is the last one to have been added to the row */
 	pb_rect *child;
@@ -104,6 +124,9 @@ void pb_squarify(pb_rect *rect,
     /* Added all children without messing up aspect ratio */ 
     if (layout_size == num_areas) {
 		layout(rect, prev_sum, min_dim, is_height, areas, children, layout_size);
+        *last_row_start = children;
+        *last_row_size = layout_size;
+        *rect_has_children = 1;
 		return;
 	}
 
@@ -117,7 +140,7 @@ void pb_squarify(pb_rect *rect,
         
 		layout_size++;
         prev_sum += child_area;     
-        pb_squarify(rect, min_dim, is_height, areas, num_areas, children, layout_size, prev_sum);
+        pb_squarify_internal(rect, min_dim, is_height, areas, num_areas, children, layout_size, prev_sum, last_row_start, last_row_size, rect_has_children);
     } else {
 		layout(rect, prev_sum, min_dim, is_height, areas, children, layout_size);
         
@@ -132,7 +155,12 @@ void pb_squarify(pb_rect *rect,
         
         /* Only go until we have no more children to lay out */
         num_areas -= layout_size;
-        if (num_areas == 0) return;
+        if (num_areas == 0) {
+            *last_row_start = children;
+            *last_row_size = layout_size;
+            *rect_has_children = 0;
+            return;
+        }
 
         /* Continue to the next set of children */
 		children += layout_size;
@@ -141,6 +169,14 @@ void pb_squarify(pb_rect *rect,
         prev_sum = 0;
 
         is_height = rect->h < rect->w;
-        pb_squarify(rect, is_height ? rect->h : rect->w, is_height, areas, num_areas, children, layout_size, prev_sum);
+        pb_squarify_internal(rect, is_height ? rect->h : rect->w, is_height, areas, num_areas, children, layout_size, prev_sum, last_row_start, last_row_size, rect_has_children);
     }
+}
+
+void pb_squarify(pb_rect* rect, float* areas, size_t num_areas, pb_rect* children, pb_rect** last_row_start, size_t* last_row_size, int* rect_has_children) {
+
+    int is_height = rect->h < rect->w;
+    float min_dim = is_height ? rect->h : rect->w;
+
+    pb_squarify_internal(rect, min_dim, is_height, areas, num_areas, children, 0, 0, last_row_start, last_row_size, rect_has_children);
 }

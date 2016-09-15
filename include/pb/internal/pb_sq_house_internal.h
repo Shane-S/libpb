@@ -32,4 +32,27 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
  */
 pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house);
 
+/**
+ * Lays out the specified number of rooms on the given floor using pb_squarify.
+ *
+ * @param rooms      The list of rooms to be laid out in the house. This pointer should start at the first room to be laid out on this floor.
+ * @param room_specs The map of room names to room specifications.
+ * @param floor      The floor on which the rooms will be placed.
+ * @param floor_rect The rectangle of available space on the floor.
+ *
+ * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all room_shapes allocated on the this floor will have been freed;
+ *         the caller must clean up all preceding floors.
+ */
+int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect);
+
+/**
+ * Fills in any remaining space after pb_squarify has run.
+ *
+ * @param final_floor_rect  The final floor rectangle after pb_squarify.
+ * @param rect_has_children Whether the final rectangle from pb_squarify had children.
+ * @param last_row_start    Pointer the rectangle child_rects that starts the last row in pb_squarify.
+ * @param last_row_size     The number of rectangles in the last row.
+ * @param areas             The list of areas for the rooms on this floor (starting at last_row_start).
+ */
+void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size, float* areas);
 #endif /* PB_SQ_HOUSE_INTERNAL */
