@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include <pb/util/pb_hash.h>
 #include <pb/util/pb_hash_utils.h>
+#include <pb/util/pb_float_utils.h>
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_sq_house_internal.h>
 
@@ -180,9 +182,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
     stair_width = 0.25f * max_house_dim < h_spec->stair_room_width ? 0.25f * max_house_dim : h_spec->stair_room_width;
 
     /* Add stairs to each floor and add rectangle containing remaining space on each floor to list of floor rects */
-    while (1) {
-        pb_rect next_floor_rect = { { 0.f, 0.f }, h_spec->width, h_spec->height };
-        
+    while (1) {    
         float current_floor_area = current_floor_rect.w * current_floor_rect.h;
         
         int current_room = 1;
@@ -386,9 +386,9 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
     }
 
     for (i = 0; i < num_rooms; ++i) {
-        pb_sq_house_room_spec spec;
+        pb_sq_house_room_spec* spec;
         pb_hash_get(room_specs, (void*)rooms[i], (void**)&spec);
-        areas[i] = spec.area;
+        areas[i] = spec->area;
         total_area += areas[i];
     }
 
@@ -396,7 +396,7 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
 
     /* The total area of the rooms does't add up to the floor rectangle; expand the last rooms */
     if (total_area < floor_rect_area) {
-        pb_sq_house_fill_remaining_floor(floor_rect, rect_has_children, last_row_start, last_row_size, areas + (size_t)(last_row_start - rects));
+        pb_sq_house_fill_remaining_floor(floor_rect, rect_has_children, last_row_start, last_row_size);
     }
 
     /* num_rooms is the number of rooms from the room specification list; floor->num_rooms is that number
@@ -432,15 +432,17 @@ err_return:
     return -1;
 }
 
-void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size, float* areas) {
+void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size) {
     size_t current_rect;
 
-    /* Two possible cases: the remaining rectangle contains some of the rooms (because we ran out of rooms to lay out in it without messing up
-     * the aspect ratios in pb_squarify) or it contains none of the rooms because we just finished laying out a row.
-     */
+    /* The floor will have unfilled space in two cases */
 
-    /* Case 1 */
+    /* Case 1: at least two rectangles (the one-rectangle case is handled elsewhere) were laid out in final_floor_rectangle, but they don't 
+     * compeletely fill it. */
     if (rect_has_children) {
+
+        /* The rectangles are laid out along the smallest dimension of the parent rectangle, so increase their size in the 
+         * other dimension to fill the space */
         int x_axis_min = last_row_start[0].bottom_left.y == last_row_start[1].bottom_left.y;
         float delta = x_axis_min ? final_floor_rect->h - last_row_start->h : final_floor_rect->w - last_row_start->w;
 
@@ -453,10 +455,11 @@ void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_ch
         }
 
     } else {
-        /* Case 2 */
+        /* Case 2: final_floor_rect contains none of the rooms because we just finished laying out a row */
         /* pb_squarify always works towards the top-right corner, so the final rect will be either above or to the right */
         int is_right = last_row_start[0].bottom_left.x < final_floor_rect->bottom_left.x;
 
+        /* Expand the rectangles in the last row to fill the remaining space */
         for (current_rect = 0; current_rect < last_row_size; ++current_rect) {
             if (is_right) {
                 last_row_start[current_rect].w += final_floor_rect->w;

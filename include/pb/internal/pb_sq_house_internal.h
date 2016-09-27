@@ -52,7 +52,6 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
  * @param rect_has_children Whether the final rectangle from pb_squarify had children.
  * @param last_row_start    Pointer the rectangle child_rects that starts the last row in pb_squarify.
  * @param last_row_size     The number of rectangles in the last row.
- * @param areas             The list of areas for the rooms on this floor (starting at last_row_start).
  */
-void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size, float* areas);
+void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size);
 #endif /* PB_SQ_HOUSE_INTERNAL */

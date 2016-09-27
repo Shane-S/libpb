@@ -214,11 +214,92 @@ START_TEST(layout_stairs_three_floors)
 }
 END_TEST
 
+START_TEST(fill_floor_finished_rect_has_children_x)
+{
+    /* Given a remaining floor rectangle with dimensions 20 by 40, and two children both widths of 20 and heights of 10 
+     * When I invoke pb_sq_house_fill_remaining_floor 
+     * Then both rectangles should have their heights adjusted to approximately 40 */
+    pb_rect floor_rect = { { 0.f, 0.f }, 20.f, 40.f };
+    int rect_has_children = 1;
+    pb_rect children[2] = {
+        { {0.f, 0.f}, 10.f, 20.f },
+        { {10.f, 0.f}, 10.f, 20.f }
+    };
+    size_t last_row_size = 2;
+
+    pb_sq_house_fill_remaining_floor(&floor_rect, rect_has_children, &children[0], last_row_size);
+
+    ck_assert_msg(assert_close_enough(children[0].h, 40.f, 5), "First rectangle had height of %.3f, should have been around 40.0f", children[0].h);
+    ck_assert_msg(assert_close_enough(children[1].h, 40.f, 5), "Second rectangle had height of %.3f, should have been around 40.0f", children[1].h);
+}
+END_TEST
+
+START_TEST(fill_floor_finished_rect_has_children_y)
+{
+    /* Given a remaining floor rectangle with dimensions 40 by 20, and two children with both with widths of 10 and heights of 20
+     * When I invoke pb_sq_house_fill_remaining_floor
+     * Then both rectangles should have their widths adjusted to approximately 40 */
+    pb_rect floor_rect = { { 0.f, 0.f }, 40.f, 20.f };
+    int rect_has_children = 1;
+    pb_rect children[2] = {
+        { { 0.f, 0.f }, 20.f, 10.f },
+        { { 0.f, 10.f }, 20.f, 10.f }
+    };
+    size_t last_row_size = 2;
+
+    pb_sq_house_fill_remaining_floor(&floor_rect, rect_has_children, &children[0], last_row_size);
+
+    ck_assert_msg(assert_close_enough(children[0].w, 40.f, 5), "First rectangle had width of %.3f, should have been around 40.0f", children[0].w);
+    ck_assert_msg(assert_close_enough(children[1].w, 40.f, 5), "Second rectangle had width of %.3f, should have been around 40.0f", children[1].w);
+}
+END_TEST
+
+START_TEST(fill_floor_finished_rect_no_children_top)
+{
+    /* Given a remaining floor rectangle with dimensions 40 by 20, bottom left corner at {0, 20}, no children, and the two rectangles in the previous row below the final rect
+     * When I invoke pb_sq_house_fill_remaining_floor
+     * Then both previous-row rectangles should have their heights adjusted to approximately 40 */
+    pb_rect floor_rect = { { 0.f, 20.f }, 40.f, 20.f };
+    int rect_has_children = 0;
+    pb_rect children[2] = {
+        { { 0.f, 0.f }, 20.f, 20.f },
+        { { 20.f, 0.f }, 20.f, 20.f }
+    };
+    size_t last_row_size = 2;
+
+    pb_sq_house_fill_remaining_floor(&floor_rect, rect_has_children, &children[0], last_row_size);
+
+    ck_assert_msg(assert_close_enough(children[0].h, 40.f, 5), "First rectangle had width of %.3f, should have been around 40.0f", children[0].w);
+    ck_assert_msg(assert_close_enough(children[1].h, 40.f, 5), "Second rectangle had width of %.3f, should have been around 40.0f", children[1].w);
+}
+END_TEST
+
+START_TEST(fill_floor_finished_rect_no_children_right)
+{
+    /* Given a remaining floor rectangle with dimensions 20 by 40, bottom left corner at {20, 0}, no children, and the two rectangles in the previous row left of the final rect
+     * When I invoke pb_sq_house_fill_remaining_floor
+     * Then both previous-row rectangles should have their widths adjusted to approximately 40 */
+    pb_rect floor_rect = { { 20.f, 0.f }, 20.f, 40.f };
+    int rect_has_children = 0;
+    pb_rect children[2] = {
+        { { 0.f, 0.f }, 20.f, 20.f },
+        { { 0.f, 20.f }, 20.f, 20.f }
+    };
+    size_t last_row_size = 2;
+
+    pb_sq_house_fill_remaining_floor(&floor_rect, rect_has_children, &children[0], last_row_size);
+
+    ck_assert_msg(assert_close_enough(children[0].w, 40.f, 5), "First rectangle had height of %.3f, should have been around 40.0f", children[0].h);
+    ck_assert_msg(assert_close_enough(children[1].w, 40.f, 5), "Second rectangle had height of %.3f, should have been around 40.0f", children[1].h);
+}
+END_TEST
+
 Suite *make_pb_sq_house_suite(void)
 {
-    Suite *s;
-    TCase *tc_sq_house_choose_rooms;
-    TCase *tc_sq_house_layout_stairs;
+    Suite* s;
+    TCase* tc_sq_house_choose_rooms;
+    TCase* tc_sq_house_layout_stairs;
+    TCase* tc_sq_house_fill_floor;
 
     s = suite_create("Squarified house generation");
 
@@ -233,6 +314,13 @@ Suite *make_pb_sq_house_suite(void)
     suite_add_tcase(s, tc_sq_house_layout_stairs);
     tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_single_floor);
     tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_three_floors);
+
+    tc_sq_house_fill_floor = tcase_create("Fill remaining floor tests");
+    suite_add_tcase(s, tc_sq_house_fill_floor);
+    tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_has_children_x);
+    tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_has_children_y);
+    tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_no_children_right);
+    tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_no_children_top);
     
     return s;
 }

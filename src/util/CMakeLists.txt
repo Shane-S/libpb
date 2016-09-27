@@ -11,6 +11,7 @@ set(HEADERS ${PB_API_INCLUDE_DIR}/pb/util/pb_hash.h
             ${PB_API_INCLUDE_DIR}/pb/util/pb_graph.h
             ${PB_API_INCLUDE_DIR}/pb/util/MurmurHash3.h
             ${PB_API_INCLUDE_DIR}/pb/util/pb_geom.h
+            ${PB_API_INCLUDE_DIR}/pb/util/pb_float_utils.h
             ${PB_API_INCLUDE_DIR}/pb/util/pb_util_exports.h)
 
 set(SOURCES pb_hash.c
@@ -18,6 +19,7 @@ set(SOURCES pb_hash.c
             pb_heap.c
             pb_graph.c
             pb_geom.c
+            pb_float_utils.c
             MurmurHash3.c)
             
 add_library(libpb_util SHARED ${SOURCES} ${HEADERS})
