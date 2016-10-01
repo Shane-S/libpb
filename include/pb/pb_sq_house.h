@@ -23,14 +23,14 @@ typedef struct _pb_sq_house_room_spec {
     char const** adjacent;
     size_t num_adjacent;
     float area;
-    int max_instances;
-    int priority;
+    unsigned int max_instances;
+    unsigned priority;
 } pb_sq_house_room_spec;
 
 typedef struct _pb_sq_house_house_spec {
     float height;
     float width;
-    int num_rooms;
+    unsigned int num_rooms;
 
     /* The width (or height if the stairs run along the x-axis) of a room containing stairs.
      * This may be adjusted to fit stairs within the house properly. */

@@ -4,12 +4,12 @@
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_squarify.h>
 
-typedef enum stair_location {
-    TOP = 0,
-    LEFT = 1,
-    BOTTOM = 2,
-    RIGHT = 3
-} stair_location;
+typedef enum side {
+    TOP = 1,
+    RIGHT = 2,
+    LEFT = 3,
+    BOTTOM = 4,
+} side;
 
 /**
  * Determines which rooms will go be in the house.
@@ -54,4 +54,15 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
  * @param last_row_size     The number of rectangles in the last row.
  */
 void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_children, pb_rect* last_row_start, size_t last_row_size);
+
+/**
+ * Determines which wall (if any) is shared by room1 and room2.
+ *
+ * @param room1 The first room to check for a shared wall.
+ * @param room2 The second room to check for a shared wall.
+ *
+ * @return The appropriate value from the side enum if there is a shared wall,
+ *         0 if there are no shared walls between the rooms.
+ */
+int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2);
 #endif /* PB_SQ_HOUSE_INTERNAL */

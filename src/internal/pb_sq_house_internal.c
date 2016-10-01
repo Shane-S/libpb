@@ -35,7 +35,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
     int did_add = 1;
     int has_outside;
 
-    char const** result = malloc(sizeof(char*) * house_spec->num_rooms);
+    char** result = malloc(sizeof(char*) * house_spec->num_rooms);
 
     /* Create a sorted copy of the hash map to select by priority */
     for (i = 0; i < room_specs->cap; ++i) {
@@ -96,12 +96,12 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
         fprintf(stderr, "pb_sq_house: house specification's num_rooms exceeds sum of all room_spec max_instances");
         return NULL;
     } else {
-        int outside_idx;
+        unsigned int outside_idx;
         shuffle_arr(result, house_spec->num_rooms);
         has_outside = 0;
 
         for (i = 0; i < house_spec->num_rooms && !has_outside; ++i) {
-            int j;
+            unsigned int j;
             pb_sq_house_room_spec* spec;
             pb_hash_get(room_specs, (void*)result[i], (void**)&spec);
             for (j = 0; j < spec->num_adjacent; ++j) {
@@ -116,11 +116,11 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
 
         /* No rooms connect to outside were selected; we need to randomly replace one with a room that CAN connect to outside */
         if (!has_outside) {
-            int outside_room = -1;
+            unsigned int outside_room = -1;
             outside_idx = rand() % (house_spec->num_rooms + 1);
 
             for (i = 0; i < room_specs->size && outside_room == -1; ++i) {
-                int j;
+                unsigned int j;
                 for (j = 0; j < sorted[i].num_adjacent; ++j) {
                     if (strcmp(sorted[i].adjacent[j], PB_SQ_HOUSE_OUTSIDE) == 0) {
                         outside_room = i;
@@ -141,6 +141,26 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
     }
 }
 
+static void adjust_rect(pb_rect* rect, pb_point* bleft_adjust, float w_adjust, float h_adjust) {
+    rect->bottom_left.x += bleft_adjust->x;
+    rect->bottom_left.y += bleft_adjust->y;
+    rect->w += w_adjust;
+    rect->h += h_adjust;
+}
+
+static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape* stair_shape, unsigned int stair_index) {
+    pb_room* new_rooms = realloc(f->rooms, sizeof(pb_room) * (f->num_rooms + num_added));
+    if (!new_rooms) return -1;
+
+    /* Add the stairs to the list of rooms the current and next floors' room lists */
+    f->rooms = new_rooms;
+    f->num_rooms += num_added; /* + 1 since we're also adding stairs */
+    f->rooms[stair_index].room_shape = *stair_shape;
+    f->rooms[stair_index].data = (void*)PB_SQ_HOUSE_STAIRS;
+
+    return 0;
+}
+
 pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house) {
     /* Stores sums of room areas added to the current floor */
     float* areas = NULL;
@@ -149,14 +169,14 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
     pb_rect* floor_rects = NULL;
     pb_rect current_floor_rect = { { 0.f, 0.f }, h_spec->width, h_spec->height };
 
-    int num_rooms_added = 0;
-    int current_floor = 0;
-    int current_area_idx = 0;
+    unsigned int num_rooms_added = 0;
+    unsigned int current_floor = 0;
+    unsigned int current_area_idx = 0;
 
     /* The width (or height depending on orientation of stairs) for any stair rooms. */
     float stair_width;
     float max_house_dim;
-    stair_location last_stair_loc = (stair_location)(rand() % 4);
+    side last_stair_loc = (side)((rand() % 4) + 1);
 
     areas = malloc(sizeof(float) * h_spec->num_rooms);
     if (!areas) {
@@ -178,14 +198,14 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
     }
 
     /* If the stair room width occupies more than a quarter of the largest house dimension, resize it */
-    max_house_dim = h_spec->width > h_spec->height ? h_spec->width : h_spec->height;
-    stair_width = 0.25f * max_house_dim < h_spec->stair_room_width ? 0.25f * max_house_dim : h_spec->stair_room_width;
+    max_house_dim = fmaxf(h_spec->width, h_spec->height);
+    stair_width = fminf(0.25f * max_house_dim, h_spec->stair_room_width);
 
     /* Add stairs to each floor and add rectangle containing remaining space on each floor to list of floor rects */
     while (1) {    
         float current_floor_area = current_floor_rect.w * current_floor_rect.h;
         
-        int current_room = 1;
+        unsigned int current_room = 1;
         pb_sq_house_room_spec* spec;
 
         pb_hash_get(room_specs, (void*)rooms[num_rooms_added], (void**)&spec);
@@ -203,7 +223,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
         /* If we've added all remaining rooms in the house, update the current floor and break out of the loop; 
          * otherwise, add a set of stairs, create a new floor, and continue */
         if (current_room + num_rooms_added == h_spec->num_rooms) {
-            size_t total_rooms_on_floor = house->floors[current_floor].num_rooms + current_room;
+            size_t total_rooms_on_floor = house->floors[current_floor].num_rooms + current_room; /* house->floors[current_floor].num_rooms is the number of stairs */
             pb_room* new_rooms = realloc(house->floors[current_floor].rooms, sizeof(pb_room) * total_rooms_on_floor);
             
             if (!new_rooms)
@@ -220,69 +240,88 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             pb_room* new_rooms;
             pb_rect* new_floor_rects;
 
-            pb_rect stair_rect;
-            pb_shape stair_shape;
-            int stair_index; /* The index into the rooms array where the stairs will be added for the current room */
+            pb_rect current_stair_rect = { 0 };
+            pb_rect next_stair_rect = { 0 };
+            pb_shape current_stair_shape = { 0 };
+            pb_shape next_stair_shape = { 0 };
+            unsigned int stair_index; /* The index into the rooms array where the stairs will be added for the current floor */
+            int add_stairs_result;
+
+            /* The amount by which the bottom left corner of the current and next floor rectangles will need to be adjusted */
+            pb_point bottom_left_adjustment = { 0.f, 0.f };
+            float width_adjustment = 0.f;
+            float height_adjustment = 0.f;
 
             pb_rect next_floor_rect = { { 0.f, 0.f }, h_spec->width, h_spec->height };
 
+            /* Place the current and next stairs at the bottom left of their respective floors */
+            current_stair_rect.bottom_left = current_floor_rect.bottom_left;
+            next_stair_rect.bottom_left = next_floor_rect.bottom_left;
+
+            /* Reallocate the floors array to hold another floor*/
             new_floors = realloc(house->floors, sizeof(pb_floor) * (house->num_floors + 1));
             if (!new_floors) {
                 goto err_return;
             }
             house->floors = new_floors;
-            house->floors[current_floor].rooms = NULL;
             house->floors[current_floor + 1].rooms = NULL;
 
             /* Don't have two stairs right beside each other */
-            stair_location new_stair_loc;
+            side new_stair_loc;
             do {
-                new_stair_loc = (stair_location)(rand() % 4);
+                new_stair_loc = (side)((rand() % 4) + 1);
             } while (new_stair_loc == last_stair_loc);
+
 
             /* Resize/move the current floor's rectangle according to the stair placement and do the same to the next floor's */
             switch (new_stair_loc) {
             case LEFT:
-                current_floor_rect.bottom_left.x += stair_width;
-                current_floor_rect.w -= stair_width;
-                next_floor_rect.bottom_left.x += stair_width;
-                next_floor_rect.w -= stair_width;
+                bottom_left_adjustment.x = stair_width;
+                width_adjustment = -stair_width;
+                
+                current_stair_rect.w = stair_width;
+                current_stair_rect.h = current_floor_rect.h;
 
-                stair_rect.bottom_left.x = 0.f;
-                stair_rect.bottom_left.y = 0.f;
-                stair_rect.w = stair_width;
-                stair_rect.h = current_floor_rect.h;
+                next_stair_rect.w = stair_width;
+                next_stair_rect.h = next_floor_rect.h;
                 break;
             case RIGHT:
-                current_floor_rect.w -= stair_width;
-                next_floor_rect.w -= stair_width;
+                width_adjustment = -stair_width;
 
-                stair_rect.bottom_left.x = current_floor_rect.w;
-                stair_rect.bottom_left.y = 0.f;
-                stair_rect.w = stair_width;
-                stair_rect.h = current_floor_rect.h;
+                current_stair_rect.bottom_left.x = current_floor_rect.w - stair_width;
+                current_stair_rect.w = stair_width;
+                current_stair_rect.h = current_floor_rect.h;
+
+                next_stair_rect.bottom_left.x = next_floor_rect.w - stair_width;
+                next_stair_rect.w = stair_width;
+                next_stair_rect.h = next_floor_rect.h;
                 break;
             case TOP:
-                current_floor_rect.h -= stair_width;
-                next_floor_rect.h -= stair_width;
+                height_adjustment = -stair_width;
 
-                stair_rect.bottom_left.x = 0;
-                stair_rect.bottom_left.y = current_floor_rect.h;
-                stair_rect.w = current_floor_rect.w;
-                stair_rect.h = stair_width;
+                current_stair_rect.bottom_left.y = current_floor_rect.h - stair_width;
+                current_stair_rect.w = current_floor_rect.w;
+                current_stair_rect.h = stair_width;
+
+                next_stair_rect.bottom_left.y = next_floor_rect.h - stair_width;
+                next_stair_rect.w = next_floor_rect.w;
+                next_stair_rect.h = stair_width;
                 break;
             case BOTTOM:
-                current_floor_rect.bottom_left.y += stair_width;
-                current_floor_rect.h -= stair_width;
-                next_floor_rect.bottom_left.y += stair_width;
-                next_floor_rect.h -= stair_width;
+                bottom_left_adjustment.y = stair_width;
+                height_adjustment = -stair_width;
 
-                stair_rect.bottom_left.x = 0.f;
-                stair_rect.bottom_left.y = 0.f;
-                stair_rect.w = current_floor_rect.w;
-                stair_rect.h = stair_width;
+                current_stair_rect.w = current_floor_rect.w;
+                current_stair_rect.h = stair_width;
+
+                next_stair_rect.w = next_floor_rect.w;
+                next_stair_rect.h = stair_width;
                 break;
             }
+
+            /* Resize the two rectangles */
+            adjust_rect(&current_floor_rect, &bottom_left_adjustment, width_adjustment, height_adjustment);
+            adjust_rect(&next_floor_rect, &bottom_left_adjustment, width_adjustment, height_adjustment);
 
             /* Determine which rooms can fit on the floor given the newly placed stairs */
             current_floor_area = current_floor_rect.w * current_floor_rect.h;
@@ -296,9 +335,15 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
                 current_room = 1;
             }
 
+            /* Convert the stair rectangles to pb_shape to add them to the floors */
             num_rooms_added += current_room;
             stair_index = house->floors[current_floor].num_rooms;
-            if (!pb_rect_to_pb_shape(&stair_rect, &stair_shape)) {
+            
+            if (!pb_rect_to_pb_shape(&current_stair_rect, &current_stair_shape) ||
+                !pb_rect_to_pb_shape(&next_stair_rect, &next_stair_shape)) {
+                /* These were already 0-initialised earlier, so we can safely try to free both of them */
+                pb_shape_free(&current_stair_shape);
+                pb_shape_free(&next_stair_shape);
                 goto err_return;
             }
 
@@ -308,25 +353,15 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             }
             floor_rects = new_floor_rects;
 
-            new_rooms = realloc(house->floors[current_floor].rooms, sizeof(pb_room) * (house->floors[current_floor].num_rooms + current_room + 1));
-            if (!new_rooms) goto err_return;
+            house->floors[current_floor + 1].num_rooms = 0;
 
-            /* Add the stairs to the list of rooms the current and next floors' room lists */
-            house->floors[current_floor].rooms = new_rooms;
-            house->floors[current_floor].num_rooms += current_room + 1; /* + 1 since we're also adding stairs */
-            house->floors[current_floor].rooms[stair_index].room_shape = stair_shape;
-            house->floors[current_floor].rooms[stair_index].data = (void*)PB_SQ_HOUSE_STAIRS;
+            if (add_stairs(house->floors + current_floor, current_room + 1, &current_stair_shape, stair_index) == -1 ||
+                add_stairs(house->floors + current_floor + 1, 1, &next_stair_shape, 0) == -1) {
+                goto err_return;
+            }
+
             house->floors[current_floor].rooms[stair_index + 1].room_shape.points = NULL; /* Stop here when freeing if we go to err_return */
-
-            new_rooms = realloc(house->floors[current_floor + 1].rooms, sizeof(pb_room) * 2);
-            if (!new_rooms) goto err_return;
-
-            house->floors[current_floor + 1].num_rooms = 1;
-            house->floors[current_floor + 1].rooms = new_rooms;
-            house->floors[current_floor + 1].rooms[0].room_shape = stair_shape;
-            house->floors[current_floor + 1].rooms[0].data = (void*)PB_SQ_HOUSE_STAIRS;
-            house->floors[current_floor + 1].rooms[1].room_shape.points = NULL;
-
+            
             floor_rects[current_floor] = current_floor_rect;
             current_floor_rect = next_floor_rect;
             house->num_floors++;
@@ -340,13 +375,12 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
 err_return:
     free(areas);
     free(floor_rects);
-    /* ANSI C and its lack of mixed code/declarations makes this a bit awkward, but we'll just
-     * continuously decrement house->num_floors instead of making a new scope */
+
     while (house->num_floors) {
         /* Only the shapes in rooms with non-null points arrays (i.e. the stairs) actually need to be freed */
-        int i;
+        unsigned int i;
         for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].room_shape.points; ++i) {
-            free(house->floors[house->num_floors - 1].rooms[i].room_shape.points);
+            pb_shape_free(&house->floors[house->num_floors - 1].rooms[i].room_shape);
         }
         free(house->floors[house->num_floors - 1].rooms);
         house->num_floors--;
@@ -357,7 +391,7 @@ err_return:
 
 int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect) {
     float* areas = NULL;
-    float total_area;
+    float total_area = 0.f;
 
     float floor_rect_area = floor_rect->w * floor_rect->h;
     pb_rect* rects = NULL;
@@ -371,7 +405,6 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
 
     /* If there's only one room on the floor besides the stairs, it will take up the entire rectangle regardless */
     if (num_rooms == 1) {
-        pb_shape room_shape;
         if (!pb_rect_to_pb_shape(floor_rect, &floor->rooms[floor->num_rooms - 1].room_shape)) {
             return -1;
         }
@@ -467,5 +500,72 @@ void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_ch
                 last_row_start[current_rect].h += final_floor_rect->h;
             }
         }
+    }
+}
+
+int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
+    int shares_top = 0;
+    int shares_bottom = 0;
+    int shares_left = 0;
+    int shares_right = 0;
+
+    /* We need to use approximate float comparisons because the stairs may not have exactly
+     * the same coordinates as the rooms on each floor. */
+    shares_top = pb_float_approx_eq(room1->room_shape.points[0].y, room2->room_shape.points[1].y, 5) &&
+        room1->room_shape.points[0].x < room2->room_shape.points[2].x &&
+        room1->room_shape.points[3].x > room2->room_shape.points[1].x;
+
+    shares_bottom = pb_float_approx_eq(room1->room_shape.points[1].y, room2->room_shape.points[0].y, 5) &&
+        room1->room_shape.points[1].x < room2->room_shape.points[3].x &&
+        room1->room_shape.points[2].x > room2->room_shape.points[0].x;
+
+    shares_right = pb_float_approx_eq(room1->room_shape.points[3].x, room2->room_shape.points[0].x, 5) &&
+        room1->room_shape.points[2].y < room2->room_shape.points[0].y &&
+        room1->room_shape.points[3].y > room2->room_shape.points[1].y;
+
+    shares_left = pb_float_approx_eq(room1->room_shape.points[0].x, room2->room_shape.points[3].x, 5) &&
+        room1->room_shape.points[1].y < room2->room_shape.points[3].y &&
+        room1->room_shape.points[0].y > room2->room_shape.points[2].y;
+
+    if (shares_top) {
+        return TOP;
+    } else if (shares_right) {
+        return RIGHT;
+    } else if (shares_left) {
+        return LEFT;
+    } else if (shares_bottom) {
+        return BOTTOM;
+    } else {
+        return 0;
+    }
+}
+
+void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point* start, pb_point* end) {
+
+    switch (wall) {
+    case TOP:
+    case BOTTOM:
+        start->x = fmaxf(room1->room_shape.points[0].x, room2->room_shape.points[0].x);
+        end->x = fminf(room1->room_shape.points[3].x, room2->room_shape.points[3].x);
+
+        /* Calculating overlap in the x axis is the same whether the bottom or the top
+         * wall is shared, so use this hacky calculation to choose a point on the correct
+         * wall from which to get the y coord. */
+        start->y = room1->room_shape.points[(5 - wall) % 4].y;
+        end->y = start->y;
+        return;
+
+    case RIGHT:
+    case LEFT:
+        start->y = fmaxf(room1->room_shape.points[2].y, room2->room_shape.points[2].y);
+        end->y = fminf(room1->room_shape.points[3].y, room2->room_shape.points[3].y);
+
+        /* Same thing here, just picks right or left point instead of top/bottom */
+        start->x = room1->room_shape.points[(wall - 5) % 4].x;
+        end->x = start->x;
+
+        return;
+    default:
+        return;
     }
 }

@@ -12,7 +12,7 @@ int main(void)
 	int nf;
 
 #ifdef _WIN32
-	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);
+	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_ALLOC_MEM_DF);
 #endif
 
     sr = srunner_create(make_pb_squarify_suite());

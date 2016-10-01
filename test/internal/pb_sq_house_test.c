@@ -85,8 +85,8 @@ START_TEST(choose_rooms_multiple_rooms)
 
     pb_hash_get(instances, specs[0].name, &spec0_instances);
     pb_hash_get(instances, specs[1].name, &spec1_instances);
-    ck_assert_msg(spec0_instances == 6, "Result should have 6 instances of closet, but instead contained %d", (int)spec0_instances);
-    ck_assert_msg(spec1_instances == 6, "Result should have 6 instances of bathroom, but instead contained %d", (int)spec1_instances);
+    ck_assert_msg((int)spec0_instances == 6, "Result should have 6 instances of closet, but instead contained %d", (int)spec0_instances);
+    ck_assert_msg((int)spec1_instances == 6, "Result should have 6 instances of bathroom, but instead contained %d", (int)spec1_instances);
 
     pb_hash_free(rooms);
     pb_hash_free(instances);
@@ -190,9 +190,10 @@ START_TEST(layout_stairs_three_floors)
     pb_rect* result;
     pb_building house;
 
-    float expected_areas[3] = { 690.f, 480.f, 690.f };
+    float expected_areas[3] = { 900.f, 900.f, 900.f };
+    pb_rect temp;
     size_t expected_num_rooms[] = { 2, 3, 2 };
-    int i;
+    unsigned int i;
 
     h_spec.width = 30.f;
     h_spec.height = 30.f;
@@ -206,6 +207,58 @@ START_TEST(layout_stairs_three_floors)
 
     result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
     ck_assert_msg(house.num_floors == 3, "House should have had 3 floors, but had %lu", house.num_floors);
+
+    /* The remaining areas will depend on the stairs which are assigned randomly */
+    /* Assuming that the correct number of floors were created, we know how many stairs are on each floor and can add up their areas */
+    pb_shape_to_pb_rect(&house.floors[0].rooms[0].room_shape, &temp);
+    expected_areas[0] -= temp.w * temp.h;
+
+    pb_shape_to_pb_rect(&house.floors[1].rooms[0].room_shape, &temp);
+    expected_areas[1] -= temp.w * temp.h;
+    pb_shape_to_pb_rect(&house.floors[1].rooms[1].room_shape, &temp);
+    expected_areas[1] -= temp.w * temp.h;
+
+    pb_shape_to_pb_rect(&house.floors[2].rooms[0].room_shape, &temp);
+    expected_areas[2] -= temp.w * temp.h;
+
+    for (i = 0; i < house.num_floors; ++i) {
+        float area = result[i].w * result[i].h;
+        ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.3f, was %.3f", i, expected_areas[i], area);
+        ck_assert_msg(house.floors[i].num_rooms == expected_num_rooms[i], "%ith floor should have had %lu rooms, had %lu rooms", i, expected_num_rooms[i], house.floors[i].num_rooms);
+    }
+}
+END_TEST
+
+START_TEST(layout_stairs_big_stairs)
+{
+    /*
+     *  Given a house specification with {w = 30, h = 30, num_rooms = 2, stair_width = 9} and room specifications containing one room {max_instances = 2, area = 895}
+     *  When I invoke pb_sq_house_layout_stairs
+     *  Then pb_layout_stairs should resize stair_width to 7.5 (30 * 0.25), yielding 2 rectangles with areas of 675, and house with 2 floors containing 2 rooms each
+     */
+    pb_sq_house_house_spec h_spec;
+    pb_sq_house_room_spec living_room;
+    char* rooms[] = { "Living Room", "Living Room" };
+    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_rect* result;
+    pb_building house;
+
+    float expected_areas[3] = { 675.f, 675.f };
+    size_t expected_num_rooms[] = { 2, 2 };
+    unsigned int i;
+
+    h_spec.width = 30.f;
+    h_spec.height = 30.f;
+    h_spec.num_rooms = 2;
+    h_spec.stair_room_width = 9.f;
+
+    living_room.area = 675.f;
+    living_room.name = "Living Room";
+
+    pb_hash_put(room_specs, (void*)living_room.name, (void*)&living_room);
+
+    result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
+    ck_assert_msg(house.num_floors == 2, "House should have had 2 floors, but had %lu", house.num_floors);
     for (i = 0; i < house.num_floors; ++i) {
         float area = result[i].w * result[i].h;
         ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.f, was %.f", i, expected_areas[i], area);
@@ -294,12 +347,172 @@ START_TEST(fill_floor_finished_rect_no_children_right)
 }
 END_TEST
 
+START_TEST(layout_floor_single_room)
+{
+    /* Given a floor with a single room
+     * When I invoke pb_sq_house_layout_floor
+     * The room should occupy the entire floor rectangle */
+    char const* rooms[] = { "Living Room" };
+    pb_sq_house_room_spec lr;
+    pb_hash* map = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_rect floor_rect = {
+        { 0.f, 0.f },
+        40.f,
+        40.f
+    };
+    pb_floor f;
+    pb_room f_rooms[1];
+    pb_rect result;
+
+    f.num_rooms = 1;
+    f.rooms = &f_rooms[0];
+    
+    lr.area = 90.f;
+    pb_hash_put(map, (void*)&rooms[0], (void*)&lr);
+    pb_sq_house_layout_floor(&rooms[0], map, &f, 1, &floor_rect);
+
+    pb_shape_to_pb_rect(&f.rooms[0].room_shape, &result);
+    ck_assert_msg(assert_close_enough(result.w, floor_rect.w, 5), "Result's width should have been about %.3f, was %.3f", floor_rect.w, result.w);
+    ck_assert_msg(assert_close_enough(result.h, floor_rect.h, 5), "Result's height should have been about %.3f, was %.3f", floor_rect.h, result.h);
+
+    free(f.rooms[0].room_shape.points);
+    pb_hash_free(map);
+}
+END_TEST
+
+START_TEST(get_shared_wall_right)
+{
+    /* Given a room with points {{0, 10}, {0, 0}, {10, 0}, {10, 10}} and a second room with points {{10, 15}, {10, 0}, {25, 0}, {25, 15}}
+     * When I invoke pb_sq_house_get_shared_wall
+     * The result should be RIGHT
+     */
+    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point points2[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
+
+    pb_room r1;
+    pb_room r2;
+
+    int result;
+
+    r1.room_shape.points = &points1[0];
+    r1.room_shape.num_points = 4;
+
+    r2.room_shape.points = &points2[0];
+    r2.room_shape.num_points = 4;
+
+    result = pb_sq_house_get_shared_wall(&r1, &r2);
+    ck_assert_msg(result == RIGHT, "result should have been 2 (right), was %d", result);
+}
+END_TEST
+
+START_TEST(get_shared_wall_left)
+{
+    /* Given a room with points {{10, 15}, {10, 0}, {25, 0}, {25, 15}} and a second room with points {{0, 10}, {0, 0}, {10, 0}, {10, 10}}
+     * When I invoke pb_sq_house_get_shared_wall
+     * The result should be LEFT */
+
+    pb_point points1[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
+    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+
+    pb_room r1;
+    pb_room r2;
+
+    int result;
+
+    r1.room_shape.points = &points1[0];
+    r1.room_shape.num_points = 4;
+
+    r2.room_shape.points = &points2[0];
+    r2.room_shape.num_points = 4;
+
+    result = pb_sq_house_get_shared_wall(&r1, &r2);
+    ck_assert_msg(result == LEFT, "result should have been 3 (left), was %d", result);
+}
+END_TEST
+
+START_TEST(get_shared_wall_top)
+{
+    /* Given a room with points {{0, 10}, {0, 0}, {10, 0}, {10, 10}} and a second room with points {{0, 30}, {0, 10}, {18, 10}, {18, 30}}
+     * When I invoke pb_sq_house_get_shared_wall
+     * The result should be TOP */
+
+    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point points2[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
+
+    pb_room r1;
+    pb_room r2;
+
+    int result;
+
+    r1.room_shape.points = &points1[0];
+    r1.room_shape.num_points = 4;
+
+    r2.room_shape.points = &points2[0];
+    r2.room_shape.num_points = 4;
+
+    result = pb_sq_house_get_shared_wall(&r1, &r2);
+    ck_assert_msg(result == TOP, "result should have been 1 (top), was %d", result);
+}
+END_TEST
+
+START_TEST(get_shared_wall_bottom)
+{
+    /* Given a room with points {{0, 30}, {0, 10}, {18, 10}, {18, 30}} and a second room with points {{0, 10}, {0, 0}, {10, 0}, {10, 10}}
+     * When I invoke pb_sq_house_get_shared_wall
+     * The result should be BOTTOM */
+
+    pb_point points1[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
+    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+
+    pb_room r1;
+    pb_room r2;
+
+    int result;
+
+    r1.room_shape.points = &points1[0];
+    r1.room_shape.num_points = 4;
+
+    r2.room_shape.points = &points2[0];
+    r2.room_shape.num_points = 4;
+
+    result = pb_sq_house_get_shared_wall(&r1, &r2);
+    ck_assert_msg(result == BOTTOM, "result should have been 4 (bottom), was %d", result);
+}
+END_TEST
+
+START_TEST(get_shared_wall_none)
+{
+    /* Given a room with points {{0, 30}, {0, 15}, {18, 15}, {18, 30}} and a second room with points {{0, 10}, {0, 0}, {10, 0}, {10, 10}}
+     * When I invoke pb_sq_house_get_shared_wall
+     * The result should be 0 (none) */
+
+    pb_point points1[] = { { 0.f, 30.f }, { 0.f, 15.f }, { 18.f, 15.f }, { 18.f, 30.f } };
+    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+
+    pb_room r1;
+    pb_room r2;
+
+    int result;
+
+    r1.room_shape.points = &points1[0];
+    r1.room_shape.num_points = 4;
+
+    r2.room_shape.points = &points2[0];
+    r2.room_shape.num_points = 4;
+
+    result = pb_sq_house_get_shared_wall(&r1, &r2);
+    ck_assert_msg(result == 0, "result should have been 0 (none), was %d", result);
+}
+END_TEST
+
 Suite *make_pb_sq_house_suite(void)
 {
     Suite* s;
     TCase* tc_sq_house_choose_rooms;
     TCase* tc_sq_house_layout_stairs;
+    TCase* tc_sq_house_layout_floor;
     TCase* tc_sq_house_fill_floor;
+    TCase* tc_sq_house_get_shared_wall;
 
     s = suite_create("Squarified house generation");
 
@@ -314,6 +527,11 @@ Suite *make_pb_sq_house_suite(void)
     suite_add_tcase(s, tc_sq_house_layout_stairs);
     tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_single_floor);
     tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_three_floors);
+    tcase_add_test(tc_sq_house_layout_stairs, layout_stairs_big_stairs);
+
+    tc_sq_house_layout_floor = tcase_create("Floor layout tests");
+    suite_add_tcase(s, tc_sq_house_layout_floor);
+    tcase_add_test(tc_sq_house_layout_floor, layout_floor_single_room);
 
     tc_sq_house_fill_floor = tcase_create("Fill remaining floor tests");
     suite_add_tcase(s, tc_sq_house_fill_floor);
@@ -321,6 +539,14 @@ Suite *make_pb_sq_house_suite(void)
     tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_has_children_y);
     tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_no_children_right);
     tcase_add_test(tc_sq_house_fill_floor, fill_floor_finished_rect_no_children_top);
+
+    tc_sq_house_get_shared_wall = tcase_create("Get shared wall tests");
+    suite_add_tcase(s, tc_sq_house_get_shared_wall);
+    tcase_add_test(tc_sq_house_get_shared_wall, get_shared_wall_left);
+    tcase_add_test(tc_sq_house_get_shared_wall, get_shared_wall_right);
+    tcase_add_test(tc_sq_house_get_shared_wall, get_shared_wall_top);
+    tcase_add_test(tc_sq_house_get_shared_wall, get_shared_wall_bottom);
+    tcase_add_test(tc_sq_house_get_shared_wall, get_shared_wall_none);
     
     return s;
 }

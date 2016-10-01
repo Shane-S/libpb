@@ -28,6 +28,6 @@ PB_UTIL_DECLSPEC float PB_UTIL_CALL pb_float_clamp(float f, float min, float max
  *
  * @return Whether f1 and f2 are separated by <= max_ulps.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_aprrox_eq(float f1, float f2, size_t max_ulps);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_approx_eq(float f1, float f2, size_t max_ulps);
 
 #endif /* PB_FLOAT_MATH_H */

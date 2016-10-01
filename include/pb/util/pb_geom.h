@@ -16,8 +16,6 @@ typedef struct _pb_rect {
 typedef struct _pb_shape {
     pb_point *points;
     size_t num_points;
-
-    // When num_points > 2, determines whether the last vertex connects to the first
     int connected;
 } pb_shape;
 
@@ -63,3 +61,27 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_to_pb_shape(pb_rect* rect, pb_shape* o
  *         is actually a rectangle.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape_to_pb_rect(pb_shape* shape, pb_rect* out);
+
+/**
+ * Allocates a new shape with the given number of points.
+ *
+ * @param The number of points in the new shape.
+ */
+PB_UTIL_DECLSPEC pb_shape* pb_shape_create(unsigned int num_points);
+
+/**
+ * Initialises the given shape to have num_points.
+ *
+ * @param shape      The shape to initialise.
+ * @param num_points The number of points that the shape should have.
+ * @return 0 on success, -1 on out of memory.
+ */
+PB_UTIL_DECLSPEC int pb_shape_init(pb_shape* shape, unsigned int num_points);
+
+/**
+ * Frees the shape's points and connected arrays.
+ * Don't call this if your arrays are allocatd on the stack.
+ *
+ * @param shape The shape to free. Note that the shape itself won't be freed, just its internal arrays.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_shape_free(pb_shape* shape);

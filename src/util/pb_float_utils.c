@@ -14,7 +14,7 @@ PB_UTIL_DECLSPEC float PB_UTIL_CALL pb_float_clamp(float f, float min, float max
     return f;
 }
 
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_aprrox_eq(float f1, float f2, size_t max_ulps) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_approx_eq(float f1, float f2, size_t max_ulps) {
     int32_t f1_int;
     int32_t f2_int;
 
