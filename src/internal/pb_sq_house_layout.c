@@ -6,7 +6,7 @@
 #include <pb/util/pb_hash_utils.h>
 #include <pb/util/pb_float_utils.h>
 #include <pb/pb_sq_house.h>
-#include <pb/internal/pb_sq_house_internal.h>
+#include <pb/internal/pb_sq_house_layout.h>
 
 static void shuffle_arr(char const** arr, size_t size) {
     size_t i;
@@ -275,7 +275,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
 
             /* Resize/move the current floor's rectangle according to the stair placement and do the same to the next floor's */
             switch (new_stair_loc) {
-            case LEFT:
+            case SQ_HOUSE_LEFT:
                 bottom_left_adjustment.x = stair_width;
                 width_adjustment = -stair_width;
                 
@@ -285,7 +285,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
                 next_stair_rect.w = stair_width;
                 next_stair_rect.h = next_floor_rect.h;
                 break;
-            case RIGHT:
+            case SQ_HOUSE_RIGHT:
                 width_adjustment = -stair_width;
 
                 current_stair_rect.bottom_left.x = current_floor_rect.w - stair_width;
@@ -296,7 +296,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
                 next_stair_rect.w = stair_width;
                 next_stair_rect.h = next_floor_rect.h;
                 break;
-            case TOP:
+            case SQ_HOUSE_TOP:
                 height_adjustment = -stair_width;
 
                 current_stair_rect.bottom_left.y = current_floor_rect.h - stair_width;
@@ -307,7 +307,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
                 next_stair_rect.w = next_floor_rect.w;
                 next_stair_rect.h = stair_width;
                 break;
-            case BOTTOM:
+            case SQ_HOUSE_BOTTOM:
                 bottom_left_adjustment.y = stair_width;
                 height_adjustment = -stair_width;
 
@@ -500,72 +500,5 @@ void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_ch
                 last_row_start[current_rect].h += final_floor_rect->h;
             }
         }
-    }
-}
-
-int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
-    int shares_top = 0;
-    int shares_bottom = 0;
-    int shares_left = 0;
-    int shares_right = 0;
-
-    /* We need to use approximate float comparisons because the stairs may not have exactly
-     * the same coordinates as the rooms on each floor. */
-    shares_top = pb_float_approx_eq(room1->room_shape.points[0].y, room2->room_shape.points[1].y, 5) &&
-        room1->room_shape.points[0].x < room2->room_shape.points[2].x &&
-        room1->room_shape.points[3].x > room2->room_shape.points[1].x;
-
-    shares_bottom = pb_float_approx_eq(room1->room_shape.points[1].y, room2->room_shape.points[0].y, 5) &&
-        room1->room_shape.points[1].x < room2->room_shape.points[3].x &&
-        room1->room_shape.points[2].x > room2->room_shape.points[0].x;
-
-    shares_right = pb_float_approx_eq(room1->room_shape.points[3].x, room2->room_shape.points[0].x, 5) &&
-        room1->room_shape.points[2].y < room2->room_shape.points[0].y &&
-        room1->room_shape.points[3].y > room2->room_shape.points[1].y;
-
-    shares_left = pb_float_approx_eq(room1->room_shape.points[0].x, room2->room_shape.points[3].x, 5) &&
-        room1->room_shape.points[1].y < room2->room_shape.points[3].y &&
-        room1->room_shape.points[0].y > room2->room_shape.points[2].y;
-
-    if (shares_top) {
-        return TOP;
-    } else if (shares_right) {
-        return RIGHT;
-    } else if (shares_left) {
-        return LEFT;
-    } else if (shares_bottom) {
-        return BOTTOM;
-    } else {
-        return -1;
-    }
-}
-
-void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point* start, pb_point* end) {
-
-    switch (wall) {
-    case TOP:
-    case BOTTOM:
-        start->x = fmaxf(room1->room_shape.points[0].x, room2->room_shape.points[0].x);
-        end->x = fminf(room1->room_shape.points[3].x, room2->room_shape.points[3].x);
-
-        /* Calculating overlap in the x axis is the same whether the bottom or the top
-         * wall is shared, so use this hacky calculation to choose a point on the correct
-         * wall from which to get the y coord. */
-        start->y = room1->room_shape.points[wall].y;
-        end->y = start->y;
-        return;
-
-    case RIGHT:
-    case LEFT:
-        start->y = fmaxf(room1->room_shape.points[2].y, room2->room_shape.points[2].y);
-        end->y = fminf(room1->room_shape.points[3].y, room2->room_shape.points[3].y);
-
-        /* Same thing here, just picks right or left point instead of top/bottom */
-        start->x = room1->room_shape.points[wall].x;
-        end->x = start->x;
-
-        return;
-    default:
-        return;
     }
 }

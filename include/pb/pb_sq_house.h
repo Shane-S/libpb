@@ -14,6 +14,13 @@
 #define PB_SQ_HOUSE_HALLWAY "Hallway"
 #define PB_SQ_HOUSE_OUTSIDE "Outside"
 
+typedef enum side {
+    SQ_HOUSE_TOP = 0,
+    SQ_HOUSE_LEFT = 1,
+    SQ_HOUSE_BOTTOM = 2,
+    SQ_HOUSE_RIGHT = 3,
+} side;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
