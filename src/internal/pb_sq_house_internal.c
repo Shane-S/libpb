@@ -176,7 +176,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
     /* The width (or height depending on orientation of stairs) for any stair rooms. */
     float stair_width;
     float max_house_dim;
-    side last_stair_loc = (side)((rand() % 4) + 1);
+    side last_stair_loc = 0;
 
     areas = malloc(sizeof(float) * h_spec->num_rooms);
     if (!areas) {
@@ -269,7 +269,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             /* Don't have two stairs right beside each other */
             side new_stair_loc;
             do {
-                new_stair_loc = (side)((rand() % 4) + 1);
+                new_stair_loc = (side)(rand() % 4);
             } while (new_stair_loc == last_stair_loc);
 
 
@@ -536,7 +536,7 @@ int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     } else if (shares_bottom) {
         return BOTTOM;
     } else {
-        return 0;
+        return -1;
     }
 }
 
@@ -551,7 +551,7 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
         /* Calculating overlap in the x axis is the same whether the bottom or the top
          * wall is shared, so use this hacky calculation to choose a point on the correct
          * wall from which to get the y coord. */
-        start->y = room1->room_shape.points[(5 - wall) % 4].y;
+        start->y = room1->room_shape.points[wall].y;
         end->y = start->y;
         return;
 
@@ -561,7 +561,7 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
         end->y = fminf(room1->room_shape.points[3].y, room2->room_shape.points[3].y);
 
         /* Same thing here, just picks right or left point instead of top/bottom */
-        start->x = room1->room_shape.points[(wall - 5) % 4].x;
+        start->x = room1->room_shape.points[wall].x;
         end->x = start->x;
 
         return;
