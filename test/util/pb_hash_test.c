@@ -112,6 +112,32 @@ START_TEST(expand_test)
 }
 END_TEST
 
+static void add_one_to_entries(pb_hash_entry* entry, void* param) {
+    *(int*)(entry->val) += 1;
+}
+
+START_TEST(for_each_test)
+{
+    char const* keys[] = { "one", "two", "three" };
+    int values[] = { 1, 2, 3 };
+    int expected[] = { 2, 3, 4 };
+    int i;
+    pb_hash* map = pb_hash_create(pb_str_hash, pb_str_eq);
+    
+    for (i = 0; i < 3; ++i) {
+        pb_hash_put(map, (void*)keys[i], (void*)(&values[i]));
+    }
+
+    pb_hash_for_each(map, add_one_to_entries, NULL);
+
+    for (i = 0; i < 3; ++i) {
+        ck_assert_msg(values[i] == expected[i], "values[%d} should have been %d, was %d", i, expected[i], values[i]);
+    }
+
+    pb_hash_free(map);
+}
+END_TEST
+
 Suite *make_pb_hash_suite(void)
 {
 	Suite *s;
@@ -127,6 +153,7 @@ Suite *make_pb_hash_suite(void)
     tcase_add_test(tc_hash, overwrite_test);
     tcase_add_test(tc_hash, remove_test);
     tcase_add_test(tc_hash, expand_test);
+    tcase_add_test(tc_hash, for_each_test);
 
     tcase_add_unchecked_fixture(tc_hash, NULL, pb_hash_test_teardown);
     

@@ -237,7 +237,6 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
         } else {
             /* Temp storage for reallocated arrays in case of allocation failure */
             pb_floor* new_floors;
-            pb_room* new_rooms;
             pb_rect* new_floor_rects;
 
             pb_rect current_stair_rect = { 0 };
@@ -245,7 +244,6 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
             pb_shape current_stair_shape = { 0 };
             pb_shape next_stair_shape = { 0 };
             unsigned int stair_index; /* The index into the rooms array where the stairs will be added for the current floor */
-            int add_stairs_result;
 
             /* The amount by which the bottom left corner of the current and next floor rectangles will need to be adjusted */
             pb_point bottom_left_adjustment = { 0.f, 0.f };

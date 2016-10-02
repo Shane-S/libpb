@@ -244,20 +244,16 @@ PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph *graph, 
     return out;
 }
 
+static void free_hashed_vertex(pb_hash_entry* entry, void* unused) {
+    pb_vertex_free((pb_vertex*)entry->val);
+}
+
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
     size_t i;
-    for(i = 0; i < graph->vertices->cap; ++i) {
-        if (graph->vertices->states[i] == FULL) {
-            pb_vertex_free((pb_vertex*)graph->vertices->entries[i].val);
-        }
-    }
+    pb_hash_for_each(graph->vertices, free_hashed_vertex, NULL);
     pb_hash_free(graph->vertices);
 
-    for (i = 0; i < graph->edges->cap; ++i) {
-        if (graph->edges->states[i] == FULL) {
-            free(graph->edges->entries[i].val); /* Could just have easily done key, but whatever */
-        }
-    }
+    pb_hash_for_each(graph->edges, pb_hash_free_entry_data, NULL);
     pb_hash_free(graph->edges);
 
     free(graph);

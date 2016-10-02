@@ -26,14 +26,25 @@ typedef struct pb_hash_entry {
 } pb_hash_entry;
 
 typedef struct pb_hash {
-    pb_hash_entry*       entries;   /* A list of entries in the map. */
-    pb_hash_entry_state* states;    /* Stores the state (EMPTY, DELETED, FULL) of the corresponding entry in the entries array. */
-    size_t               cap;       /* The entry list's capacity. */
+    pb_hash_entry*       entries;    /* A list of entries in the map. */
+    pb_hash_entry_state* states;     /* Stores the state (EMPTY, DELETED, FULL) of the corresponding entry in the entries array. */
+    size_t               cap;        /* The entry list's capacity. */
 	size_t               expand_num; /* The size after which the hash map will expand (determined by load factor). */
-    size_t               size;      /* The number of items actually in the list. */
-    pb_hash_func         hash;      /* The function for computing a key's hash value. */
-    pb_hash_eq_func      key_eq;    /* The function to compare keys for equality. */
+    size_t               size;       /* The number of items actually in the list. */
+    pb_hash_func         hash;       /* The function for computing a key's hash value. */
+    pb_hash_eq_func      key_eq;     /* The function to compare keys for equality. */
 } pb_hash;
+
+/* Used to iterate over the hash map's entries. */
+typedef void(*pb_hash_iterator_func)(pb_hash_entry* entry, void* param);
+
+/**
+ * Iterator function to free data held by map entries. Pass this to pb_hash_for_each to free all data.
+ *
+ * @param entry    The entry being processed.
+ * @param free_key If this is 0, frees entry->val only; if it's non-zero, frees both entry->key and entry->val.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_free_entry_data(pb_hash_entry* entry, void* free_key);
 
 /**
  * Creates a new, empty hash map with the given hash and equals functions.
@@ -79,6 +90,18 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void const* key, voi
  * @return Whether there was actually an item with that key in the map.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_remove(pb_hash* map, void const* key);
+
+/**
+ * Calls the specified function on every entry in the hash map.
+ *
+ * NOTE: Modifying keys will render the map unusable (or at least, if you use the new keys,
+ * will likely lead to much worse performance). Only modify keys if you don't intend to use
+ * the map again.
+ *
+ * @param func  The function to call for every entry in the hash map.
+ * @param param The (optional) parameter to supply to the given function.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_for_each(pb_hash* map, pb_hash_iterator_func func, void* param);
 
 #ifdef __cplusplus
 }

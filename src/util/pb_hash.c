@@ -144,7 +144,7 @@ static uint32_t next_prime(uint32_t n)
 	}
 }
 
-pb_hash* pb_hash_create(pb_hash_func hash, pb_hash_eq_func key_eq) {
+PB_UTIL_DECLSPEC pb_hash* PB_UTIL_CALL pb_hash_create(pb_hash_func hash, pb_hash_eq_func key_eq) {
     pb_hash* map = malloc(sizeof(pb_hash));
     int i;
     
@@ -258,7 +258,7 @@ static int get_pos(pb_hash* map, void const* key, size_t* out) {
     return 0;
 }
 
-int pb_hash_put(pb_hash* map, void const* key, void const* val) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_put(pb_hash* map, void const* key, void const* val) {
     size_t pos;
     size_t probe_pos;
     size_t i;
@@ -297,7 +297,7 @@ int pb_hash_put(pb_hash* map, void const* key, void const* val) {
     return 0;
 }
 
-int pb_hash_get(pb_hash* map, void const* key, void** val) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_get(pb_hash* map, void const* key, void** val) {
     size_t pos;
     if(!get_pos(map, key, &pos)) return 0;
     
@@ -305,7 +305,7 @@ int pb_hash_get(pb_hash* map, void const* key, void** val) {
     return 1;
 }
 
-int pb_hash_remove(pb_hash* map, void const* key) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hash_remove(pb_hash* map, void const* key) {
     size_t pos;
     if(!get_pos(map, key, &pos)) return 0;
     
@@ -314,4 +314,20 @@ int pb_hash_remove(pb_hash* map, void const* key) {
     
     /* TODO: Resize to smaller map to save memory where necessary */
     return 1;
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_for_each(pb_hash* map, pb_hash_iterator_func func, void* param) {
+    size_t i;
+    for (i = 0; i < map->cap; ++i) {
+        if (map->states[i] == FULL) {
+            func(map->entries + i, param);
+        }
+    }
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hash_free_entry_data(pb_hash_entry* entry, void* free_key) {
+    free(entry->val);
+    if (free_key) {
+        free(entry->key);
+    }
 }

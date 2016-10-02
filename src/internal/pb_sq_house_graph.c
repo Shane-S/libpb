@@ -107,12 +107,14 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor)
         for (j = i + 1; j < floor->num_rooms; ++j) {
             pb_point start;
             pb_point end;
-            int shared_wall = pb_sq_house_get_shared_wall(floor->rooms + i, floor->rooms + j, &start, &end);
+            int shared_wall = pb_sq_house_get_shared_wall(floor->rooms + i, floor->rooms + j);
 
             if (shared_wall != -1) {
                 pb_sq_house_room_conn* conn = malloc(sizeof(pb_sq_house_room_conn));
                 unsigned adj;
                 if (!conn) goto err_return;
+
+                pb_sq_house_get_wall_overlap(floor->rooms + i, floor->rooms + j, shared_wall, &start, &end);
                 
                 conn->neighbour = floor->rooms + j;
                 conn->overlap_start = start;

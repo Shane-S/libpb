@@ -46,6 +46,16 @@ struct _pb_vertex {
     size_t edges_capacity;
 };
 
+/*
+ * Function type for processing each vertex in a graph. Use with pb_graph_for_each_vertex.
+ */
+typedef void(*pb_graph_vertex_iterator_func)(void const* vert_id, pb_vertex* vert, void* param);
+
+/*
+ * Function type for processing each edge in a graph. Use with pb_graph_grah_for_each_edge.
+ */
+typedef void(*pb_graph_edge_iterator_func)(pb_edge const* edge, void* param);
+
 /**
  * Creates a new vertex with the given data.
  *
@@ -169,6 +179,35 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph* graph, void* fr
  * @return The edge on success, NULL if the edge didn't exist.
  */
 PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph* graph, void* from_id, void* to_id);
+
+/**
+ * Runs func (with the supplied parameter) on every edge in the graph.
+ * @param func  The function to run for every edge in the graph.
+ * @param param The (optional) parameter which will be supplied to func on each iteration.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_edge(pb_graph_edge_iterator_func func, void* param);
+
+/**
+ * Runs func (with the supplied parameter) on every vertex in the graph.
+ * @param func  The function to run for every vertex in the graph.
+ * @param param The (optional) parameter which will be supplied to func on each iteration.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_vertex(pb_graph_vertex_iterator_func func, void* param);
+
+/**
+ * When passed to pb_graph_for_each_vertex, frees vert->data for every vertex in the graph.
+ * @param vert_id The vertex id (unused).
+ * @param vert    The vertex being processed.
+ * @param unused  The optional parameter to pb_graph_graph_vertex_iterator_func, which is unused in this function.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free_vertex_data(void const* vert_id, pb_vertex* vert, void* unused);
+
+/**
+ * When passed to pb_graph_for_each_edge, frees edge->data for every vertex in the graph.
+ * @param edge   The edge being processed.
+ * @param unused The optional parameter to pb_graph_edge_iterator_func, which is unused in this function.
+ */
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free_edge_data(pb_edge const* edge, void* unused);
 
 /**
  * Frees the graph and its vertices.
