@@ -1,6 +1,7 @@
 #include <libcompat.h>
 #include <check.h>
 #include <pb/util/pb_graph.h>
+#include <pb/util/pb_hash_utils.h>
 
 /* Simple hash functions to use for vertices (data will just be an integer) */
 static uint32_t test_hash(void const* key) {
@@ -136,12 +137,73 @@ START_TEST(remove_vertex_with_edge)
 }
 END_TEST
 
+static void add_one_to_vertex_data(void const* vert_id, pb_vertex* vert, void* param) {
+    int* data = (int*)vert->data;
+    *data += 1;
+}
+
+START_TEST(graph_for_each_vertex)
+{
+    pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    int items[] = { 1, 2, 3 };
+    int expected[] = { 2, 3, 4 };
+    int i;
+
+    /* Add a pointer to each element in items as a vertex */
+    for (i = 0; i < 3; ++i) {
+        pb_graph_add_vertex(g, &items[i], &items[i]);
+    }
+
+    pb_graph_for_each_vertex(g, add_one_to_vertex_data, NULL);
+
+    for (i = 0; i < 3; ++i) {
+        ck_assert_msg(items[i] == expected[i], "items[%d] should have been %d, was %d", i, expected[i], items[i]);
+    }
+
+    pb_graph_free(g);
+}
+END_TEST
+
+static void add_one_to_edge_data(pb_edge const* edge, void* param) {
+    int* data = (int*)edge->data;
+    *data += 1;
+}
+
+START_TEST(graph_for_each_edge)
+{
+    pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    int items[] = { 1, 2, 3 };
+    int expected[] = { 2, 3, 4 };
+    int i;
+
+    int vert_items[] = { 5, 6, 7, 8 };
+
+    /* Add a pointer to each element in vert_items as a vertex */
+    for (i = 0; i < 4; ++i) {
+        pb_graph_add_vertex(g, &vert_items[i], NULL);
+    }
+
+    /* Add an edge from the first vertex to each other vertex, with their data as addresses to the items array */
+    for (i = 0; i < 3; ++i) {
+        pb_graph_add_edge(g, &vert_items[0], &vert_items[i + 1], 0.f, &items[i]);
+    }
+
+    pb_graph_for_each_edge(g, add_one_to_edge_data, NULL);
+
+    for (i = 0; i < 3; ++i) {
+        ck_assert_msg(items[i] == expected[i], "items[%d] should have been %d, was %d", i, expected[i], items[i]);
+    }
+
+    pb_graph_free(g);
+}
+END_TEST
+
 Suite *make_pb_graph_suite(void) {
 	/* Life test case tests lifetime events (create and destroy);
 	* Adjacency test case tests all functions related to the adjacency list
 	*/
 	Suite *s;
-	TCase *tc_vertices, *tc_edges;
+	TCase *tc_vertices, *tc_edges, *tc_iterator;
 
 	s = suite_create("Graph");
 
@@ -161,6 +223,11 @@ Suite *make_pb_graph_suite(void) {
     tcase_add_test(tc_edges, get_nonexistent_edge);
 	tcase_add_test(tc_edges, remove_edge);
     tcase_add_test(tc_edges, remove_vertex_with_edge);
+
+    tc_iterator = tcase_create("for_each (iterator) functions");
+    suite_add_tcase(s, tc_iterator);
+    tcase_add_test(tc_iterator, graph_for_each_vertex);
+    tcase_add_test(tc_iterator, graph_for_each_edge);
 
     /* This is pretty hacky now. Should probably think about these tests a bit more... */
     tcase_add_unchecked_fixture(tc_vertices, pb_graph_test_setup, NULL);

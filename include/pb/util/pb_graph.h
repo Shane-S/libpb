@@ -185,14 +185,14 @@ PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph* graph, 
  * @param func  The function to run for every edge in the graph.
  * @param param The (optional) parameter which will be supplied to func on each iteration.
  */
-PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_edge(pb_graph_edge_iterator_func func, void* param);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_edge(pb_graph* graph, pb_graph_edge_iterator_func func, void* param);
 
 /**
  * Runs func (with the supplied parameter) on every vertex in the graph.
  * @param func  The function to run for every vertex in the graph.
  * @param param The (optional) parameter which will be supplied to func on each iteration.
  */
-PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_vertex(pb_graph_vertex_iterator_func func, void* param);
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_vertex(pb_graph* graph, pb_graph_vertex_iterator_func func, void* param);
 
 /**
  * When passed to pb_graph_for_each_vertex, frees vert->data for every vertex in the graph.

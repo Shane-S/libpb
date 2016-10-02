@@ -281,12 +281,7 @@ START_TEST(generate_floor_graph_multi_room)
     }
 
     /* Free the connections */
-    /* I should really make some sort of "Apply function to all full hash entries" function */
-    for (i = 0; i < result->edges->cap; ++i) {
-        if (result->edges->states[i] == FULL) {
-            free(((pb_edge*)result->edges->entries[i].val)->data);
-        }
-    }
+    pb_graph_for_each_edge(result, pb_graph_free_edge_data, NULL);
 
     /* Free the shapes we created */
     for (i = 0; i < 6; ++i) {

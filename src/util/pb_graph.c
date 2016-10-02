@@ -2,6 +2,7 @@
 #include <string.h>
 #include <pb/util/pb_graph.h>
 #include <pb/util/pb_hash_utils.h>
+#include <pb/util/pb_pair.h>
 
 static void pb_graph_remove_edge_internal(pb_graph* graph, pb_edge* edge);
 
@@ -257,4 +258,54 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
     pb_hash_free(graph->edges);
 
     free(graph);
+}
+
+/**
+ * Iterates over the edge hash map, calling a given pb_graph_edge_iterator_func on each edge.
+ *
+ * @param entry An entry from graph->edges.
+ * @param param A pair containing the edge iterator function and the parameter supplied to it.
+ */
+static void edge_hash_iterator(pb_hash_entry* entry, void* param) {
+    pb_pair* p = (pb_pair*)param;
+    pb_graph_edge_iterator_func f = (pb_graph_edge_iterator_func)p->first;
+    void* edge_param = p->second;
+    pb_edge* edge = entry->val;
+    
+    f(edge, edge_param);
+}
+
+/**
+ * Iterates over the vertex hash map, calling a given pb_graph_vertex_iterator_func on each entry.
+ *
+ * @param entry An entry from graph->vertices.
+ * @param param A pair containing the vertex iterator function and the parameter supplied to it.
+ */
+static void vertex_hash_iterator(pb_hash_entry* entry, void* param) {
+    pb_pair* p = (pb_pair*)param;
+    pb_graph_vertex_iterator_func f = (pb_graph_vertex_iterator_func)p->first;
+    void* vert_param = p->second;
+
+    pb_vertex* vert = entry->val;
+    void* vert_id = entry->key;
+
+    f(vert_id, vert, vert_param);
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_edge(pb_graph* graph, pb_graph_edge_iterator_func func, void* param) {
+    pb_pair params = { func, param };
+    pb_hash_for_each(graph->edges, edge_hash_iterator, &params);
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_vertex(pb_graph* graph, pb_graph_vertex_iterator_func func, void* param) {
+    pb_pair params = { func, param };
+    pb_hash_for_each(graph->vertices, vertex_hash_iterator, &params);
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free_vertex_data(void const* vert_id, pb_vertex* vert, void* unused) {
+    free(vert->data);
+}
+
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free_edge_data(pb_edge const* edge, void* unused) {
+    free(edge->data);
 }
