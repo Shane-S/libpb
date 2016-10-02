@@ -1,6 +1,8 @@
+#include <math.h>
 #include <pb/internal/pb_sq_house_graph.h>
 #include <pb/util/pb_float_utils.h>
-#include <math.h>
+#include <pb/util/pb_hash_utils.h>
+#include <string.h>
 
 int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     int shares_top = 0;
@@ -71,4 +73,81 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
     default:
         return;
     }
+}
+
+/**
+ * Generates a connectivity graph between the rooms of a given floor.
+ * The edges in the graph are of type pb_sq_house_room_edge and indicate whether these rooms
+ * could be connected by a door (based on their room_specs).
+ *
+ * @param room_specs The map containing room specifications for this house.
+ * @param floor      The floor for which the connectivity graph will be generated.
+ * @return A graph containing the rooms' connections.
+ */
+pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor) {
+    pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq); /* Hash based on each room's pointer */
+
+    if (!g) return NULL;
+
+    /* Add all the rooms to the graph */
+    unsigned i;
+    for (i = 0; i < floor->num_rooms; ++i) {
+        if (pb_graph_add_vertex(g, &floor->rooms[i], &floor->rooms[i]) == -1) {
+            goto err_return;
+        }
+    }
+
+    /* Do a brute force check of all rooms to determine their shared edges */
+    /* Note that this doesn't account for connections to outside; that's done during window placement */
+    for (i = 0; i < floor->num_rooms; ++i) {
+        unsigned j;
+        pb_sq_house_room_spec* spec;
+        pb_hash_get(room_specs, (void*)floor->rooms[i].data, (void**)&spec);
+
+        for (j = i + 1; j < floor->num_rooms; ++j) {
+            pb_point start;
+            pb_point end;
+            int shared_wall = pb_sq_house_get_shared_wall(floor->rooms + i, floor->rooms + j, &start, &end);
+
+            if (shared_wall != -1) {
+                pb_sq_house_room_conn* conn = malloc(sizeof(pb_sq_house_room_conn));
+                unsigned adj;
+                if (!conn) goto err_return;
+                
+                conn->neighbour = floor->rooms + j;
+                conn->overlap_start = start;
+                conn->overlap_end = end;
+                conn->door = 0;
+                conn->wall = shared_wall;
+
+                /* Check whether the room spec for room i allows a connection to room j */
+                for (adj = 0; adj < spec->num_adjacent; ++adj) {
+                    if (strcmp((char*)floor->rooms[j].data, spec->adjacent[adj]) == 0) {
+                        conn->door = 1;
+                    }
+                }
+
+                if (pb_graph_add_edge(g, floor->rooms + i, floor->rooms + j, 0.f, conn) == -1) {
+                    free(conn);
+                    goto err_return;
+                }
+            }
+        }
+    }
+
+    return g;
+
+err_return:
+    {
+        /* Free all the edge info we just created */
+        size_t i;
+        for (i = 0; i < g->edges->cap; ++i) {
+            if (g->edges->states[i] == FULL) {
+                free(((pb_edge*)g->edges->entries[i].val)->data);
+            }
+        }
+    }
+
+    pb_graph_free(g);
+    return NULL;
 }
