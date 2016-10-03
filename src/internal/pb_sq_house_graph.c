@@ -2,6 +2,7 @@
 #include <pb/internal/pb_sq_house_graph.h>
 #include <pb/util/pb_float_utils.h>
 #include <pb/util/pb_hash_utils.h>
+#include <pb/util/pb_pair.h>
 #include <string.h>
 
 int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
@@ -119,13 +120,14 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor)
                 conn->neighbour = floor->rooms + j;
                 conn->overlap_start = start;
                 conn->overlap_end = end;
-                conn->door = 0;
+                conn->can_connect = 0;
                 conn->wall = shared_wall;
 
                 /* Check whether the room spec for room i allows a connection to room j */
                 for (adj = 0; adj < spec->num_adjacent; ++adj) {
                     if (strcmp((char*)floor->rooms[j].data, spec->adjacent[adj]) == 0) {
-                        conn->door = 1;
+                        conn->can_connect = 1;
+                        break;
                     }
                 }
 
@@ -140,16 +142,87 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor)
     return g;
 
 err_return:
-    {
-        /* Free all the edge info we just created */
-        size_t i;
-        for (i = 0; i < g->edges->cap; ++i) {
-            if (g->edges->states[i] == FULL) {
-                free(((pb_edge*)g->edges->entries[i].val)->data);
-            }
+    /* Free the graph and all the edge info we just created */
+    pb_graph_for_each_edge(g, pb_graph_free_edge_data, NULL);
+    pb_graph_free(g);
+    return NULL;
+}
+
+/**
+ * Checks if the room stored in a given vertex doesn't have any valid connections to neigbouring
+ * rooms (e.g., if every edge has a can_connect value of 0); if so, adds the vert_id to the list
+ * of disconnected rooms.
+ *
+ * If a given room can connect to a neighbour but the neighbour can't connecto that room or vice-versa,
+ * can_connect for both rooms will be set to 1.
+ *
+ * @param vert_id The vertex id (a pointer to a room, in this case).
+ * @param vert    The vertex corresponding to the given room.
+ * @param params  A pb_pair with first set to a pointer to the graph, and second set to a pointer to
+ *                another pb_pair. second->first = the list of disconnected rooms, second->second = pointer
+ *                to an int to indicate an error.
+ */
+static void process_disconnected_room(void const* vert_id, pb_vertex* vert, void* params) {
+    /* Get the pointer to the graph */
+    pb_pair* outer_pair = (pb_pair*)params;
+    pb_graph* g = (pb_graph*)outer_pair->first;
+
+    /* Get the pointer to the disconnected list and the error int */
+    pb_pair* inner_pair = outer_pair->second;
+    pb_vector* dl = (pb_vector*)inner_pair->first;
+    int* err = (int*)inner_pair->second;
+    
+    size_t i;
+    for (i = 0; i < vert->edges_size; ++i) {
+        pb_edge* edge = vert->edges[i];
+        pb_sq_house_room_conn* conn = (pb_sq_house_room_conn*)edge->data;
+
+        /* Cheat really hard and use the knowledge that from_id and to_id are actually just room pointers
+         * and that those room pointers are in fact stored as the data for the vertex to which they correspond */
+        pb_edge* neighbour_edge = pb_graph_get_edge(g, edge->to->data, vert_id);
+        pb_sq_house_room_conn* conn2 = (pb_sq_house_room_conn*)neighbour_edge->data;
+
+        if (conn->can_connect == 1 || conn2->can_connect == 1) {
+            /* If just one of the rooms said there was a valid connection, assume that there should be a connection
+             * and set both to have one */
+            conn->can_connect = 1;
+            conn2->can_connect = 1;
+            break;
         }
     }
 
-    pb_graph_free(g);
-    return NULL;
+    /* If there were no edges with doors, add this room to the list of disconnected rooms */
+    if (i == vert->edges_size) {
+        if (pb_vector_push_back(dl, (void*)&vert_id) == -1) {
+            *err = 1;
+        }
+    }
+}
+
+pb_vector* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor* floor) {
+    pb_vector* disconnected = pb_vector_create(sizeof(void*), 0);
+    int error_occurred = 0;
+    pb_pair outer_params;
+    pb_pair inner_params = { disconnected, &error_occurred };
+    outer_params.first = floor_graph;
+    outer_params.second = &inner_params;
+
+    pb_graph_for_each_vertex(floor_graph, process_disconnected_room, &outer_params);
+
+    if (error_occurred) {
+        pb_vector_free(disconnected);
+        free(disconnected);
+        return NULL;
+    } else {
+        /* Make sure that the first room isn't in the disconnected list */
+        unsigned i;
+        for (i = 0; i < disconnected->size; ++i) {
+            pb_room* room = *((pb_room**)pb_vector_get_at(disconnected, i));
+            if (room == &floor->rooms[0]) {
+                pb_vector_remove_at(disconnected, i);
+                break;
+            }
+        }
+        return disconnected;
+    }
 }

@@ -148,8 +148,6 @@ START_TEST(get_wall_overlap_top)
     pb_room r1;
     pb_room r2;
 
-    int result;
-
     r1.room_shape.points = &points1[0];
     r1.room_shape.num_points = 4;
 
@@ -242,7 +240,7 @@ START_TEST(generate_floor_graph_multi_room)
      * pb_point overlap_start;
      * pb_point overlap_end;
      * side wall;
-     * int door;
+     * int can_connect;
      */
     pb_sq_house_room_conn conns[] = {
         { &rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
@@ -277,7 +275,7 @@ START_TEST(generate_floor_graph_multi_room)
         ck_assert_msg(edge != NULL, "Edge from Living Room to %s didn't exist.", (char*)(conns[i].neighbour->data));
         
         c = (pb_sq_house_room_conn*)edge->data;
-        ck_assert_msg(c->door == conns[i].door, "Edge from Living Room to %s should have had a door but did not.", (char*)(conns[i].neighbour->data));
+        ck_assert_msg(c->can_connect == conns[i].can_connect, "Edge from Living Room to %s should have had a door but did not.", (char*)(conns[i].neighbour->data));
     }
 
     /* Free the connections */
@@ -296,12 +294,114 @@ START_TEST(generate_floor_graph_multi_room)
 }
 END_TEST
 
+START_TEST(find_disconnected_rooms_basic)
+{
+    /* Given a pb_floor with three rooms and a pb_graph holding the floor connectivity graph with a connection between rooms 0 and 1
+     * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
+     * Then the result should be a pb_vector containing a pointer to floor.rooms[2] */
+
+    pb_room fake_rooms[3] = { 0 }; /* We just need the addresses; don't need to populate this at all */
+    pb_floor fake_floor;
+    pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    pb_sq_house_room_conn conns[] = {
+        { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 1 },
+        { &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
+        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 },
+    };
+    pb_vector* result;
+
+    unsigned i;
+    for (i = 0; i < 3; ++i) {
+        pb_graph_add_vertex(floor_graph, &fake_rooms[i], &fake_rooms[i]);
+    }
+
+    fake_floor.num_rooms = 3;
+    fake_floor.rooms = &fake_rooms[0];
+
+    /* Add the fake edges */
+    pb_graph_add_edge(floor_graph, &fake_rooms[0], &fake_rooms[1], 0.f, &conns[0]);
+    pb_graph_add_edge(floor_graph, &fake_rooms[1], &fake_rooms[0], 0.f, &conns[1]);
+    pb_graph_add_edge(floor_graph, &fake_rooms[0], &fake_rooms[2], 0.f, &conns[2]);
+    pb_graph_add_edge(floor_graph, &fake_rooms[2], &fake_rooms[0], 0.f, &conns[3]);
+
+    result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
+    ck_assert_msg(result->size == 1, "result should contain one element, has %lu", result->size);
+    ck_assert_msg(((pb_room**)result->items)[0] == &fake_rooms[2], "result->items[0] should be equal to &fake_rooms[2], was %p", ((pb_room**)result->items)[0]);
+
+    pb_vector_free(result);
+    pb_graph_free(floor_graph);
+}
+END_TEST
+
+START_TEST(find_disconnected_rooms_one_sided_connection)
+{
+    /* Given a pb_floor with two rooms and a pb_graph holding the floor connectivity graph with can_connect from room 0 to 1 but not 1 to 0
+     * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
+     * Then the result should be a pb_vector with size 0, and the connection from 1 to 0 should have can_connect == 1*/
+
+    pb_room fake_rooms[2] = { 0 }; /* We just need the addresses; don't need to populate this at all */
+    pb_floor fake_floor;
+    pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    pb_sq_house_room_conn conns[] = {
+        { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 }
+    };
+    pb_vector* result;
+
+    unsigned i;
+    for (i = 0; i < 2; ++i) {
+        pb_graph_add_vertex(floor_graph, &fake_rooms[i], &fake_rooms[i]);
+    }
+
+    fake_floor.num_rooms = 2;
+    fake_floor.rooms = &fake_rooms[0];
+
+    /* Add the fake edges */
+    pb_graph_add_edge(floor_graph, &fake_rooms[0], &fake_rooms[1], 0.f, &conns[0]);
+    pb_graph_add_edge(floor_graph, &fake_rooms[1], &fake_rooms[0], 0.f, &conns[1]);
+
+    result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
+    ck_assert_msg(result->size == 0, "result should contain 0 elements, has %lu", result->size);
+    ck_assert_msg(conns[1].can_connect == 1, "conns[1].can_connect should have been set to 1, was %d", conns[1].can_connect);
+
+    pb_vector_free(result);
+    pb_graph_free(floor_graph);
+}
+END_TEST
+
+START_TEST(find_disconnected_rooms_outside_disconnected)
+{
+    /* Given a pb_floor with a single room and a pb_graph holding the floor connectivity graph
+     * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
+     * Then the result should be a pb_vector with size 0 */
+
+    pb_room fake_rooms[1] = { 0 }; /* We just need the addresses; don't need to populate this at all */
+    pb_floor fake_floor;
+    pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    pb_sq_house_room_conn conns[1] = { 0 };
+    pb_vector* result;
+
+    pb_graph_add_vertex(floor_graph, &fake_rooms[0], &fake_rooms[0]);
+
+    fake_floor.num_rooms = 1;
+    fake_floor.rooms = &fake_rooms[0];
+
+    result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
+    ck_assert_msg(result->size == 0, "result should contain 0 elements, has %lu", result->size);
+
+    pb_vector_free(result);
+    pb_graph_free(floor_graph);
+}
+END_TEST
+
 Suite *make_pb_sq_house_graph_suite(void)
 {
     Suite* s;
     TCase* tc_sq_house_get_shared_wall;
     TCase* tc_sq_house_get_wall_overlap;
     TCase* tc_sq_house_generate_floor_graph;
+    TCase* tc_sq_house_find_disconnected;
 
     s = suite_create("Squarified house generation");
 
@@ -321,6 +421,12 @@ Suite *make_pb_sq_house_graph_suite(void)
     tc_sq_house_generate_floor_graph = tcase_create("Floor graph creation tests");
     suite_add_tcase(s, tc_sq_house_generate_floor_graph);
     tcase_add_test(tc_sq_house_generate_floor_graph, generate_floor_graph_multi_room);
+
+    tc_sq_house_find_disconnected = tcase_create("Disconnected room finding tests");
+    suite_add_tcase(s, tc_sq_house_find_disconnected);
+    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_basic);
+    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_one_sided_connection);
+    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_disconnected);
 
     return s;
 }
