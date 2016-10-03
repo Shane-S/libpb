@@ -21,15 +21,15 @@
 
 #include <stddef.h>
 #include <pb/util/pb_util_exports.h>
-#include <pb/util/pb_hash.h>
+#include <pb/util/pb_hashmap.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct _pb_vertex pb_vertex;
+typedef struct pb_vertex pb_vertex;
 
-typedef struct _pb_edge {
+typedef struct {
     pb_vertex* from;
     pb_vertex* to;
     float weight;
@@ -39,7 +39,7 @@ typedef struct _pb_edge {
 /**
  * A vertex, which contains some data and a list of vertices to which it is connected.
  */
-struct _pb_vertex {
+struct pb_vertex {
     pb_edge** edges;
     void *data;
     size_t edges_size;
@@ -96,9 +96,9 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vertex_remove_edge(pb_vertex *vert, pb_edge
 /**
  * A graph, which is basically a collection of vertices and adjacency lists.
  */
-typedef struct _pb_graph {
-    pb_hash* vertices;
-    pb_hash* edges;
+typedef struct {
+    pb_hashmap* vertices;
+    pb_hashmap* edges;
 } pb_graph;
 
 /**

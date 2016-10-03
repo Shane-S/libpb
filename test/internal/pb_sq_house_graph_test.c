@@ -217,7 +217,7 @@ START_TEST(generate_floor_graph_multi_room)
         { "Bathroom", &adj_lists[2], 1, 4.f, 3, 3 },
         { "Kitchen", &adj_lists[3], 1, 7.f, 1, 2 },
     };
-    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
 
     char const* room_names[] = { "Living Room", "Bedroom", "Bathroom", "Kitchen", "Bathroom", "Bedroom" };
 
@@ -251,7 +251,7 @@ START_TEST(generate_floor_graph_multi_room)
     /* Create the hash map of room specs */
     unsigned i;
     for (i = 0; i < 4; ++i) {
-        pb_hash_put(room_specs, (void*)specs[i].name, (void*)&specs[i]);
+        pb_hashmap_put(room_specs, (void*)specs[i].name, (void*)&specs[i]);
     }
 
     /* Populate the floor's rooms */
@@ -288,7 +288,7 @@ START_TEST(generate_floor_graph_multi_room)
 
     /* Free the generated graph and the room specs hash map */
     pb_graph_free(result);
-    pb_hash_free(room_specs);
+    pb_hashmap_free(room_specs);
 
     /* Die a little inside */
 }
@@ -298,7 +298,7 @@ START_TEST(find_disconnected_rooms_basic)
 {
     /* Given a pb_floor with three rooms and a pb_graph holding the floor connectivity graph with a connection between rooms 0 and 1
      * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
-     * Then the result should be a pb_vector containing a pointer to floor.rooms[2] */
+     * Then the result should be a pb_hashmap containing a pointer to floor.rooms[2] */
 
     pb_room fake_rooms[3] = { 0 }; /* We just need the addresses; don't need to populate this at all */
     pb_floor fake_floor;
@@ -309,7 +309,8 @@ START_TEST(find_disconnected_rooms_basic)
         { &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
         { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 },
     };
-    pb_vector* result;
+    pb_hashmap* result;
+    pb_room* room;
 
     unsigned i;
     for (i = 0; i < 3; ++i) {
@@ -327,9 +328,11 @@ START_TEST(find_disconnected_rooms_basic)
 
     result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
     ck_assert_msg(result->size == 1, "result should contain one element, has %lu", result->size);
-    ck_assert_msg(((pb_room**)result->items)[0] == &fake_rooms[2], "result->items[0] should be equal to &fake_rooms[2], was %p", ((pb_room**)result->items)[0]);
 
-    pb_vector_free(result);
+    pb_hashmap_get(result, &fake_rooms[2], &room);
+    ck_assert_msg(room = &fake_rooms[2], "result should have contained &fake_rooms[2], had %p", room);
+
+    pb_hashmap_free(result);
     pb_graph_free(floor_graph);
 }
 END_TEST
@@ -338,7 +341,7 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
 {
     /* Given a pb_floor with two rooms and a pb_graph holding the floor connectivity graph with can_connect from room 0 to 1 but not 1 to 0
      * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
-     * Then the result should be a pb_vector with size 0, and the connection from 1 to 0 should have can_connect == 1*/
+     * Then the result should be a pb_hashmap with size 0, and the connection from 1 to 0 should have can_connect == 1*/
 
     pb_room fake_rooms[2] = { 0 }; /* We just need the addresses; don't need to populate this at all */
     pb_floor fake_floor;
@@ -347,7 +350,7 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
         { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
         { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 }
     };
-    pb_vector* result;
+    pb_hashmap* result;
 
     unsigned i;
     for (i = 0; i < 2; ++i) {
@@ -365,7 +368,7 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
     ck_assert_msg(result->size == 0, "result should contain 0 elements, has %lu", result->size);
     ck_assert_msg(conns[1].can_connect == 1, "conns[1].can_connect should have been set to 1, was %d", conns[1].can_connect);
 
-    pb_vector_free(result);
+    pb_hashmap_free(result);
     pb_graph_free(floor_graph);
 }
 END_TEST
@@ -374,13 +377,13 @@ START_TEST(find_disconnected_rooms_outside_disconnected)
 {
     /* Given a pb_floor with a single room and a pb_graph holding the floor connectivity graph
      * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
-     * Then the result should be a pb_vector with size 0 */
+     * Then the result should be a pb_hashmap with size 0 */
 
     pb_room fake_rooms[1] = { 0 }; /* We just need the addresses; don't need to populate this at all */
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
     pb_sq_house_room_conn conns[1] = { 0 };
-    pb_vector* result;
+    pb_hashmap* result;
 
     pb_graph_add_vertex(floor_graph, &fake_rooms[0], &fake_rooms[0]);
 
@@ -390,7 +393,7 @@ START_TEST(find_disconnected_rooms_outside_disconnected)
     result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
     ck_assert_msg(result->size == 0, "result should contain 0 elements, has %lu", result->size);
 
-    pb_vector_free(result);
+    pb_hashmap_free(result);
     pb_graph_free(floor_graph);
 }
 END_TEST

@@ -1,7 +1,7 @@
 #ifndef PB_PAIR_H
 #define PB_PAIR_H
 
-typedef struct _pb_pair {
+typedef struct {
     void* first;
     void* second;
 } pb_pair;

@@ -5,7 +5,7 @@
 
 static const size_t PB_VECTOR_DEFAULT_CAPACITY = 16;
 
-typedef struct _pb_vector {
+typedef struct {
     void* items;
     size_t item_size;
     size_t size;

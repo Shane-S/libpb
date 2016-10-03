@@ -2,7 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-#include <pb/util/pb_hash.h>
+#include <pb/util/pb_hashmap.h>
 #include <pb/util/pb_hash_utils.h>
 #include <pb/util/pb_float_utils.h>
 #include <pb/pb_sq_house.h>
@@ -25,12 +25,12 @@ int pb_sq_house_room_spec_cmp(void const* room_spec1, void const* room_spec2) {
     return spec1->priority - spec2->priority;
 }
 
-char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* house_spec) {
+char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* house_spec) {
     pb_sq_house_room_spec* sorted = malloc(room_specs->size * sizeof(pb_sq_house_room_spec));
     size_t i;
     size_t sorted_pos = 0;
 
-    pb_hash* instances = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* instances = pb_hashmap_create(pb_str_hash, pb_str_eq);
     size_t num_added = 0;
     int did_add = 1;
     int has_outside;
@@ -48,7 +48,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
 
     /* Initialise the room names -> number of instances map */
     for (i = 0; i < room_specs->size; ++i) {
-        pb_hash_put(instances, (void*)sorted[i].name, 0);
+        pb_hashmap_put(instances, (void*)sorted[i].name, 0);
     }
 
     /* Starting with the highest priority rooms and working down the list, add a random number of each 
@@ -61,8 +61,8 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
             void* num_placed;
             pb_sq_house_room_spec* spec;
 
-            pb_hash_get(instances, (void*)sorted[i].name, &num_placed);
-            pb_hash_get(room_specs, (void*)sorted[i].name, (void**)&spec);
+            pb_hashmap_get(instances, (void*)sorted[i].name, &num_placed);
+            pb_hashmap_get(room_specs, (void*)sorted[i].name, (void**)&spec);
 
             if ((size_t)num_placed < spec->max_instances) {
                 size_t result_pos;
@@ -74,7 +74,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
                     added = house_spec->num_rooms - num_added;
                 }
 
-                pb_hash_put(instances, (void*)sorted[i].name, (void*)((size_t)num_placed + added));
+                pb_hashmap_put(instances, (void*)sorted[i].name, (void*)((size_t)num_placed + added));
 
                 /* Add num_added instances of the current room to the rooms array */
                 for (result_pos = num_added; result_pos < num_added + added; ++result_pos) {
@@ -87,7 +87,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
         }
     }
 
-    pb_hash_free(instances);
+    pb_hashmap_free(instances);
 
     /* Room specifications don't provide enough instances to meet the desired number */
     if (num_added != house_spec->num_rooms) {
@@ -103,7 +103,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
         for (i = 0; i < house_spec->num_rooms && !has_outside; ++i) {
             unsigned int j;
             pb_sq_house_room_spec* spec;
-            pb_hash_get(room_specs, (void*)result[i], (void**)&spec);
+            pb_hashmap_get(room_specs, (void*)result[i], (void**)&spec);
             for (j = 0; j < spec->num_adjacent; ++j) {
                 if (strcmp(spec->adjacent[j], PB_SQ_HOUSE_OUTSIDE) == 0) {
                     /* Put the room that connects to outside at the start of the rooms list */
@@ -161,7 +161,7 @@ static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape* stair_shape
     return 0;
 }
 
-pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house) {
+pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house) {
     /* Stores sums of room areas added to the current floor */
     float* areas = NULL;
     
@@ -208,12 +208,12 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
         unsigned int current_room = 1;
         pb_sq_house_room_spec* spec;
 
-        pb_hash_get(room_specs, (void*)rooms[num_rooms_added], (void**)&spec);
+        pb_hashmap_get(room_specs, (void*)rooms[num_rooms_added], (void**)&spec);
         areas[0] = spec->area;
 
         /* Add rooms to this floor until we have either added all rooms in the house or exceeded this floor's area */
         for (current_room; current_room + num_rooms_added < h_spec->num_rooms; ++current_room) {
-            pb_hash_get(room_specs, (void*)rooms[current_room + num_rooms_added], (void**)&spec);
+            pb_hashmap_get(room_specs, (void*)rooms[current_room + num_rooms_added], (void**)&spec);
             areas[current_room] = areas[current_room - 1] + spec->area;
             if (areas[current_room] > current_floor_area) {
                 break;
@@ -387,7 +387,7 @@ err_return:
     return NULL;
 }
 
-int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect) {
+int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect) {
     float* areas = NULL;
     float total_area = 0.f;
 
@@ -418,7 +418,7 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* 
 
     for (i = 0; i < num_rooms; ++i) {
         pb_sq_house_room_spec* spec;
-        pb_hash_get(room_specs, (void*)rooms[i], (void**)&spec);
+        pb_hashmap_get(room_specs, (void*)rooms[i], (void**)&spec);
         areas[i] = spec->area;
         total_area += areas[i];
     }

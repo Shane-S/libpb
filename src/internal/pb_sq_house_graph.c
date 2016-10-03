@@ -85,7 +85,7 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
  * @param floor      The floor for which the connectivity graph will be generated.
  * @return A graph containing the rooms' connections.
  */
-pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor) {
+pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* floor) {
     pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq); /* Hash based on each room's pointer */
 
     if (!g) return NULL;
@@ -103,7 +103,7 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hash* room_specs, pb_floor* floor)
     for (i = 0; i < floor->num_rooms; ++i) {
         unsigned j;
         pb_sq_house_room_spec* spec;
-        pb_hash_get(room_specs, (void*)floor->rooms[i].data, (void**)&spec);
+        pb_hashmap_get(room_specs, (void*)floor->rooms[i].data, (void**)&spec);
 
         for (j = i + 1; j < floor->num_rooms; ++j) {
             pb_point start;
@@ -169,7 +169,7 @@ static void process_disconnected_room(void const* vert_id, pb_vertex* vert, void
 
     /* Get the pointer to the disconnected list and the error int */
     pb_pair* inner_pair = outer_pair->second;
-    pb_vector* dl = (pb_vector*)inner_pair->first;
+    pb_hashmap* disconnected = (pb_hashmap*)inner_pair->first;
     int* err = (int*)inner_pair->second;
     
     size_t i;
@@ -193,14 +193,14 @@ static void process_disconnected_room(void const* vert_id, pb_vertex* vert, void
 
     /* If there were no edges with doors, add this room to the list of disconnected rooms */
     if (i == vert->edges_size) {
-        if (pb_vector_push_back(dl, (void*)&vert_id) == -1) {
+        if (pb_hashmap_put(disconnected, (void*)vert_id, vert->data) == -1) {
             *err = 1;
         }
     }
 }
 
-pb_vector* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor* floor) {
-    pb_vector* disconnected = pb_vector_create(sizeof(void*), 0);
+pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor* floor) {
+    pb_hashmap* disconnected = pb_hashmap_create(pb_pointer_hash, pb_pointer_eq);
     int error_occurred = 0;
     pb_pair outer_params;
     pb_pair inner_params = { disconnected, &error_occurred };
@@ -215,13 +215,9 @@ pb_vector* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor* 
         return NULL;
     } else {
         /* Make sure that the first room isn't in the disconnected list */
-        unsigned i;
-        for (i = 0; i < disconnected->size; ++i) {
-            pb_room* room = *((pb_room**)pb_vector_get_at(disconnected, i));
-            if (room == &floor->rooms[0]) {
-                pb_vector_remove_at(disconnected, i);
-                break;
-            }
+        pb_room* first;
+        if (pb_hashmap_get(disconnected, &floor->rooms[0], &first)) {
+            pb_hashmap_remove(disconnected, &floor->rooms[0]);
         }
         return disconnected;
     }

@@ -19,7 +19,7 @@ typedef int (*pb_heap_cmp)(void*, void*);
 /**
  * A min-heap containing a list of partially sorted items.
  */
-typedef struct pb_heap {
+typedef struct {
     size_t      size;  /* The number of items in the heap. */
     size_t      cap;   /* The heap's capacity. */
     pb_heap_cmp cmp;   /* The comparison function to sort items. */

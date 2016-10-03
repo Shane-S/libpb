@@ -100,22 +100,22 @@ static int edge_eq(void const* edge1, void const* edge2) {
 
 PB_UTIL_DECLSPEC pb_graph* PB_UTIL_CALL pb_graph_create(pb_hash_func id_hash, pb_hash_eq_func id_eq) {
     pb_graph* graph = malloc(sizeof(pb_graph));
-    pb_hash* vertices;
-    pb_hash* edges;
+    pb_hashmap* vertices;
+    pb_hashmap* edges;
     
     if (!graph) {
         return NULL;
     }
 
-    vertices = pb_hash_create(id_hash, id_eq);
+    vertices = pb_hashmap_create(id_hash, id_eq);
     if (vertices == NULL) {
         free(graph);
         return NULL;
     }
 
-    edges = pb_hash_create(edge_hash, edge_eq);
+    edges = pb_hashmap_create(edge_hash, edge_eq);
     if (!edges) {
-        pb_hash_free(vertices);
+        pb_hashmap_free(vertices);
         free(graph);
         return NULL;
     }
@@ -132,7 +132,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* ver
         return -1;
     }
 
-    if (pb_hash_put(graph->vertices, vert_id, (void*)vert) == -1) {
+    if (pb_hashmap_put(graph->vertices, vert_id, (void*)vert) == -1) {
         pb_vertex_free(vert);
         return -1;
     } else {
@@ -143,7 +143,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* ver
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* vert_id) {
     pb_vertex* vert;
     size_t i;
-    if (!pb_hash_get(graph->vertices, vert_id, (void**)&vert)) {
+    if (!pb_hashmap_get(graph->vertices, vert_id, (void**)&vert)) {
         return -1; /* There was no vertex with the given ID in this graph */
     }
 
@@ -162,7 +162,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* 
         }
     }
 
-    pb_hash_remove(graph->vertices, vert_id);
+    pb_hashmap_remove(graph->vertices, vert_id);
     pb_vertex_free(vert);
 
     return 0;
@@ -170,7 +170,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* 
 
 PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph* graph, void const* vert_id) {
     pb_vertex* out;
-    if (!pb_hash_get(graph->vertices, vert_id, (void**)&out)) {
+    if (!pb_hashmap_get(graph->vertices, vert_id, (void**)&out)) {
         return NULL;
     }
 
@@ -201,7 +201,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph *graph, void const*
         return -1;
     }
 
-    if (pb_hash_put(graph->edges, edge, edge) == -1) {
+    if (pb_hashmap_put(graph->edges, edge, edge) == -1) {
         pb_vertex_remove_edge(from, edge);
         free(edge);
         return -1;
@@ -212,7 +212,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph *graph, void const*
 
 static void pb_graph_remove_edge_internal(pb_graph* graph, pb_edge* edge) {
     pb_vertex_remove_edge(edge->from, edge);
-    pb_hash_remove(graph->edges, (void*)edge);
+    pb_hashmap_remove(graph->edges, (void*)edge);
     free(edge);
 }
 
@@ -230,32 +230,32 @@ PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph *graph, 
     pb_edge* out;
     pb_edge temp;
 
-    if (!pb_hash_get(graph->vertices, from_id, (void**)&from) ||
-        !pb_hash_get(graph->vertices, to_id, (void**)&to)) {
+    if (!pb_hashmap_get(graph->vertices, from_id, (void**)&from) ||
+        !pb_hashmap_get(graph->vertices, to_id, (void**)&to)) {
         return NULL;
     }
 
     temp.from = from;
     temp.to = to;
 
-    if (!pb_hash_get(graph->edges, (void*)&temp, (void**)&out)) {
+    if (!pb_hashmap_get(graph->edges, (void*)&temp, (void**)&out)) {
         return NULL;
     }
 
     return out;
 }
 
-static void free_hashed_vertex(pb_hash_entry* entry, void* unused) {
+static void free_hashed_vertex(pb_hashmap_entry* entry, void* unused) {
     pb_vertex_free((pb_vertex*)entry->val);
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
     size_t i;
-    pb_hash_for_each(graph->vertices, free_hashed_vertex, NULL);
-    pb_hash_free(graph->vertices);
+    pb_hashmap_for_each(graph->vertices, free_hashed_vertex, NULL);
+    pb_hashmap_free(graph->vertices);
 
-    pb_hash_for_each(graph->edges, pb_hash_free_entry_data, NULL);
-    pb_hash_free(graph->edges);
+    pb_hashmap_for_each(graph->edges, pb_hashmap_free_entry_data, NULL);
+    pb_hashmap_free(graph->edges);
 
     free(graph);
 }
@@ -266,7 +266,7 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
  * @param entry An entry from graph->edges.
  * @param param A pair containing the edge iterator function and the parameter supplied to it.
  */
-static void edge_hash_iterator(pb_hash_entry* entry, void* param) {
+static void edge_hash_iterator(pb_hashmap_entry* entry, void* param) {
     pb_pair* p = (pb_pair*)param;
     pb_graph_edge_iterator_func f = (pb_graph_edge_iterator_func)p->first;
     void* edge_param = p->second;
@@ -281,7 +281,7 @@ static void edge_hash_iterator(pb_hash_entry* entry, void* param) {
  * @param entry An entry from graph->vertices.
  * @param param A pair containing the vertex iterator function and the parameter supplied to it.
  */
-static void vertex_hash_iterator(pb_hash_entry* entry, void* param) {
+static void vertex_hash_iterator(pb_hashmap_entry* entry, void* param) {
     pb_pair* p = (pb_pair*)param;
     pb_graph_vertex_iterator_func f = (pb_graph_vertex_iterator_func)p->first;
     void* vert_param = p->second;
@@ -294,12 +294,12 @@ static void vertex_hash_iterator(pb_hash_entry* entry, void* param) {
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_edge(pb_graph* graph, pb_graph_edge_iterator_func func, void* param) {
     pb_pair params = { func, param };
-    pb_hash_for_each(graph->edges, edge_hash_iterator, &params);
+    pb_hashmap_for_each(graph->edges, edge_hash_iterator, &params);
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_for_each_vertex(pb_graph* graph, pb_graph_vertex_iterator_func func, void* param) {
     pb_pair params = { func, param };
-    pb_hash_for_each(graph->vertices, vertex_hash_iterator, &params);
+    pb_hashmap_for_each(graph->vertices, vertex_hash_iterator, &params);
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free_vertex_data(void const* vert_id, pb_vertex* vert, void* unused) {

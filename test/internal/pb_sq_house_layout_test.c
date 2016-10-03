@@ -3,14 +3,14 @@
 #include <string.h>
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_sq_house_layout.h>
-#include <pb/util/pb_hash.h>
+#include <pb/util/pb_hashmap.h>
 #include <pb//util/pb_hash_utils.h>
 #include "../test_util.h"
 
 START_TEST(choose_rooms_single_room)
 {
     pb_sq_house_room_spec specs[1];
-    pb_hash* rooms = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
     char** result;
 
@@ -21,14 +21,14 @@ START_TEST(choose_rooms_single_room)
     specs[0].adjacent = &adjacent[0];
     specs[0].num_adjacent = 2;
 
-    pb_hash_put(rooms, (void*)"Closet", (void*)&specs[0]);
+    pb_hashmap_put(rooms, (void*)"Closet", (void*)&specs[0]);
     spec.num_rooms = 1;
 
     result = pb_sq_house_choose_rooms(rooms, &spec);
 
     ck_assert_msg(strcmp(result[0], specs[0].name) == 0, "Result should contain closet, but instead contained %s", result[0]);
 
-    pb_hash_free(rooms);
+    pb_hashmap_free(rooms);
     free(result);
 }
 END_TEST
@@ -36,10 +36,10 @@ END_TEST
 START_TEST(choose_rooms_multiple_rooms)
 {
     pb_sq_house_room_spec specs[2];
-    pb_hash* rooms = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
 
-    pb_hash* instances = pb_hash_create(pb_str_hash, pb_str_eq); /* Stores the number of each room type from the result array */
+    pb_hashmap* instances = pb_hashmap_create(pb_str_hash, pb_str_eq); /* Stores the number of each room type from the result array */
     void* spec0_instances;
     void* spec1_instances;
     char** result;
@@ -58,38 +58,38 @@ START_TEST(choose_rooms_multiple_rooms)
     specs[1].adjacent = &adjacent[0];
     specs[1].num_adjacent = 3;
 
-    pb_hash_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
-    pb_hash_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
+    pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
+    pb_hashmap_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
     spec.num_rooms = 12;
 
     result = pb_sq_house_choose_rooms(rooms, &spec);
 
-    pb_hash_put(instances, (void*)specs[0].name, (void*)0);
-    pb_hash_put(instances, (void*)specs[1].name, (void*)0);
+    pb_hashmap_put(instances, (void*)specs[0].name, (void*)0);
+    pb_hashmap_put(instances, (void*)specs[1].name, (void*)0);
 
     for (i = 0; i < 12; ++i) {
         if (strcmp(result[i], specs[0].name) == 0) {
             void* num;
-            pb_hash_get(instances, specs[0].name, &num);
+            pb_hashmap_get(instances, specs[0].name, &num);
             num = (void*)((int)num + 1);
-            pb_hash_put(instances, specs[0].name, num);
+            pb_hashmap_put(instances, specs[0].name, num);
         } else if(strcmp(result[i], specs[1].name) == 0) {
             void* num;
-            pb_hash_get(instances, specs[1].name, &num);
+            pb_hashmap_get(instances, specs[1].name, &num);
             num = (void*)((int)num + 1);
-            pb_hash_put(instances, specs[1].name, num);
+            pb_hashmap_put(instances, specs[1].name, num);
         } else {
             ck_abort_msg("Result string didn't match either room specification.");
         }
     }
 
-    pb_hash_get(instances, specs[0].name, &spec0_instances);
-    pb_hash_get(instances, specs[1].name, &spec1_instances);
+    pb_hashmap_get(instances, specs[0].name, &spec0_instances);
+    pb_hashmap_get(instances, specs[1].name, &spec1_instances);
     ck_assert_msg((int)spec0_instances == 6, "Result should have 6 instances of closet, but instead contained %d", (int)spec0_instances);
     ck_assert_msg((int)spec1_instances == 6, "Result should have 6 instances of bathroom, but instead contained %d", (int)spec1_instances);
 
-    pb_hash_free(rooms);
-    pb_hash_free(instances);
+    pb_hashmap_free(rooms);
+    pb_hashmap_free(instances);
     free(result);
 }
 END_TEST
@@ -97,7 +97,7 @@ END_TEST
 START_TEST(choose_rooms_house_too_big)
 {
     pb_sq_house_room_spec specs[2];
-    pb_hash* rooms = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
     char** result;
     
@@ -106,14 +106,14 @@ START_TEST(choose_rooms_house_too_big)
     specs[1].max_instances = 6;
     specs[1].name = "Bathroom";
 
-    pb_hash_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
-    pb_hash_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
+    pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
+    pb_hashmap_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
     spec.num_rooms = 24;
 
     result = pb_sq_house_choose_rooms(rooms, &spec);
     ck_assert_msg(result == NULL, "Result should have been NULL, was %p", result);
 
-    pb_hash_free(rooms);
+    pb_hashmap_free(rooms);
     free(result);
 }
 END_TEST
@@ -121,7 +121,7 @@ END_TEST
 START_TEST(choose_rooms_no_outside)
 {
     pb_sq_house_room_spec specs[1];
-    pb_hash* rooms = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
     char** result;
 
@@ -132,13 +132,13 @@ START_TEST(choose_rooms_no_outside)
     specs[0].adjacent = &adjacent[0];
     specs[0].num_adjacent = 2;
 
-    pb_hash_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
+    pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
     spec.num_rooms = 6;
 
     result = pb_sq_house_choose_rooms(rooms, &spec);
     ck_assert_msg(result == NULL, "Result should have been NULL, was %p", result);
 
-    pb_hash_free(rooms);
+    pb_hashmap_free(rooms);
     free(result);
 }
 END_TEST
@@ -153,7 +153,7 @@ START_TEST(layout_stairs_single_floor)
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
     char* rooms[] = { "Living Room" };
-    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_rect* result;
     pb_building house;
 
@@ -165,7 +165,7 @@ START_TEST(layout_stairs_single_floor)
     living_room.area = 250;
     living_room.name = "Living Room";
 
-    pb_hash_put(room_specs, (void*)living_room.name, (void*)&living_room);
+    pb_hashmap_put(room_specs, (void*)living_room.name, (void*)&living_room);
 
     result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
     ck_assert_msg(house.num_floors == 1, "House should have had one floor, but had %lu", house.num_floors);
@@ -186,7 +186,7 @@ START_TEST(layout_stairs_three_floors)
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
     char* rooms[] = { "Living Room", "Living Room", "Living Room" };
-    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_rect* result;
     pb_building house;
 
@@ -203,7 +203,7 @@ START_TEST(layout_stairs_three_floors)
     living_room.area = 690.f;
     living_room.name = "Living Room";
 
-    pb_hash_put(room_specs, (void*)living_room.name, (void*)&living_room);
+    pb_hashmap_put(room_specs, (void*)living_room.name, (void*)&living_room);
 
     result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
     ck_assert_msg(house.num_floors == 3, "House should have had 3 floors, but had %lu", house.num_floors);
@@ -239,7 +239,7 @@ START_TEST(layout_stairs_big_stairs)
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
     char* rooms[] = { "Living Room", "Living Room" };
-    pb_hash* room_specs = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_rect* result;
     pb_building house;
 
@@ -255,7 +255,7 @@ START_TEST(layout_stairs_big_stairs)
     living_room.area = 675.f;
     living_room.name = "Living Room";
 
-    pb_hash_put(room_specs, (void*)living_room.name, (void*)&living_room);
+    pb_hashmap_put(room_specs, (void*)living_room.name, (void*)&living_room);
 
     result = pb_sq_house_layout_stairs(&rooms[0], room_specs, &h_spec, &house);
     ck_assert_msg(house.num_floors == 2, "House should have had 2 floors, but had %lu", house.num_floors);
@@ -354,7 +354,7 @@ START_TEST(layout_floor_single_room)
      * The room should occupy the entire floor rectangle */
     char const* rooms[] = { "Living Room" };
     pb_sq_house_room_spec lr;
-    pb_hash* map = pb_hash_create(pb_str_hash, pb_str_eq);
+    pb_hashmap* map = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_rect floor_rect = {
         { 0.f, 0.f },
         40.f,
@@ -368,7 +368,7 @@ START_TEST(layout_floor_single_room)
     f.rooms = &f_rooms[0];
     
     lr.area = 90.f;
-    pb_hash_put(map, (void*)&rooms[0], (void*)&lr);
+    pb_hashmap_put(map, (void*)&rooms[0], (void*)&lr);
     pb_sq_house_layout_floor(&rooms[0], map, &f, 1, &floor_rect);
 
     pb_shape_to_pb_rect(&f.rooms[0].room_shape, &result);
@@ -376,7 +376,7 @@ START_TEST(layout_floor_single_room)
     ck_assert_msg(assert_close_enough(result.h, floor_rect.h, 5), "Result's height should have been about %.3f, was %.3f", floor_rect.h, result.h);
 
     free(f.rooms[0].room_shape.points);
-    pb_hash_free(map);
+    pb_hashmap_free(map);
 }
 END_TEST
 

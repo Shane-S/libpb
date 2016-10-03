@@ -3,7 +3,7 @@
 
 #include <pb/pb_exports.h>
 #include <pb/pb_extrusion.h>
-#include <pb/util/pb_hash.h>
+#include <pb/util/pb_hashmap.h>
 #include <pb/util/pb_geom.h>
 
 #include <stddef.h>
@@ -50,7 +50,7 @@ typedef struct _pb_sq_house_house_spec {
     float hallway_width;
 } pb_sq_house_house_spec;
 
-PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec, pb_hash* room_specs);
+PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec, pb_hashmap* room_specs);
 
 #ifdef __cplusplus
 }

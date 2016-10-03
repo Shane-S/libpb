@@ -3,6 +3,7 @@
 
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_squarify.h>
+#include <pb/util/pb_hashmap.h>
 
 /**
  * Determines which rooms will go be in the house.
@@ -10,7 +11,7 @@
  * @param room_specs The specifications for each room type.
  * @param house_spec The specifications for the house.
  */
-char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* house_spec);
+char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* house_spec);
 
 /**
  * Determines the number of floors in the house, allocates an appropriately sized pb_room list for each, and inserts
@@ -23,7 +24,7 @@ char** pb_sq_house_choose_rooms(pb_hash* room_specs, pb_sq_house_house_spec* hou
  *
  * @returns A list of rectangles indicating the free space on each corresponding floor.
  */
-pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house);
+pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, pb_sq_house_house_spec* h_spec, pb_building* house);
 
 /**
  * Lays out the specified number of rooms on the given floor using pb_squarify.
@@ -36,7 +37,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hash* room_specs, pb_s
  * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all room_shapes allocated on the this floor will have been freed;
  *         the caller must clean up all preceding floors.
  */
-int pb_sq_house_layout_floor(char const** rooms, pb_hash* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect);
+int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect);
 
 /**
  * Fills in any remaining space after pb_squarify has run.

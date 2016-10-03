@@ -2,18 +2,18 @@
 #include <stddef.h>
 #include <pb/util/pb_util_exports.h>
 
-typedef struct _pb_point {
+typedef struct {
     float x;
     float y;
 } pb_point;
 
-typedef struct _pb_rect {
+typedef struct {
     pb_point bottom_left;
     float w;
     float h;
 } pb_rect;
 
-typedef struct _pb_shape {
+typedef struct {
     pb_point *points;
     size_t num_points;
     int connected;
@@ -22,7 +22,7 @@ typedef struct _pb_shape {
 /**
  * A vertex in 3D geometry.
  */
-typedef struct _pb_geom_vertex {
+typedef struct {
     // The vertex's position in model space
     float x;
     float y;
