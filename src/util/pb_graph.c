@@ -168,7 +168,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* 
     return 0;
 }
 
-PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph* graph, void const* vert_id) {
+PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph const* graph, void const* vert_id) {
     pb_vertex* out;
     if (!pb_hashmap_get(graph->vertices, vert_id, (void**)&out)) {
         return NULL;
@@ -224,7 +224,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph *graph, void con
     return 0;
 }
 
-PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph *graph, void const* from_id, void const* to_id) {
+PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph const* graph, void const* from_id, void const* to_id) {
     pb_vertex* from;
     pb_vertex* to;
     pb_edge* out;

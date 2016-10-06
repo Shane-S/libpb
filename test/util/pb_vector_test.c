@@ -118,6 +118,32 @@ START_TEST(remove_at)
 }
 END_TEST
 
+START_TEST(insert_at)
+{
+    int items[] = { 1, 2, 3 };
+    int expected[] = { 0, 1, 2, 3 };
+    pb_vector vec;
+    int i;
+    int to_insert = 0;
+
+    pb_vector_init(&vec, sizeof(int), 3);
+
+    for (i = 0; i < 3; ++i) {
+        pb_vector_push_back(&vec, &items[i]);
+    }
+
+    pb_vector_insert_at(&vec, &to_insert, 0);
+
+    ck_assert_msg(vec.size == 4, "vec.size should have been 4, was %lu", vec.size);
+    for (i = 0; i < vec.size; ++i) {
+        int* val = (int*)pb_vector_get_at(&vec, i);
+        ck_assert_msg(*val == expected[i], "vec[%d] should have been %d, was %d", i, expected[i], *val);
+    }
+
+    pb_vector_free(&vec);
+}
+END_TEST
+
 Suite* make_pb_vector_suite(void) {
     Suite* s = suite_create("pb_vector suite");
     TCase* tc_vector_tests;
@@ -129,6 +155,7 @@ Suite* make_pb_vector_suite(void) {
     tcase_add_test(tc_vector_tests, push_back_structs);
     tcase_add_test(tc_vector_tests, expand);
     tcase_add_test(tc_vector_tests, remove_at);
+    tcase_add_test(tc_vector_tests, insert_at);
 
     return s;
 }

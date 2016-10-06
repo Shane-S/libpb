@@ -140,7 +140,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* 
  * @param vert_id The unique identifier associated with the vertex.
  * @return The associated vertex or NULL if there is no vertex associated with that ID.
  */
-PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph* graph, void* vert_id);
+PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph const* graph, void* vert_id);
 
 /**
  * Adds an edge from vertex "from" to vertex "to" in the given graph.
@@ -178,7 +178,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_edge(pb_graph* graph, void* fr
  *
  * @return The edge on success, NULL if the edge didn't exist.
  */
-PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph* graph, void* from_id, void* to_id);
+PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph const* graph, void* from_id, void* to_id);
 
 /**
  * Runs func (with the supplied parameter) on every edge in the graph.

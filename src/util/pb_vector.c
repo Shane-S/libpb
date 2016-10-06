@@ -52,26 +52,46 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_remove_at(pb_vector* vec, unsigned 
 }
 
 static int pb_vector_expand(pb_vector* vec, size_t new_cap) {
-    void* new_items = realloc(vec->items, new_cap);
+    void* new_items = realloc(vec->items, new_cap * vec->item_size);
     if (!new_items) return -1;
     vec->items = new_items;
     return 0;
 }
 
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_push_back(pb_vector* vec, void* item) {   
-    unsigned char* items = (unsigned char*)vec->items;
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item, unsigned i) {
+    unsigned char* items;
+    unsigned char* prev;
+    unsigned char* start;
+    unsigned char* end;
+    unsigned char* cur;
+
     if (vec->size == vec->cap) {
-        size_t new_cap = (size_t)(vec->cap * PB_VECTOR_GROWTH_RATE) * vec->item_size;
+        size_t new_cap = (size_t)(vec->cap * PB_VECTOR_GROWTH_RATE);
         if (pb_vector_expand(vec, new_cap) == -1) {
             return -1;
         }
         vec->cap = new_cap;
-        items = (unsigned char*)vec->items; /* We could have a new pointer, so re-assign to items */
     }
 
-    memcpy(items + (vec->size * vec->item_size), item, vec->item_size);
+    items = (unsigned char*)vec->items;
+    start = items + (vec->item_size * (vec->size - 1));
+    end = items + (vec->item_size * i);
+
+    /* Shift items i through vec->size - 1 up by one */
+    for (cur = start, prev = items + (vec->item_size * vec->size); cur >= end; cur -= vec->item_size) {
+        memcpy(prev, cur, vec->item_size);
+        prev = cur;
+    }
+    
+    /* Copy the item into its position */
+    memcpy(end, item, vec->item_size);
     vec->size++;
+
     return 0;
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_push_back(pb_vector* vec, void* item) {   
+    return pb_vector_insert_at(vec, item, vec->size);
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_free(pb_vector const* vec) {

@@ -49,6 +49,16 @@ PB_UTIL_DECLSPEC void* PB_UTIL_CALL pb_vector_get_at(pb_vector* vec, unsigned i)
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_remove_at(pb_vector* vec, unsigned i);
 
 /**
+ * Inserts an item at the given index.
+ * @param vec  The vector into which the item will be inserted.
+ * @param item A pointer to an item of size vec->item_size that will be inserted into the vector.
+ * @param i    The position at which to insert item. Note that no bounds-checking is performed; the
+ *             position must be 0 <= i < vec->size.
+ * @return     0 on success, -1 on failure (out of memory).
+ */
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item, unsigned i);
+
+/**
  * Adds an element to the back of the vector. The element will be copied by value.
  *
  * @param vec  The vector to which the item will be added.
