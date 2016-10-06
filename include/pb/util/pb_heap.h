@@ -45,7 +45,7 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_heap_free(pb_heap* heap);
  * Adds the given item to the heap.
  * @param heap The heap to which the item should be added.
  * @param item The item to add to the heap.
- * @return Non-zero on success, 0 on failure (out of memory).
+ * @return 0 on success, -1 on failure (out of memory).
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_heap_insert(pb_heap* heap, void* item);
 

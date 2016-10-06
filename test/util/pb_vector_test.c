@@ -144,6 +144,25 @@ START_TEST(insert_at)
 }
 END_TEST
 
+START_TEST(reverse)
+{
+    int items[] = { 1, 2, 3, 4 };
+    int expected[] = { 4, 3, 2, 1 };
+    int i;
+    pb_vector vec;
+
+    pb_vector_init(&vec, sizeof(int), 0);
+    for (i = 0; i < 4; ++i) {
+        pb_vector_push_back(&vec, &items[i]);
+    }
+
+    pb_vector_reverse_no_alloc(&vec, &i);
+    for (i = 0; i < 4; ++i) {
+        int* val = pb_vector_get_at(&vec, i);
+        ck_assert_msg(*val == expected[i], "vec[%d} should have been %d, was %d", i, expected[i], *val);
+    }
+}
+END_TEST
 Suite* make_pb_vector_suite(void) {
     Suite* s = suite_create("pb_vector suite");
     TCase* tc_vector_tests;
@@ -156,6 +175,7 @@ Suite* make_pb_vector_suite(void) {
     tcase_add_test(tc_vector_tests, expand);
     tcase_add_test(tc_vector_tests, remove_at);
     tcase_add_test(tc_vector_tests, insert_at);
+    tcase_add_test(tc_vector_tests, reverse);
 
     return s;
 }

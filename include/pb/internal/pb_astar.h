@@ -9,13 +9,12 @@ typedef float(*pb_astar_heuristic)(pb_vertex const* vertex, pb_vertex const* goa
 
 /**
  * An implementation of A* pathfinding for the pb_sq_house algorithm.
- * @param graph     The graph to search.
  * @param start     The start vertex.
  * @param goal      The goal vertex.
  * @param heuristic The heuristic function used to estimate a vertex's distance from the goal.
  *
  * @return The list of vertices (in order from start to goal) comprising the shortest path.
  */
-pb_vector* pb_astar(pb_graph const* graph, pb_vertex const* start, pb_vertex const* goal);
+pb_vector* pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic heuristic);
 
 #endif /* PB_ASTAR_H */

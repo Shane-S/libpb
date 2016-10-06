@@ -94,6 +94,39 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_push_back(pb_vector* vec, void* item
     return pb_vector_insert_at(vec, item, vec->size);
 }
 
+PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_reverse_no_alloc(pb_vector* vec, void* tmp) {
+    unsigned char* front;
+    unsigned char* back;
+    unsigned char* items = vec->items;
+
+    for (front = items, back = items + (vec->item_size * (vec->size - 1)); front < back; front += vec->item_size, back -= vec->item_size) {
+        memcpy(tmp, front, vec->item_size);
+        memcpy(front, back, vec->item_size);
+        memcpy(back, tmp, vec->item_size);
+    }
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_reverse(pb_vector* vec) {
+    unsigned char* tmp;
+    unsigned char* items = (unsigned char*)vec->items;
+    
+    /* No space; use a temporary buffer */
+    if (vec->size == vec->cap) {
+        tmp = malloc(vec->item_size);
+        if (!tmp) {
+            return -1;
+        } else {
+            pb_vector_reverse_no_alloc(vec, tmp);
+            return 0;
+        }
+    }
+
+    /* There's some space at the end of the vector; use that as scratch space */
+    tmp = items + (vec->item_size * vec->size);
+    pb_vector_reverse_no_alloc(vec, tmp);
+    return 0;
+}
+
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_free(pb_vector const* vec) {
     free(vec->items);
 }
