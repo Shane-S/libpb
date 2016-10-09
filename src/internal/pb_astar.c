@@ -17,11 +17,11 @@ int pb_astar_node_cmp(void* node1, void* node2) {
     pb_astar_node* n1 = (pb_astar_node*)node1;
     pb_astar_node* n2 = (pb_astar_node*)node2;
 
-    float t_cost1 = n1->g_cost + n1->h_cost;
-    float t_cost2 = n2->g_cost + n2->h_cost;
-    float diff = t_cost1 - t_cost2;
+    float total_cost1 = n1->g_cost + n1->h_cost;
+    float total_cost2 = n2->g_cost + n2->h_cost;
+    float diff = total_cost1 - total_cost2;
     
-    /* Theoretically this could cause problem if floats are infinity, NaN, etc., but I won't check that here */
+    /* Theoretically this could cause problem if floats are infinity, NaN, etc. Too bad */
     if (diff < 0) {
         return -1;
     } else if (diff > 0) {
@@ -67,27 +67,92 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
         }
     }
 
+    /* Every other case lol */
     start_node = malloc(sizeof(pb_astar_node));
     if (!start_node) {
         goto err_return;
     }
 
-    /* Every other case lol */
     start_node->vert = start;
     start_node->g_cost = 0.f;
-    start_node->h_cost = h(start, goal);
+    start_node->h_cost = heuristic(start, goal);
     start_node->parent = NULL;
     if (pb_heap_insert(frontier, start_node) == -1 || pb_hashmap_put(visited, start, start_node) == -1) {
         goto err_return;
     }
 
+    pb_astar_node* node = start_node;
     while (frontier->size) {
-        pb_astar_node* node = (pb_astar_node*)pb_heap_get_min(frontier);
+        unsigned i;
+        
+        node = (pb_astar_node*)pb_heap_get_min(frontier);
 
         if (node->vert == goal) {
+            found_path = 1;
             break;
         }
+
+        /* Check out all neighbouring nodes */
+        for (i = 0; i < node->vert->edges_size; ++i) {
+            pb_edge* edge = node->vert->edges[i];
+            float g_cost_neighbour = node->g_cost + edge->weight;
+            
+            /* Add the node to the visited map if it hasn't been visited already; otherwise, update its cost if appropriate */
+            pb_astar_node* neighbour_node;
+            if (pb_hashmap_get(visited, edge->to, &neighbour_node) == -1) {
+                neighbour_node = malloc(sizeof(pb_astar_node));
+                if (!neighbour_node) {
+                    goto err_return;
+                }
+
+                /* Add the neighbour to the visited list */
+                if (pb_hashmap_put(visited, edge->to, neighbour_node) == -1) {
+                    free(neighbour_node);
+                    goto err_return;
+                }
+
+                neighbour_node->parent = node;
+                neighbour_node->vert = edge->to;
+                neighbour_node->g_cost = g_cost_neighbour;
+                neighbour_node->h_cost = heuristic(edge->to, goal);
+
+                /* Add the neighbour to the frontier and keep searching */
+                if (pb_heap_insert(frontier, neighbour_node) == -1) {
+                    goto err_return;
+                }
+            } else {
+                /* Update the neighbour's info if we found a better path to it */
+                if (g_cost_neighbour < neighbour_node->g_cost) {
+                    neighbour_node->g_cost = g_cost_neighbour;
+                    neighbour_node->parent = node;
+                }
+            }
+        }
     }
+
+    if (!found_path) {
+        return 0;
+    }
+
+    /* Push all the elements onto the list */
+    while (node) {
+        if (pb_vector_push_back(result, &node->vert) == -1) {
+            goto err_return;
+        }
+        node = node->parent;
+    }
+
+    /* Reverse the list to give the correct path from start to goal */
+    {
+        pb_vertex* temp;
+        pb_vector_reverse_no_alloc(result, &temp);
+    }
+
+    pb_hashmap_for_each(visited, pb_hashmap_free_entry_data, 0);
+    pb_hashmap_free(visited);
+    pb_heap_free(frontier);
+    *path = result;
+    return 1;
 
 err_return:
     pb_hashmap_for_each(visited, pb_hashmap_free_entry_data, 0);

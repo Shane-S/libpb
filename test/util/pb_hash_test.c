@@ -101,12 +101,12 @@ START_TEST(expand_test)
     ck_assert_msg(map->cap == 11 /* Next prime >= 1.5 * cap */, "Capacity should have been 11, was %u", map->cap);
     ck_assert_msg(map->size == 6, "Map's size should have been 6, was %u", map->size);
 
-    all_contained = pb_hashmap_get(map, (void*)"test0", (void*)&out) &&
-		            pb_hashmap_get(map, (void*)"test1", (void*)&out) &&
-                    pb_hashmap_get(map, (void*)"test2", (void*)&out) &&
-                    pb_hashmap_get(map, (void*)"test3", (void*)&out) &&
-                    pb_hashmap_get(map, (void*)"test4", (void*)&out) &&
-                    pb_hashmap_get(map, (void*)"test5", (void*)&out);
+    all_contained = pb_hashmap_get(map, (void*)"test0", (void*)&out) == 0 &&
+		            pb_hashmap_get(map, (void*)"test1", (void*)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test2", (void*)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test3", (void*)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test4", (void*)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test5", (void*)&out) == 0;
 
     ck_assert_msg(all_contained, "Values were not properly transferred to new array.");
 }

@@ -17,7 +17,7 @@
 */
 
 #ifndef PB_GRAPH_H
-#define PH_GRAPH_H
+#define PB_GRAPH_H
 
 #include <stddef.h>
 #include <pb/util/pb_util_exports.h>

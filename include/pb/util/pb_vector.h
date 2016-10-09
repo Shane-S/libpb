@@ -31,7 +31,7 @@ extern "C" {
      *
      * @param item_size The size (in chars, e.g. from sizeof(elem)) of each element in the vector.
      * @param cap       The vector's initial capacity. Pass 0 to use PB_VECTOR_DEFAULT_CAPACITY.
-     * @return A pointer to pb_vector on success, NULL on failure.
+     * @return A pointer to pb_vector on success, NULL on failure (out of memory).
      */
     PB_UTIL_DECLSPEC pb_vector* PB_UTIL_CALL pb_vector_create(size_t item_size, size_t cap);
 
@@ -49,7 +49,7 @@ extern "C" {
      * @param item A pointer to an item of size vec->item_size that will be inserted into the vector.
      * @param i    The position at which to insert item. Note that no bounds-checking is performed; the
      *             position must be 0 <= i < vec->size.
-     * @return     0 on success, -1 on failure (out of memory).
+     * @return     0 on success, -1 on if out of memory.
      */
     PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item, unsigned i);
 
@@ -78,7 +78,7 @@ extern "C" {
      *
      * @param vec The vector to reverse.
      *
-     * @return 0 on success, -1 on out of memory.
+     * @return 0 on success, -1 if out of memory.
      */
     PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_reverse(pb_vector* vec);
 

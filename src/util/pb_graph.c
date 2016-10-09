@@ -143,7 +143,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* ver
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* vert_id) {
     pb_vertex* vert;
     size_t i;
-    if (!pb_hashmap_get(graph->vertices, vert_id, (void**)&vert)) {
+    if (pb_hashmap_get(graph->vertices, vert_id, (void**)&vert) == -1) {
         return -1; /* There was no vertex with the given ID in this graph */
     }
 
@@ -170,7 +170,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* 
 
 PB_UTIL_DECLSPEC pb_vertex const* PB_UTIL_CALL pb_graph_get_vertex(pb_graph const* graph, void const* vert_id) {
     pb_vertex* out;
-    if (!pb_hashmap_get(graph->vertices, vert_id, (void**)&out)) {
+    if (pb_hashmap_get(graph->vertices, vert_id, (void**)&out) == -1) {
         return NULL;
     }
 
@@ -230,15 +230,15 @@ PB_UTIL_DECLSPEC pb_edge const* PB_UTIL_CALL pb_graph_get_edge(pb_graph const* g
     pb_edge* out;
     pb_edge temp;
 
-    if (!pb_hashmap_get(graph->vertices, from_id, (void**)&from) ||
-        !pb_hashmap_get(graph->vertices, to_id, (void**)&to)) {
+    if (pb_hashmap_get(graph->vertices, from_id, (void**)&from) == -1 ||
+        pb_hashmap_get(graph->vertices, to_id, (void**)&to) == -1) {
         return NULL;
     }
 
     temp.from = from;
     temp.to = to;
 
-    if (!pb_hashmap_get(graph->edges, (void*)&temp, (void**)&out)) {
+    if (pb_hashmap_get(graph->edges, (void*)&temp, (void**)&out) == -1) {
         return NULL;
     }
 
@@ -250,7 +250,6 @@ static void free_hashed_vertex(pb_hashmap_entry* entry, void* unused) {
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_graph_free(pb_graph *graph) {
-    size_t i;
     pb_hashmap_for_each(graph->vertices, free_hashed_vertex, NULL);
     pb_hashmap_free(graph->vertices);
 

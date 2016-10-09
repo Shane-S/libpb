@@ -42,7 +42,7 @@ typedef void(*pb_hash_iterator_func)(pb_hashmap_entry* entry, void* param);
  * Iterator function to free data held by map entries. Pass this to pb_hashmap_for_each to free all data.
  *
  * @param entry    The entry being processed.
- * @param free_key If this is 0, frees entry->val only; if it's non-zero, frees both entry->key and entry->val.
+ * @param free_key If this is a NULL pointer, frees entry->val only; otherwise, frees both entry->key and entry->val.
  */
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hashmap_free_entry_data(pb_hashmap_entry* entry, void* free_key);
 
@@ -50,12 +50,14 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hashmap_free_entry_data(pb_hashmap_entry* 
  * Creates a new, empty hash map with the given hash and equals functions.
  * @param hash   A hash function to determine where an item will go in the array.
  * @param key_eq A function that compares two keys for equality.
- * @return An empty hash map with the given hash and equals functions.
+ * @return An empty hash map with the given hash and equals functions or NULL if out of memory.
  */
 PB_UTIL_DECLSPEC pb_hashmap* PB_UTIL_CALL pb_hashmap_create(pb_hash_func hash, pb_hash_eq_func key_eq);
 
 /**
  * Frees the given hash map, but not its contents (the actual keys and values).
+ * Note that the actual pb_hashmap* will be freed in this function since it is expected
+ * that maps will be created only using pb_hashmap_create (as they should be).
  *
  * @param map The map to be freed.
  */
@@ -68,7 +70,7 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hashmap_free(pb_hashmap* map);
  * @param map The map into which to insert the item.
  * @param key The key to associate with the item.
  * @param val The item to insert into the map.
- * @return 0 on success, -1 on OOM. This is inconsistent with the rest of the hashmap API, but I'll overhaul that later.
+ * @return 0 on success, -1 on OOM.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* key, void const* val);
 
@@ -78,7 +80,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* ke
  * @param map The map to search for the key.
  * @param key The key for which to search.
  * @param out A variable to hold the associated value on success.
- * @return 0 if the key is not found, 1 if it is.
+ * @return 0 if the key is found, -1 otherwise.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_get(pb_hashmap* map, void const* key, void** out);
 
@@ -87,7 +89,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_get(pb_hashmap* map, void const* ke
  * 
  * @param map The map from which the item will be removed.
  * @param key The key associated with the item to remove.
- * @return Whether there was actually an item with that key in the map.
+ * @return 0 if the key was removed, -1 if there was no matching key in the map.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_remove(pb_hashmap* map, void const* key);
 

@@ -110,6 +110,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_reverse(pb_vector* vec) {
             return -1;
         } else {
             pb_vector_reverse_no_alloc(vec, tmp);
+            free(tmp);
             return 0;
         }
     }

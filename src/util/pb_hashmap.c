@@ -212,7 +212,7 @@ static int resize_hash(pb_hashmap* map, size_t new_cap) {
         map->entries = cur_entries;
         map->states = cur_states;
         map->cap = cur_cap;
-        return 0;
+        return -1;
     }
     
     /* Loop over the entries, moving all elements to the new list */
@@ -224,7 +224,7 @@ static int resize_hash(pb_hashmap* map, size_t new_cap) {
 
     free(cur_entries);
     free(cur_states);
-    return 1;
+    return 0;
 }
 
 /**
@@ -233,9 +233,9 @@ static int resize_hash(pb_hashmap* map, size_t new_cap) {
  * @param map The map to search.
  * @param key The key for which to search.
  * @param out A variable to hold the position (if any).
- * @return 0 if the key wasn't found, 1 if it was (with the position stored in out).
+ * @return -1 if the key wasn't found or the position if it was .
  */
-static int get_pos(pb_hashmap* map, void const* key, size_t* out) {
+static size_t get_pos(pb_hashmap* map, void const* key) {
     size_t pos = map->hash(key);
     size_t probe_pos;
     size_t i;
@@ -244,18 +244,17 @@ static int get_pos(pb_hashmap* map, void const* key, size_t* out) {
         probe_pos %= map->cap;
 
         if(map->states[probe_pos] == EMPTY) {
-            return 0;
+            return -1;
         } else if(map->key_eq(map->entries[probe_pos].key, key)) {
             if (map->states[probe_pos] == FULL) {
-                *out = probe_pos;
-                return 1;
+                return probe_pos;
             } else {
-                return 0;
+                return -1;
             }
         }
     }
         
-    return 0;
+    return -1;
 }
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* key, void const* val) {
@@ -264,17 +263,18 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* ke
     size_t i;
     
     /* If the map already contains the key, update its associated value */
-    if(get_pos(map, key, &pos)) {
+    if((pos = get_pos(map, key)) != -1) {
         map->entries[pos].val = val;
-        return 1;
+        return 0;
     }
     
     /* Expand if necessary */
     if(map->size == map->expand_num) {
         size_t next_cap = next_prime((uint32_t)(map->cap / LOAD_FACTOR));
         map->size++;
+        map->expand_num = (uint32_t)(next_cap * LOAD_FACTOR);
         
-        if(!resize_hash(map, next_cap)) {
+        if(resize_hash(map, next_cap) == -1) {
             map->size--;
             return -1;
         }
@@ -299,21 +299,21 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* ke
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_get(pb_hashmap* map, void const* key, void** val) {
     size_t pos;
-    if(!get_pos(map, key, &pos)) return 0;
+    if((pos = get_pos(map, key, &pos)) == -1) return -1;
     
     *val = map->entries[pos].val;
-    return 1;
+    return 0;
 }
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_remove(pb_hashmap* map, void const* key) {
     size_t pos;
-    if(!get_pos(map, key, &pos)) return 0;
+    if ((pos = get_pos(map, key, &pos)) == -1) return -1;
     
     map->states[pos] = DELETED;
     map->size--;
     
     /* TODO: Resize to smaller map to save memory where necessary */
-    return 1;
+    return 0;
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_hashmap_for_each(pb_hashmap* map, pb_hash_iterator_func func, void* param) {

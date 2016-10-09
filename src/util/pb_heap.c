@@ -63,7 +63,7 @@ int pb_heap_insert(pb_heap* heap, void* item) {
     }
     
     heap->size++;
-    for(; heap->cmp(heap->items[(hole - 1) / 2], item) > 0 && hole > 0; hole = (hole - 1) / 2) {
+    for (; hole > 0 && heap->cmp(heap->items[(hole - 1) / 2], item) > 0; hole = (hole - 1) / 2) {
         heap->items[hole] = heap->items[(hole - 1) / 2];
     }
     

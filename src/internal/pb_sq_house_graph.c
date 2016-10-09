@@ -216,13 +216,12 @@ pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor*
     pb_graph_for_each_vertex(floor_graph, process_disconnected_room, &outer_params);
 
     if (error_occurred) {
-        pb_vector_free(disconnected);
-        free(disconnected);
+        pb_hashmap_free(disconnected);
         return NULL;
     } else {
         /* Make sure that the first room isn't in the disconnected list */
         pb_room* first;
-        if (pb_hashmap_get(disconnected, &floor->rooms[0], &first)) {
+        if (pb_hashmap_get(disconnected, &floor->rooms[0], &first) == 0) {
             pb_hashmap_remove(disconnected, &floor->rooms[0]);
         }
         return disconnected;
