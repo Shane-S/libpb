@@ -28,13 +28,6 @@ PB_UTIL_DECLSPEC pb_vector* PB_UTIL_CALL pb_vector_create(size_t item_size, size
     return vec;
 }
 
-PB_UTIL_DECLSPEC void* PB_UTIL_CALL pb_vector_get_at(pb_vector* vec, unsigned i) {
-    unsigned char* items = (unsigned char*)vec->items;
-    unsigned char* item_i = items + (i * vec->item_size);
-    
-    return (void*)item_i;
-}
-
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_remove_at(pb_vector* vec, unsigned i) {
     unsigned char* items = (unsigned char*)vec->items;
     unsigned char* prev = items + (vec->item_size * i);

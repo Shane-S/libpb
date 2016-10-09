@@ -337,8 +337,8 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
             num_rooms_added += current_room;
             stair_index = house->floors[current_floor].num_rooms;
             
-            if (!pb_rect_to_pb_shape(&current_stair_rect, &current_stair_shape) ||
-                !pb_rect_to_pb_shape(&next_stair_rect, &next_stair_shape)) {
+            if (pb_rect_to_pb_shape(&current_stair_rect, &current_stair_shape) == -1 ||
+                pb_rect_to_pb_shape(&next_stair_rect, &next_stair_shape) == -1) {
                 /* These were already 0-initialised earlier, so we can safely try to free both of them */
                 pb_shape_free(&current_stair_shape);
                 pb_shape_free(&next_stair_shape);
@@ -358,7 +358,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
                 goto err_return;
             }
 
-            house->floors[current_floor].rooms[stair_index + 1].room_shape.points = NULL; /* Stop here when freeing if we go to err_return */
+            house->floors[current_floor].rooms[stair_index + 1].room_shape.points.items = NULL; /* Stop here when freeing if we go to err_return */
             
             floor_rects[current_floor] = current_floor_rect;
             current_floor_rect = next_floor_rect;
@@ -377,7 +377,7 @@ err_return:
     while (house->num_floors) {
         /* Only the shapes in rooms with non-null points arrays (i.e. the stairs) actually need to be freed */
         unsigned int i;
-        for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].room_shape.points; ++i) {
+        for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].room_shape.points.items; ++i) {
             pb_shape_free(&house->floors[house->num_floors - 1].rooms[i].room_shape);
         }
         free(house->floors[house->num_floors - 1].rooms);
@@ -403,7 +403,7 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
 
     /* If there's only one room on the floor besides the stairs, it will take up the entire rectangle regardless */
     if (num_rooms == 1) {
-        if (!pb_rect_to_pb_shape(floor_rect, &floor->rooms[floor->num_rooms - 1].room_shape)) {
+        if (pb_rect_to_pb_shape(floor_rect, &floor->rooms[floor->num_rooms - 1].room_shape) == -1) {
             return -1;
         }
         floor->rooms[floor->num_rooms - 1].data = (void*)rooms[0];
@@ -436,9 +436,9 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
     /* Convert the rectangles from pb_squarify to pb_shapes for each room */
     for (i = num_stairs; i < floor->num_rooms; ++i) {
         floor->rooms[i].data = (void*)rooms[i - num_stairs];
-        floor->rooms[i].room_shape.points = NULL;
+        floor->rooms[i].room_shape.points.items = NULL;
 
-        if (!pb_rect_to_pb_shape(&(rects[i - num_stairs]), &(floor->rooms[i].room_shape))) {
+        if (pb_rect_to_pb_shape(&(rects[i - num_stairs]), &(floor->rooms[i].room_shape)) == -1) {
             goto err_return;
         }
     }
@@ -453,10 +453,10 @@ err_return:
 
     /* The caller will be responsible for cleaning all other floors up */
     for (i = 0; i < floor->num_rooms; ++i) {
-        if (floor->rooms[i].room_shape.points == NULL) {
+        if (floor->rooms[i].room_shape.points.items == NULL) {
             break;
         } else {
-            free(floor->rooms[i].room_shape.points);
+            pb_shape_free(&floor->rooms[i].room_shape);
         }
     }
 

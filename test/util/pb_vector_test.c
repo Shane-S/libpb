@@ -29,6 +29,7 @@ START_TEST(push_back_ints)
 {
     int items[] = { 1, 2, 3 };
     pb_vector vec;
+    int* vec_ints;
     int i;
 
     pb_vector_init(&vec, sizeof(int), 0);
@@ -37,10 +38,11 @@ START_TEST(push_back_ints)
         pb_vector_push_back(&vec, &items[i]);
     }
     ck_assert_msg(vec.size == 3, "vec.size should have been 3, was %lu", vec.size);
-
+    
+    vec_ints = (int*)vec.items;
     for (i = 0; i < 3; ++i) {
-        int* val = (int*)pb_vector_get_at(&vec, i);
-        ck_assert_msg(*val == items[i], "vec[%d] should have been %d, was %d", i, items[i], *val);
+        int val = vec_ints[i];
+        ck_assert_msg(val == items[i], "vec[%d] should have been %d, was %d", i, items[i], val);
     }
 
     pb_vector_free(&vec);
@@ -55,6 +57,7 @@ START_TEST(push_back_structs)
         {4, 5}
     };
     pb_vector vec;
+    test_struct* vec_structs;
     int i;
 
     pb_vector_init(&vec, sizeof(test_struct), 0);
@@ -63,8 +66,9 @@ START_TEST(push_back_structs)
         pb_vector_push_back(&vec, &items[i]);
     }
 
+    vec_structs = (test_struct*)vec.items;
     for (i = 0; i < 3; ++i) {
-        test_struct* ts = (test_struct*)pb_vector_get_at(&vec, i);
+        test_struct* ts = vec_structs + i;
         ck_assert_msg(ts->x == items[i].x && ts->y == items[i].y, "vec[%d] should have been {%d, %d}, was {%d, %d}", i, items[i].x, items[i].y, ts->x, ts->y);
     }
 
@@ -97,6 +101,7 @@ START_TEST(remove_at)
 {
     int items[] = { 1, 2, 3 };
     pb_vector vec;
+    int* vec_ints;
     int i;
 
     pb_vector_init(&vec, sizeof(int), 3);
@@ -108,10 +113,10 @@ START_TEST(remove_at)
     pb_vector_remove_at(&vec, 0);
     ck_assert_msg(vec.size == 2, "vec.size should have been 2, was %lu", vec.size);
 
-
+    vec_ints = (int*)vec.items;
     for (i = 0; i < vec.size; ++i) {
-        int* val = (int*)pb_vector_get_at(&vec, i);
-        ck_assert_msg(*val == items[i + 1], "vec[%d] should have been %d, was %d", i, items[i + 1], *val);
+        int val = vec_ints[i];
+        ck_assert_msg(val == items[i + 1], "vec[%d] should have been %d, was %d", i, items[i + 1], val);
     }
 
     pb_vector_free(&vec);
@@ -123,6 +128,7 @@ START_TEST(insert_at)
     int items[] = { 1, 2, 3 };
     int expected[] = { 0, 1, 2, 3 };
     pb_vector vec;
+    int* vec_ints;
     int i;
     int to_insert = 0;
 
@@ -135,9 +141,10 @@ START_TEST(insert_at)
     pb_vector_insert_at(&vec, &to_insert, 0);
 
     ck_assert_msg(vec.size == 4, "vec.size should have been 4, was %lu", vec.size);
+    vec_ints = (int*)vec.items;
     for (i = 0; i < vec.size; ++i) {
-        int* val = (int*)pb_vector_get_at(&vec, i);
-        ck_assert_msg(*val == expected[i], "vec[%d] should have been %d, was %d", i, expected[i], *val);
+        int val = vec_ints[i];
+        ck_assert_msg(val == expected[i], "vec[%d] should have been %d, was %d", i, expected[i], val);
     }
 
     pb_vector_free(&vec);
@@ -150,6 +157,7 @@ START_TEST(reverse)
     int expected[] = { 4, 3, 2, 1 };
     int i;
     pb_vector vec;
+    int* vec_ints;
 
     pb_vector_init(&vec, sizeof(int), 0);
     for (i = 0; i < 4; ++i) {
@@ -157,9 +165,10 @@ START_TEST(reverse)
     }
 
     pb_vector_reverse_no_alloc(&vec, &i);
+    vec_ints = (int*)vec.items;
     for (i = 0; i < 4; ++i) {
-        int* val = pb_vector_get_at(&vec, i);
-        ck_assert_msg(*val == expected[i], "vec[%d} should have been %d, was %d", i, expected[i], *val);
+        int val = vec_ints[i];
+        ck_assert_msg(val == expected[i], "vec[%d} should have been %d, was %d", i, expected[i], val);
     }
 }
 END_TEST

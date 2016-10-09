@@ -31,29 +31,30 @@ int pb_astar_node_cmp(void* node1, void* node2) {
     }
 }
 
-pb_vector* pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic heuristic) {
+int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic heuristic, pb_vector** path) {
     pb_vector* result;
     pb_heap* frontier;
     pb_hashmap* visited;
 
     pb_astar_node* start_node;
+    int found_path = 0;
 
     result = pb_vector_create(sizeof(pb_vertex*), 0);
     if (!result) {
-        return NULL;
+        return 0;
     }
 
     frontier = pb_heap_create(pb_astar_node_cmp, 0);
     if (!frontier) {
         pb_vector_free(result);
-        return NULL;
+        return 0;
     }
 
     visited = pb_hashmap_create(pb_pointer_hash, pb_pointer_eq);
     if (!visited) {
         pb_vector_free(result);
         pb_heap_free(frontier);
-        return NULL;
+        return 0;
     }
 
     /* The easy case */
@@ -61,7 +62,8 @@ pb_vector* pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heur
         if (pb_vector_push_back(result, start) == -1) {
             goto err_return;
         } else {
-            return result;
+            *path = result;
+            return 1;
         }
     }
 
@@ -92,5 +94,5 @@ err_return:
     pb_hashmap_free(visited);
     pb_vector_free(result);
     pb_heap_free(frontier);
-    return NULL;
+    return 0;
 }

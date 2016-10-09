@@ -36,15 +36,6 @@ extern "C" {
     PB_UTIL_DECLSPEC pb_vector* PB_UTIL_CALL pb_vector_create(size_t item_size, size_t cap);
 
     /**
-     * Retrieves the element at i. Note that no bounds-checking is performed.
-     *
-     * @param vec The vector from which to retrieve an item.
-     * @param i   The item's position in vec.
-     * @return    The item at vec[i].
-     */
-    PB_UTIL_DECLSPEC void* PB_UTIL_CALL pb_vector_get_at(pb_vector* vec, unsigned i);
-
-    /**
      * Removes the element at i. Note that no bounds-checking is performed.
      *
      * @param vec The vector from which the item will be removed.

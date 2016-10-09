@@ -17,6 +17,8 @@ START_TEST(rect_to_shape)
         {20.f, 0.f},
         {20.f, 10.f}
     };
+    pb_point* points;
+    char* connected;
     int i;
 
     rect.bottom_left.x = 0;
@@ -25,11 +27,17 @@ START_TEST(rect_to_shape)
     rect.w = 20;
 
     pb_rect_to_pb_shape(&rect, &shape);
-    ck_assert_msg(shape.num_points == 4, "Shape should have had 4 points, instead had %u points", shape.num_points);
+    ck_assert_msg(shape.points.size == 4, "Shape should have had 4 points, instead had %u points", shape.points.size);
+    ck_assert_msg(shape.connected.size == 4, "Shape should have had 4 connected entries, instead had %u", shape.connected.size);
 
+    points = (pb_point*)shape.points.items;
+    connected = (char*)shape.connected.items;
     for (i = 0; i < 4; ++i) {
-        ck_assert_msg(shape.points[i].x == expected[i].x && shape.points[i].y == expected[i].y,
-                      "Point %d should have been {%f, %f}, was {%f, %f}", i, expected[i].x, expected[i].y, shape.points[i].x, shape.points[i].y);
+        ck_assert_msg(points[i].x == expected[i].x && points[i].y == expected[i].y,
+            "Point %d should have been {%f, %f}, was {%f, %f}",
+            i, expected[i].x, expected[i].y, points[i].x, points[i].y);
+
+        ck_assert_msg(connected[i] == 1, "Connected[%d] should have been 1, was %c", i, connected[i]);
     }
 }
 END_TEST
@@ -37,29 +45,30 @@ END_TEST
 START_TEST(shape_to_rect_basic) {
     pb_shape big_old_rectangle;
     pb_rect out;
+    pb_point* points;
 
-    big_old_rectangle.points = malloc(sizeof(pb_point) * 4);
-    big_old_rectangle.num_points = 4;
-    big_old_rectangle.connected = 1;
+    pb_shape_init(&big_old_rectangle, 4);
+    big_old_rectangle.points.size = 4;
+    points = (pb_point*)big_old_rectangle.points.items;
 
-    big_old_rectangle.points[0].x = 10;
-    big_old_rectangle.points[0].y = 100;
+    points[0].x = 10;
+    points[0].y = 100;
 
-    big_old_rectangle.points[1].x = 10;
-    big_old_rectangle.points[1].y = 0;
+    points[1].x = 10;
+    points[1].y = 0;
 
-    big_old_rectangle.points[2].x = 120;
-    big_old_rectangle.points[2].y = 0;
+    points[2].x = 120;
+    points[2].y = 0;
 
-    big_old_rectangle.points[3].x = 120;
-    big_old_rectangle.points[3].y = 100;
+    points[3].x = 120;
+    points[3].y = 100;
 
     pb_shape_to_pb_rect(&big_old_rectangle, &out);
-    ck_assert_msg(out.bottom_left.x == 10 && out.bottom_left.y == 0, "Rectangle's top-left should have been {%10.0, %100.0}, was {%f, %f}", out.bottom_left.x, out.bottom_left.y);
+    ck_assert_msg(out.bottom_left.x == 10 && out.bottom_left.y == 0, "Rectangle's bottom-left should have been {10.0, 100.0}, was {%f, %f}", out.bottom_left.x, out.bottom_left.y);
     ck_assert_msg(out.w == 110, "Width should have been 110, was %u", out.w);
     ck_assert_msg(out.h == 100, "Height should have been 100, was %u", out.h);
 
-    free(big_old_rectangle.points);
+    pb_shape_free(&big_old_rectangle);
 }
 END_TEST
 
@@ -67,7 +76,7 @@ START_TEST(shape_to_rect_bad_shape) {
     pb_shape fake;
     pb_rect out_fake;
 
-    fake.num_points = 3;
+    fake.points.size = 1;
     ck_assert_msg(pb_shape_to_pb_rect(&fake, &out_fake) == 0, "pb_shape_to_rect should have failed with 3-point shape but succeeded.");
 }
 END_TEST

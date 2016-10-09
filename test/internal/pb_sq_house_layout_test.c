@@ -179,10 +179,10 @@ END_TEST
 START_TEST(layout_stairs_three_floors)
 {
     /*
-    *  Given a house specification with {w = 30, h = 30, num_rooms = 3, stair_width = 7} and room specifications containing one room {max_instances = 3, area = 690}
-    *  When I invoke pb_sq_house_layout_stairs
-    *  Then the result should be 3 rectangles with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
-    */
+     *  Given a house specification with {w = 30, h = 30, num_rooms = 3, stair_width = 7} and room specifications containing one room {max_instances = 3, area = 690}
+     *  When I invoke pb_sq_house_layout_stairs
+     *  Then the result should be 3 rectangles with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
+     */
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
     char* rooms[] = { "Living Room", "Living Room", "Living Room" };
@@ -375,7 +375,7 @@ START_TEST(layout_floor_single_room)
     ck_assert_msg(assert_close_enough(result.w, floor_rect.w, 5), "Result's width should have been about %.3f, was %.3f", floor_rect.w, result.w);
     ck_assert_msg(assert_close_enough(result.h, floor_rect.h, 5), "Result's height should have been about %.3f, was %.3f", floor_rect.h, result.h);
 
-    free(f.rooms[0].room_shape.points);
+    pb_shape_free(&f.rooms[0].room_shape);
     pb_hashmap_free(map);
 }
 END_TEST

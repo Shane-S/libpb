@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include <pb/util/pb_util_exports.h>
+#include <pb/util/pb_vector.h>
 
 typedef struct {
     float x;
@@ -14,9 +15,8 @@ typedef struct {
 } pb_rect;
 
 typedef struct {
-    pb_point *points;
-    size_t num_points;
-    int connected;
+    pb_vector points;
+    pb_vector connected;
 } pb_shape;
 
 /**

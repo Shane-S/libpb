@@ -18,11 +18,11 @@ START_TEST(get_shared_wall_right)
 
     int result;
     
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_RIGHT, "result should have been 2 (right), was %d", result);
@@ -43,11 +43,11 @@ START_TEST(get_shared_wall_left)
 
     int result;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_LEFT, "result should have been 3 (left), was %d", result);
@@ -68,11 +68,11 @@ START_TEST(get_shared_wall_top)
 
     int result;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_TOP, "result should have been 1 (top), was %d", result);
@@ -93,11 +93,11 @@ START_TEST(get_shared_wall_bottom)
 
     int result;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_BOTTOM, "result should have been 4 (bottom), was %d", result);
@@ -118,11 +118,11 @@ START_TEST(get_shared_wall_none)
 
     int result;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == -1, "result should have been -1 (none), was %d", result);
@@ -148,11 +148,11 @@ START_TEST(get_wall_overlap_top)
     pb_room r1;
     pb_room r2;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     pb_sq_house_get_wall_overlap(&r1, &r2, SQ_HOUSE_TOP, &start, &end);
 
@@ -180,11 +180,11 @@ START_TEST(get_wall_overlap_right)
     pb_room r1;
     pb_room r2;
 
-    r1.room_shape.points = &points1[0];
-    r1.room_shape.num_points = 4;
+    r1.room_shape.points.items = &points1[0];
+    r1.room_shape.points.size = 4;
 
-    r2.room_shape.points = &points2[0];
-    r2.room_shape.num_points = 4;
+    r2.room_shape.points.items = &points2[0];
+    r2.room_shape.points.size = 4;
 
     pb_sq_house_get_wall_overlap(&r1, &r2, SQ_HOUSE_RIGHT, &start, &end);
 
