@@ -13,24 +13,6 @@ struct pb_astar_node {
     float h_cost; /* Estimated cost from this vertex to the goal */
 };
 
-int pb_astar_node_cmp(void* node1, void* node2) {
-    pb_astar_node* n1 = (pb_astar_node*)node1;
-    pb_astar_node* n2 = (pb_astar_node*)node2;
-
-    float total_cost1 = n1->g_cost + n1->h_cost;
-    float total_cost2 = n2->g_cost + n2->h_cost;
-    float diff = total_cost1 - total_cost2;
-    
-    /* Theoretically this could cause problem if floats are infinity, NaN, etc. Too bad */
-    if (diff < 0) {
-        return -1;
-    } else if (diff > 0) {
-        return 1;
-    } else {
-        return 0;
-    }
-}
-
 int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic heuristic, pb_vector** path) {
     pb_vector* result;
     pb_heap* frontier;
@@ -44,7 +26,7 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
         return 0;
     }
 
-    frontier = pb_heap_create(pb_astar_node_cmp, 0);
+    frontier = pb_heap_create(0);
     if (!frontier) {
         pb_vector_free(result);
         return 0;
@@ -77,12 +59,12 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
     start_node->g_cost = 0.f;
     start_node->h_cost = heuristic(start, goal);
     start_node->parent = NULL;
-    if (pb_heap_insert(frontier, start_node) == -1 || pb_hashmap_put(visited, start, start_node) == -1) {
+    if (pb_heap_insert(frontier, start_node, start_node->g_cost + start_node->h_cost) == -1 || pb_hashmap_put(visited, start, start_node) == -1) {
         goto err_return;
     }
 
     pb_astar_node* node = start_node;
-    while (frontier->size) {
+    while (frontier->items.size) {
         unsigned i;
         
         node = (pb_astar_node*)pb_heap_get_min(frontier);
@@ -117,14 +99,15 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
                 neighbour_node->h_cost = heuristic(edge->to, goal);
 
                 /* Add the neighbour to the frontier and keep searching */
-                if (pb_heap_insert(frontier, neighbour_node) == -1) {
+                if (pb_heap_insert(frontier, neighbour_node, neighbour_node->g_cost + neighbour_node->h_cost) == -1) {
                     goto err_return;
                 }
             } else {
-                /* Update the neighbour's info if we found a better path to it */
+                /* Decrease the neighbour's cost if we found a better path */
                 if (g_cost_neighbour < neighbour_node->g_cost) {
                     neighbour_node->g_cost = g_cost_neighbour;
                     neighbour_node->parent = node;
+                    pb_heap_decrease_key(frontier, neighbour_node, neighbour_node->g_cost + neighbour_node->h_cost);
                 }
             }
         }
