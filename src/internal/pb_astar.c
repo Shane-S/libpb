@@ -23,20 +23,20 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
 
     result = pb_vector_create(sizeof(pb_vertex*), 0);
     if (!result) {
-        return 0;
+        return -1;
     }
 
     frontier = pb_heap_create(0);
     if (!frontier) {
         pb_vector_free(result);
-        return 0;
+        return -1;
     }
 
     visited = pb_hashmap_create(pb_pointer_hash, pb_pointer_eq);
     if (!visited) {
         pb_vector_free(result);
         pb_heap_free(frontier);
-        return 0;
+        return -1;
     }
 
     /* The easy case */
@@ -45,7 +45,7 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
             goto err_return;
         } else {
             *path = result;
-            return 1;
+            return 0;
         }
     }
 
@@ -114,7 +114,7 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
     }
 
     if (!found_path) {
-        return 0;
+        return -1;
     }
 
     /* Push all the elements onto the list */
@@ -135,12 +135,12 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
     pb_hashmap_free(visited);
     pb_heap_free(frontier);
     *path = result;
-    return 1;
+    return 0;
 
 err_return:
     pb_hashmap_for_each(visited, pb_hashmap_free_entry_data, 0);
     pb_hashmap_free(visited);
     pb_vector_free(result);
     pb_heap_free(frontier);
-    return 0;
+    return -1;
 }

@@ -78,13 +78,38 @@ START_TEST(astar_simple)
     pb_graph_add_edge(graph, first_id + 4, first_id + 5, 1.f, NULL);
     pb_graph_add_edge(graph, first_id + 5, first_id + 4, 1.f, NULL);
 
-    ck_assert_msg(pb_astar(pb_graph_get_vertex(graph, first_id), pb_graph_get_vertex(graph, first_id + 5), bad_heuristic, &path), "No path found.");
+    ck_assert_msg(pb_astar(pb_graph_get_vertex(graph, first_id), pb_graph_get_vertex(graph, first_id + 5), bad_heuristic, &path) == 0, "No path found.");
     ck_assert_msg(path->size == 4, "Path should have contained 4 vertices, had %lu", path->size);
 
     path_verts = (pb_vertex**)path->items;
     for (i = 0; i < 4; ++i) {
         ck_assert_msg(path_verts[i]->data == expected[i], "Vertex %u in the path should have had data %p, but had %p", i, expected[i], path_verts[i]->data);
     }
+
+    pb_graph_free(graph);
+    pb_vector_free(path);
+}
+END_TEST
+
+START_TEST(astar_no_path)
+{
+    pb_graph* graph = pb_graph_create(int_hash, int_eq);
+    pb_vector* path;
+
+    int ids[] = { 0, 1, 2 };
+    int* first_id = &ids[0];
+
+    unsigned i;
+    for (i = 0; i < 3; ++i) {
+        pb_graph_add_vertex(graph, first_id + i, first_id + i);
+    }
+
+    pb_graph_add_edge(graph, first_id, first_id + 1, 1.f, NULL);
+    pb_graph_add_edge(graph, first_id + 1, first_id, 1.f, NULL);
+
+    ck_assert_msg(pb_astar(pb_graph_get_vertex(graph, first_id), pb_graph_get_vertex(graph, first_id + 2), bad_heuristic, &path) == -1, "Shouldn't have found a path but did anyway.");
+
+    pb_graph_free(graph);
 }
 END_TEST
 
@@ -98,6 +123,7 @@ Suite *make_pb_astar_suite(void)
     tc_astar = tcase_create("A* correct output");
     suite_add_tcase(s, tc_astar);
     tcase_add_test(tc_astar, astar_simple);
+    tcase_add_test(tc_astar, astar_no_path);
 
     return s;
 }
