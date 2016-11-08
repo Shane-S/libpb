@@ -1,7 +1,6 @@
-#include <libcompat.h>
+#include "../test_util.h"
 #include <check.h>
 #include <pb/util/pb_heap.h>
-#include "../test_util.h"
 
 /* Heap to use for the tests. */
 pb_heap* heap;

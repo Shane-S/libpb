@@ -11,7 +11,7 @@
 #       define PB_UTIL_DECLSPEC    __declspec(dllimport)
 #     endif
 #  else
-#    ifdef libpb_util_EXPORTS
+#    ifdef pb_util_EXPORTS
 #      define PB_UTIL_DECLSPEC __declspec(dllexport)
 #    else
 #      define PB_UTIL_DECLSPEC __declspec(dllimport)

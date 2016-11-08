@@ -12,8 +12,8 @@
  */
 typedef struct _pb_sq_house_room_conn {
     pb_room* neighbour;
-    pb_point overlap_start;
-    pb_point overlap_end;
+    pb_point2D overlap_start;
+    pb_point2D overlap_end;
     side wall;
     int can_connect; /* Whether there could be a door between these two rooms */
 } pb_sq_house_room_conn;
@@ -43,7 +43,7 @@ int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2);
  * @param start Holds the start point of overlap.
  * @param end   Holds the end point of overlap.
  */
-void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point* start, pb_point* end);
+void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point2D* start, pb_point2D* end);
 
 /**
  * Generates a connectivity graph between the rooms of a given floor.

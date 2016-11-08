@@ -11,8 +11,8 @@ int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     int shares_left = 0;
     int shares_right = 0;
 
-    pb_point* points1 = (pb_point*)room1->room_shape.points.items;
-    pb_point* points2 = (pb_point*)room2->room_shape.points.items;
+    pb_point2D* points1 = (pb_point2D*)room1->shape.points.items;
+    pb_point2D* points2 = (pb_point2D*)room2->shape.points.items;
 
     /* We need to use approximate float comparisons because the stairs may not have exactly
      * the same coordinates as the rooms on each floor. */
@@ -49,9 +49,9 @@ int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     }
 }
 
-void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point* start, pb_point* end) {
-    pb_point* points1 = (pb_point*)room1->room_shape.points.items;
-    pb_point* points2 = (pb_point*)room2->room_shape.points.items;
+void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, int wall, pb_point2D* start, pb_point2D* end) {
+    pb_point2D* points1 = (pb_point2D*)room1->shape.points.items;
+    pb_point2D* points2 = (pb_point2D*)room2->shape.points.items;
 
 
     switch (wall) {
@@ -89,7 +89,7 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
  *
  * @param room_specs The map containing room specifications for this house.
  * @param floor      The floor for which the connectivity graph will be generated.
- * @return A graph containing the rooms' connections.
+ * @return A graph containing the rooms' connections or NULL on failure.
  */
 pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* floor) {
     pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq); /* Hash based on each room's pointer */
@@ -111,9 +111,11 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* flo
         pb_sq_house_room_spec* spec;
         pb_hashmap_get(room_specs, (void*)floor->rooms[i].data, (void**)&spec);
 
-        for (j = i + 1; j < floor->num_rooms; ++j) {
-            pb_point start;
-            pb_point end;
+        for (j = 0; j < floor->num_rooms; ++j) {
+            if (i == j) continue;
+
+            pb_point2D start;
+            pb_point2D end;
             int shared_wall = pb_sq_house_get_shared_wall(floor->rooms + i, floor->rooms + j);
 
             if (shared_wall != -1) {
@@ -156,10 +158,10 @@ err_return:
 
 /**
  * Checks if the room stored in a given vertex doesn't have any valid connections to neigbouring
- * rooms (e.g., if every edge has a can_connect value of 0); if so, adds the vert_id to the list
+ * rooms (i.e., if every edge has a can_connect value of 0); if so, adds the vert_id to the list
  * of disconnected rooms.
  *
- * If a given room can connect to a neighbour but the neighbour can't connecto that room or vice-versa,
+ * If a given room can connect to a neighbour but the neighbour can't connect to that room or vice-versa,
  * can_connect for both rooms will be set to 1.
  *
  * @param vert_id The vertex id (a pointer to a room, in this case).
@@ -185,7 +187,7 @@ static void process_disconnected_room(void const* vert_id, pb_vertex* vert, void
 
         /* Cheat really hard and use the knowledge that from_id and to_id are actually just room pointers
          * and that those room pointers are in fact stored as the data for the vertex to which they correspond */
-        pb_edge* neighbour_edge = pb_graph_get_edge(g, edge->to->data, vert_id);
+        pb_edge const* neighbour_edge = pb_graph_get_edge(g, edge->to->data, vert_id);
         pb_sq_house_room_conn* conn2 = (pb_sq_house_room_conn*)neighbour_edge->data;
 
         if (conn->can_connect == 1 || conn2->can_connect == 1) {
@@ -219,9 +221,11 @@ pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor*
         pb_hashmap_free(disconnected);
         return NULL;
     } else {
-        /* Make sure that the first room isn't in the disconnected list */
+        /* Make sure that the first room isn't in the disconnected list if there's at least one other
+         * disconnected room. If there isn't, then we want to connect it, but if there is, then it
+         * will automatically be connected to a hallway since the other room will connect to it. */
         pb_room* first;
-        if (pb_hashmap_get(disconnected, &floor->rooms[0], &first) == 0) {
+        if (pb_hashmap_get(disconnected, &floor->rooms[0], (void**)&first) == 0 && disconnected->size > 1) {
             pb_hashmap_remove(disconnected, &floor->rooms[0]);
         }
         return disconnected;

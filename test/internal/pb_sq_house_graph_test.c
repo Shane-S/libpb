@@ -1,4 +1,4 @@
-#include <libcompat.h>
+#include "../test_util.h"
 #include <check.h>
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_sq_house_graph.h>
@@ -10,19 +10,19 @@ START_TEST(get_shared_wall_right)
      * When I invoke pb_sq_house_get_shared_wall
      * The result should be RIGHT
      */
-    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
-    pb_point points2[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
+    pb_point2D points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points2[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
 
     pb_room r1;
     pb_room r2;
 
     int result;
     
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_RIGHT, "result should have been 2 (right), was %d", result);
@@ -35,19 +35,19 @@ START_TEST(get_shared_wall_left)
      * When I invoke pb_sq_house_get_shared_wall
      * The result should be LEFT */
 
-    pb_point points1[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
-    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points1[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
+    pb_point2D points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
 
     pb_room r1;
     pb_room r2;
 
     int result;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_LEFT, "result should have been 3 (left), was %d", result);
@@ -60,19 +60,19 @@ START_TEST(get_shared_wall_top)
      * When I invoke pb_sq_house_get_shared_wall
      * The result should be TOP */
 
-    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
-    pb_point points2[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
+    pb_point2D points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points2[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
 
     pb_room r1;
     pb_room r2;
 
     int result;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_TOP, "result should have been 1 (top), was %d", result);
@@ -85,19 +85,19 @@ START_TEST(get_shared_wall_bottom)
      * When I invoke pb_sq_house_get_shared_wall
      * The result should be BOTTOM */
 
-    pb_point points1[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
-    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points1[] = { { 0.f, 30.f }, { 0.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
+    pb_point2D points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
 
     pb_room r1;
     pb_room r2;
 
     int result;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == SQ_HOUSE_BOTTOM, "result should have been 4 (bottom), was %d", result);
@@ -110,19 +110,19 @@ START_TEST(get_shared_wall_none)
      * When I invoke pb_sq_house_get_shared_wall
      * The result should be 0 (none) */
 
-    pb_point points1[] = { { 0.f, 30.f }, { 0.f, 15.f }, { 18.f, 15.f }, { 18.f, 30.f } };
-    pb_point points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points1[] = { { 0.f, 30.f }, { 0.f, 15.f }, { 18.f, 15.f }, { 18.f, 30.f } };
+    pb_point2D points2[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
 
     pb_room r1;
     pb_room r2;
 
     int result;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     result = pb_sq_house_get_shared_wall(&r1, &r2);
     ck_assert_msg(result == -1, "result should have been -1 (none), was %d", result);
@@ -136,23 +136,23 @@ START_TEST(get_wall_overlap_top)
      * When I invoke pb_sq_house_get_wall_overlap
      * start should contain {5, 10} and end should contain {10, 10} */
 
-    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
-    pb_point points2[] = { { 5.f, 30.f }, { 5.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
+    pb_point2D points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points2[] = { { 5.f, 30.f }, { 5.f, 10.f }, { 18.f, 10.f }, { 18.f, 30.f } };
 
-    pb_point start;
-    pb_point end;
+    pb_point2D start;
+    pb_point2D end;
 
-    pb_point s_expected = points2[1];
-    pb_point e_expected = points1[3];
+    pb_point2D s_expected = points2[1];
+    pb_point2D e_expected = points1[3];
 
     pb_room r1;
     pb_room r2;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     pb_sq_house_get_wall_overlap(&r1, &r2, SQ_HOUSE_TOP, &start, &end);
 
@@ -168,23 +168,23 @@ START_TEST(get_wall_overlap_right)
      * When I invoke pb_sq_house_get_wall_overlap
      * start should contain {10, 0} and end should contain {10, 10} */
 
-    pb_point points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
-    pb_point points2[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
+    pb_point2D points1[] = { { 0.f, 10.f }, { 0.f, 0.f }, { 10.f, 0.f }, { 10.f, 10.f } };
+    pb_point2D points2[] = { { 10.f, 15.f }, { 10.f, 0.f }, { 25.f, 0.f }, { 25.f, 15.f } };
 
-    pb_point start;
-    pb_point end;
+    pb_point2D start;
+    pb_point2D end;
 
-    pb_point s_expected = points1[2];
-    pb_point e_expected = points1[3];
+    pb_point2D s_expected = points1[2];
+    pb_point2D e_expected = points1[3];
 
     pb_room r1;
     pb_room r2;
 
-    r1.room_shape.points.items = &points1[0];
-    r1.room_shape.points.size = 4;
+    r1.shape.points.items = &points1[0];
+    r1.shape.points.size = 4;
 
-    r2.room_shape.points.items = &points2[0];
-    r2.room_shape.points.size = 4;
+    r2.shape.points.items = &points2[0];
+    r2.shape.points.size = 4;
 
     pb_sq_house_get_wall_overlap(&r1, &r2, SQ_HOUSE_RIGHT, &start, &end);
 
@@ -230,15 +230,15 @@ START_TEST(generate_floor_graph_multi_room)
         { { 3.30000019f, 8.f / 3.f }, 2.69999981f, 1.48148155f },
         { { 3.30000019f, 4.14814854f }, 2.70000029f, 1.85185170f }
     };
-    pb_shape shapes[6];
+    pb_shape2D shapes[6];
 
     pb_room rooms[6];
     pb_floor f;
 
     /* Connection format: 
      * pb_room* neighbour;
-     * pb_point overlap_start;
-     * pb_point overlap_end;
+     * pb_shape2D overlap_start;
+     * pb_shape2D overlap_end;
      * side wall;
      * int can_connect;
      */
@@ -256,8 +256,8 @@ START_TEST(generate_floor_graph_multi_room)
 
     /* Populate the floor's rooms */
     for (i = 0; i < 6; ++i) {
-        pb_rect_to_pb_shape(&rects[i], &shapes[i]);
-        rooms[i].room_shape = shapes[i];
+        pb_rect_to_pb_shape2D(&rects[i], &shapes[i]);
+        rooms[i].shape = shapes[i];
         rooms[i].data = room_names[i];
     }
 
@@ -283,7 +283,7 @@ START_TEST(generate_floor_graph_multi_room)
 
     /* Free the shapes we created */
     for (i = 0; i < 6; ++i) {
-        pb_shape_free(&rooms[i].room_shape);
+        pb_shape2D_free(&rooms[i].shape);
     }
 
     /* Free the generated graph and the room specs hash map */
@@ -373,16 +373,15 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
 }
 END_TEST
 
-START_TEST(find_disconnected_rooms_outside_disconnected)
+START_TEST(find_disconnected_rooms_outside_single_disconnected)
 {
     /* Given a pb_floor with a single room and a pb_graph holding the floor connectivity graph
      * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
-     * Then the result should be a pb_hashmap with size 0 */
+     * Then the result should be a pb_hashmap with size 1 */
 
     pb_room fake_rooms[1] = { 0 }; /* We just need the addresses; don't need to populate this at all */
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
-    pb_sq_house_room_conn conns[1] = { 0 };
     pb_hashmap* result;
 
     pb_graph_add_vertex(floor_graph, &fake_rooms[0], &fake_rooms[0]);
@@ -391,11 +390,44 @@ START_TEST(find_disconnected_rooms_outside_disconnected)
     fake_floor.rooms = &fake_rooms[0];
 
     result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
-    ck_assert_msg(result->size == 0, "result should contain 0 elements, has %lu", result->size);
+    ck_assert_msg(result->size == 1, "result should contain 1 element, has %lu", result->size);
 
     pb_hashmap_free(result);
     pb_graph_free(floor_graph);
 }
+END_TEST
+
+START_TEST(find_disconnected_rooms_outside_multi_disconnected)
+    {
+        /* Given a pb_floor with a two rooms and a pb_graph holding the floor connectivity graph
+         * When I invoke pb_sq_house_find_disconnected_rooms(graph, floor)
+         * Then the result should be a pb_hashmap with size 1 containing the room that doesn't connect to outside */
+
+        pb_room fake_rooms[2] = { 0 }; /* We just need the addresses; don't need to populate this at all */
+        pb_floor fake_floor;
+        pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+        pb_sq_house_room_conn conns[2] = { { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
+                                           { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 } };
+        pb_hashmap* result;
+
+        unsigned i;
+        for (i = 0; i < 2; ++i) {
+            pb_graph_add_vertex(floor_graph, &fake_rooms[i], &fake_rooms[i]);
+        }
+
+        fake_floor.num_rooms = 2;
+        fake_floor.rooms = &fake_rooms[0];
+
+        /* Add the fake edges */
+        pb_graph_add_edge(floor_graph, &fake_rooms[0], &fake_rooms[1], 0.f, &conns[0]);
+        pb_graph_add_edge(floor_graph, &fake_rooms[1], &fake_rooms[0], 0.f, &conns[1]);
+
+        result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
+        ck_assert_msg(result->size == 1, "result should contain 1 element, has %lu", result->size);
+        ck_assert_msg(pb_hashmap_get(result, &fake_rooms[0], (void**)&fake_rooms[0]) == -1, "floor.rooms[0] shouldn't have been in result set.");
+        pb_hashmap_free(result);
+        pb_graph_free(floor_graph);
+    }
 END_TEST
 
 Suite *make_pb_sq_house_graph_suite(void)
@@ -406,7 +438,7 @@ Suite *make_pb_sq_house_graph_suite(void)
     TCase* tc_sq_house_generate_floor_graph;
     TCase* tc_sq_house_find_disconnected;
 
-    s = suite_create("Squarified house generation");
+    s = suite_create("Squarified house generation graph algorithms");
 
     tc_sq_house_get_shared_wall = tcase_create("Get shared wall tests");
     suite_add_tcase(s, tc_sq_house_get_shared_wall);
@@ -429,7 +461,8 @@ Suite *make_pb_sq_house_graph_suite(void)
     suite_add_tcase(s, tc_sq_house_find_disconnected);
     tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_basic);
     tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_one_sided_connection);
-    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_disconnected);
+    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_single_disconnected);
+    tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_multi_disconnected);
 
     return s;
 }

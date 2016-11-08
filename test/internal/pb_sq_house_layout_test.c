@@ -1,11 +1,10 @@
-#include <libcompat.h>
+#include "../test_util.h"
 #include <check.h>
-#include <string.h>
+#include <stdlib.h>
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_sq_house_layout.h>
-#include <pb/util/pb_hashmap.h>
-#include <pb//util/pb_hash_utils.h>
-#include "../test_util.h"
+#include <pb/util/pb_hash_utils.h>
+#include <pb/pb_floor_plan.h>
 
 START_TEST(choose_rooms_single_room)
 {
@@ -173,6 +172,9 @@ START_TEST(layout_stairs_single_floor)
     ck_assert_msg(result[0].bottom_left.x == 0.f && result[0].bottom_left.y == 0.f && result[0].w == 10 && result[0].h == 25,
                   "Result should have had bottom left {0.f, 0.f}, width of 10.f and height of 25.f, but instead had bottom left {%f, %f}, width %f, and height %f",
                   result[0].bottom_left.x, result[0].bottom_left.y, result[0].w, result[0].h);
+    free(result);
+    pb_hashmap_free(room_specs);
+    free(house.floors);
 }
 END_TEST
 
@@ -181,7 +183,8 @@ START_TEST(layout_stairs_three_floors)
     /*
      *  Given a house specification with {w = 30, h = 30, num_rooms = 3, stair_width = 7} and room specifications containing one room {max_instances = 3, area = 690}
      *  When I invoke pb_sq_house_layout_stairs
-     *  Then the result should be 3 rectangles with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
+     *  Then the result should be 3 rectangl
+#include <pb//util/pb_hash_utils.h>es with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
      */
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
@@ -210,15 +213,15 @@ START_TEST(layout_stairs_three_floors)
 
     /* The remaining areas will depend on the stairs which are assigned randomly */
     /* Assuming that the correct number of floors were created, we know how many stairs are on each floor and can add up their areas */
-    pb_shape_to_pb_rect(&house.floors[0].rooms[0].room_shape, &temp);
+    pb_shape2D_to_pb_rect(&house.floors[0].rooms[0].shape, &temp);
     expected_areas[0] -= temp.w * temp.h;
 
-    pb_shape_to_pb_rect(&house.floors[1].rooms[0].room_shape, &temp);
+    pb_shape2D_to_pb_rect(&house.floors[1].rooms[0].shape, &temp);
     expected_areas[1] -= temp.w * temp.h;
-    pb_shape_to_pb_rect(&house.floors[1].rooms[1].room_shape, &temp);
+    pb_shape2D_to_pb_rect(&house.floors[1].rooms[1].shape, &temp);
     expected_areas[1] -= temp.w * temp.h;
 
-    pb_shape_to_pb_rect(&house.floors[2].rooms[0].room_shape, &temp);
+    pb_shape2D_to_pb_rect(&house.floors[2].rooms[0].shape, &temp);
     expected_areas[2] -= temp.w * temp.h;
 
     for (i = 0; i < house.num_floors; ++i) {
@@ -226,6 +229,9 @@ START_TEST(layout_stairs_three_floors)
         ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.3f, was %.3f", i, expected_areas[i], area);
         ck_assert_msg(house.floors[i].num_rooms == expected_num_rooms[i], "%ith floor should have had %lu rooms, had %lu rooms", i, expected_num_rooms[i], house.floors[i].num_rooms);
     }
+    pb_hashmap_free(room_specs);
+    free(result);
+    free(house.floors);
 }
 END_TEST
 
@@ -246,6 +252,7 @@ START_TEST(layout_stairs_big_stairs)
     float expected_areas[3] = { 675.f, 675.f };
     size_t expected_num_rooms[] = { 2, 2 };
     unsigned int i;
+    unsigned int j;
 
     h_spec.width = 30.f;
     h_spec.height = 30.f;
@@ -264,6 +271,17 @@ START_TEST(layout_stairs_big_stairs)
         ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.f, was %.f", i, expected_areas[i], area);
         ck_assert_msg(house.floors[i].num_rooms == expected_num_rooms[i], "%ith floor should have had %lu rooms, had %lu rooms", i, expected_num_rooms[i], house.floors[i].num_rooms);
     }
+
+    free(result);
+    pb_hashmap_free(room_specs);
+
+    for(i = 0; i < house.num_floors; ++i) {
+        for(j = 0; j < house.floors[i].num_rooms; ++j) {
+
+        }
+    }
+
+    free(house.floors);
 }
 END_TEST
 
@@ -371,11 +389,11 @@ START_TEST(layout_floor_single_room)
     pb_hashmap_put(map, (void*)&rooms[0], (void*)&lr);
     pb_sq_house_layout_floor(&rooms[0], map, &f, 1, &floor_rect);
 
-    pb_shape_to_pb_rect(&f.rooms[0].room_shape, &result);
+    pb_shape2D_to_pb_rect(&f.rooms[0].shape, &result);
     ck_assert_msg(assert_close_enough(result.w, floor_rect.w, 5), "Result's width should have been about %.3f, was %.3f", floor_rect.w, result.w);
     ck_assert_msg(assert_close_enough(result.h, floor_rect.h, 5), "Result's height should have been about %.3f, was %.3f", floor_rect.h, result.h);
 
-    pb_shape_free(&f.rooms[0].room_shape);
+    pb_shape2D_free(&f.rooms[0].shape);
     pb_hashmap_free(map);
 }
 END_TEST
@@ -388,7 +406,7 @@ Suite *make_pb_sq_house_layout_suite(void)
     TCase* tc_sq_house_layout_floor;
     TCase* tc_sq_house_fill_floor;
 
-    s = suite_create("Squarified house generation");
+    s = suite_create("Squarified house generation layout algorithms");
 
     tc_sq_house_choose_rooms = tcase_create("Room selection tests");
     suite_add_tcase(s, tc_sq_house_choose_rooms);

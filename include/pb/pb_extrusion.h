@@ -3,44 +3,53 @@
 
 #include <pb/util/pb_geom.h>
 
-#include <stddef.h>
-#include <stdint.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /**
- * Represents a room in a building.
+ * A room corresponding to a pb_room specified in a floor plan.
+ *
+ * walls:   The walls encapsulating the room. Each wall corresponds to a pair of points in floor.shape, e.g. wall[0]
+ *          contains the shapes for the wall from floor.shape[0] to floor.shape[1], etc. Note that if the shape indicated
+ *          that a given wall wasn't connected, then the corresponding wall be set to NULL.
+ * windows: The set of windows in the room, corresponding to the windows in a pb_room.
+ * doors:   The set of doors in the room, corresponding to the doors in a pb_room.
+ * ground:  The ground. If the corresponding pb_room has has_ground set to 0, then this will be NULL.
+ * ceiling: The room's ceiling. If the corresponding pb_room has has_ceiling set to 0, then this will be NULL.
  */
-typedef struct _pb_room {
-    /* Data supplied by the algorithm that created the building plan. */
-    void *data;
+typedef struct {
+    pb_shape3D** walls;
+    size_t* wall_shape_counts;
 
-    /* The polygon occupied by the room. */
-    pb_shape room_shape;
+    pb_shape3D* windows;
+    size_t num_windows;
 
-    /* TODO: Add doors and windows */
-} pb_room;
+    pb_shape3D* doors;
+    size_t num_doors;
+
+    pb_shape3D* ground;
+    pb_shape3D* ceiling;
+} pb_extruded_room;
 
 /**
-* Represents a floor, which contains a number of rooms
-*/
-typedef struct _pb_floor {
-    pb_room *rooms;
-    size_t num_rooms;
+ * A floor corresponding to a pb_floor specified in a floor plan.
+ *
+ * rooms:   The rooms extruded by the extrusion algorithm. The number of rooms will be specified in the corresponding
+ *          floor in the floor plan.
+ * walls:   The walls encapsulating the floor. Each wall corresponds to a pair of points in floor.shape, e.g. wall[0]
+ *          contains the shapes for the wall from floor.shape[0] to floor.shape[1], etc.
+ * windows: The set of windows on the floor, corresponding to the windows in a pb_floor.
+ * doors:   The set of doors on the floor, corresponding to the doors in a pb_floor.
+ */
+typedef struct {
+    pb_extruded_room* rooms;
 
-    /* The shape occupied by the floor. Contains all rooms in the
-     * given floor. */
-    pb_shape floor_shape;
+    pb_shape3D** walls;
+    size_t* wall_counts;
 
-    /* TODO: Add doors and windows */
-} pb_floor;
+    pb_shape3D* windows;
+    size_t num_windows;
 
-typedef struct _pb_building {
-    pb_floor *floors;
-    size_t num_floors;
-} pb_building;
+    pb_shape3D* doors;
+    size_t num_door;
+} pb_extruded_floor;
 
 #ifdef __cplusplus
 }

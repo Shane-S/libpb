@@ -1,10 +1,9 @@
-#include <libcompat.h>
-#include <check.h>
+#include "../test_util.h"
 #include <pb/util/pb_hashmap.h>
 #include <pb/util/pb_hash_utils.h>
 
 /* Hash map to use for the tests. */
-pb_hashmap* map;
+static pb_hashmap* map;
 
 void pb_hash_test_teardown() {
     pb_hashmap_free(map);
@@ -17,7 +16,7 @@ START_TEST(create_test)
 {
     unsigned int i;
     map = pb_hashmap_create(pb_str_hash, pb_str_eq);
-    
+
     ck_assert_msg(map->cap == 7, "Map's capacity was %u, should be 7.", map->cap);
     ck_assert_msg(map->size == 0, "Map's size should be 0, was %u", map->size);
     
@@ -36,7 +35,7 @@ END_TEST
  */
 START_TEST(put_test)
 {
-    pb_hashmap_put(map, (void*)"test", (void*)4);
+    pb_hashmap_put(map, (void*)"test", (void*)((size_t)4));
     
     /* TODO: Change states[0] to the actual hashed value. */
     ck_assert_msg(map->size == 1, "Map's size should be 1 after insertion, was %u.", map->size);
@@ -48,9 +47,9 @@ END_TEST
  */
 START_TEST(get_test)
 {
-    int test_int;
-    pb_hashmap_get(map, (void*)"test", (void*)&test_int);
-    ck_assert_msg(test_int == 4, "Number corresponding to \"test\" should be 4, was %d", test_int);
+    size_t test_num;
+    pb_hashmap_get(map, (void*)"test", (void**)&test_num);
+    ck_assert_msg(test_num == 4, "Number corresponding to \"test\" should be 4, was %d", test_num);
 }
 END_TEST
 
@@ -59,10 +58,10 @@ END_TEST
  */
 START_TEST(overwrite_test)
 {
-    int overwritten;
-    pb_hashmap_put(map, (void*)"test", (void*)7);
+    size_t overwritten;
+    pb_hashmap_put(map, (void*)"test", (void*)((size_t)7));
     
-    pb_hashmap_get(map, (void*)"test", (void*)&overwritten);
+    pb_hashmap_get(map, (void*)"test", (void**)&overwritten);
     ck_assert_msg(overwritten == 7, "Value should be 7, was %d", overwritten);
 }
 END_TEST
@@ -87,40 +86,40 @@ START_TEST(expand_test)
     int out;
     
     /* Load factor is hard-coded to 0.75, and since we're starting at 7, 6 will definitely exceed this */
-    pb_hashmap_put(map, (void*)"test0", (void*)0);
-    pb_hashmap_put(map, (void*)"test1", (void*)1);
-    pb_hashmap_put(map, (void*)"test2", (void*)2);
-    pb_hashmap_put(map, (void*)"test3", (void*)3);
+    pb_hashmap_put(map, (void*)"test0", (void*)((size_t)0));
+    pb_hashmap_put(map, (void*)"test1", (void*)((size_t)1));
+    pb_hashmap_put(map, (void*)"test2", (void*)((size_t)2));
+    pb_hashmap_put(map, (void*)"test3", (void*)((size_t)3));
     
     /* Check that the map hasn't yet expanded since we haven't reached the threshold */
     ck_assert_msg(map->cap == 7, "Capacity should have been 7, was %u", map->cap);
 
     /* Check that the map did expand now that we've exceeded the threshold */
-    pb_hashmap_put(map, (void*)"test4", (void*)4);
-    pb_hashmap_put(map, (void*)"test5", (void*)5);
+    pb_hashmap_put(map, (void*)"test4", (void*)((size_t)4));
+    pb_hashmap_put(map, (void*)"test5", (void*)((size_t)5));
     ck_assert_msg(map->cap == 11 /* Next prime >= 1.5 * cap */, "Capacity should have been 11, was %u", map->cap);
     ck_assert_msg(map->size == 6, "Map's size should have been 6, was %u", map->size);
 
-    all_contained = pb_hashmap_get(map, (void*)"test0", (void*)&out) == 0 &&
-		            pb_hashmap_get(map, (void*)"test1", (void*)&out) == 0 &&
-                    pb_hashmap_get(map, (void*)"test2", (void*)&out) == 0 &&
-                    pb_hashmap_get(map, (void*)"test3", (void*)&out) == 0 &&
-                    pb_hashmap_get(map, (void*)"test4", (void*)&out) == 0 &&
-                    pb_hashmap_get(map, (void*)"test5", (void*)&out) == 0;
+    all_contained = pb_hashmap_get(map, (void*)"test0", (void**)&out) == 0 &&
+		            pb_hashmap_get(map, (void*)"test1", (void**)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test2", (void**)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test3", (void**)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test4", (void**)&out) == 0 &&
+                    pb_hashmap_get(map, (void*)"test5", (void**)&out) == 0;
 
     ck_assert_msg(all_contained, "Values were not properly transferred to new array.");
 }
 END_TEST
 
 static void add_one_to_entries(pb_hashmap_entry* entry, void* param) {
-    *(int*)(entry->val) += 1;
+    *(size_t*)(entry->val) += 1;
 }
 
 START_TEST(for_each_test)
 {
     char const* keys[] = { "one", "two", "three" };
-    int values[] = { 1, 2, 3 };
-    int expected[] = { 2, 3, 4 };
+    size_t values[] = { 1, 2, 3 };
+    size_t expected[] = { 2, 3, 4 };
     int i;
     pb_hashmap* map2 = pb_hashmap_create(pb_str_hash, pb_str_eq);
     
@@ -141,21 +140,21 @@ END_TEST
 Suite *make_pb_hash_suite(void)
 {
 	Suite *s;
-	TCase *tc_hash;
+	TCase *tc_hashmap;
 
 	s = suite_create("Hash map");
 
-	tc_hash = tcase_create("Hash map basic operations");
-	suite_add_tcase(s, tc_hash);
-	tcase_add_test(tc_hash, create_test);
-	tcase_add_test(tc_hash, put_test);
-	tcase_add_test(tc_hash, get_test);
-    tcase_add_test(tc_hash, overwrite_test);
-    tcase_add_test(tc_hash, remove_test);
-    tcase_add_test(tc_hash, expand_test);
-    tcase_add_test(tc_hash, for_each_test);
+    tc_hashmap = tcase_create("Hash map basic operations");
+	suite_add_tcase(s, tc_hashmap);
+	tcase_add_test(tc_hashmap, create_test);
+	tcase_add_test(tc_hashmap, put_test);
+	tcase_add_test(tc_hashmap, get_test);
+    tcase_add_test(tc_hashmap, overwrite_test);
+    tcase_add_test(tc_hashmap, remove_test);
+    tcase_add_test(tc_hashmap, expand_test);
+    tcase_add_test(tc_hashmap, for_each_test);
 
-    tcase_add_unchecked_fixture(tc_hash, NULL, pb_hash_test_teardown);
+    tcase_add_unchecked_fixture(tc_hashmap, NULL, pb_hash_test_teardown);
     
 	return s;
 }

@@ -233,7 +233,7 @@ static int resize_hash(pb_hashmap* map, size_t new_cap) {
  * @param map The map to search.
  * @param key The key for which to search.
  * @param out A variable to hold the position (if any).
- * @return -1 if the key wasn't found or the position if it was .
+ * @return -1 if the key wasn't found.
  */
 static size_t get_pos(pb_hashmap* map, void const* key) {
     size_t pos = map->hash(key);
@@ -245,12 +245,8 @@ static size_t get_pos(pb_hashmap* map, void const* key) {
 
         if(map->states[probe_pos] == EMPTY) {
             return -1;
-        } else if(map->key_eq(map->entries[probe_pos].key, key)) {
-            if (map->states[probe_pos] == FULL) {
-                return probe_pos;
-            } else {
-                return -1;
-            }
+        } else if(map->states[probe_pos] == FULL && map->key_eq(map->entries[probe_pos].key, key)) {
+            return probe_pos;
         }
     }
         
@@ -299,7 +295,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_put(pb_hashmap* map, void const* ke
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_get(pb_hashmap* map, void const* key, void** val) {
     size_t pos;
-    if((pos = get_pos(map, key, &pos)) == -1) return -1;
+    if((pos = get_pos(map, key)) == -1) return -1;
     
     *val = map->entries[pos].val;
     return 0;
@@ -307,7 +303,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_get(pb_hashmap* map, void const* ke
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_hashmap_remove(pb_hashmap* map, void const* key) {
     size_t pos;
-    if ((pos = get_pos(map, key, &pos)) == -1) return -1;
+    if ((pos = get_pos(map, key)) == -1) return -1;
     
     map->states[pos] = DELETED;
     map->size--;

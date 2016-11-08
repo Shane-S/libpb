@@ -16,7 +16,7 @@ extern "C" {
  * @param len The length (in bytes) of the given key.
  * @return The hash value for the key.
  */
-PB_UTIL_DECLSPEC uint32_t PB_UTIL_CALL pb_murmurhash3(void const* key, int len);
+PB_UTIL_DECLSPEC uint32_t PB_UTIL_CALL pb_murmurhash3(void const* key, size_t len);
 
 /**
  * Generates a hash value for a null-terminated string.

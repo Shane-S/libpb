@@ -1,6 +1,6 @@
-#include <libcompat.h>
-#include <check.h>
 #include "pb_util_test.h"
+#include <check.h>
+#include <stdio.h>
 
 #ifdef _WIN32
 #include <crtdbg.h>
@@ -10,6 +10,8 @@ int main(void)
 {
     SRunner *sr = srunner_create(make_pb_hash_suite());
 	int nf;
+
+    srunner_set_fork_status (sr, CK_NOFORK);
 
 #ifdef _WIN32
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);

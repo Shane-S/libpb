@@ -34,7 +34,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
  * @param floor      The floor on which the rooms will be placed.
  * @param floor_rect The rectangle of available space on the floor.
  *
- * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all room_shapes allocated on the this floor will have been freed;
+ * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all shapes allocated on the this floor will have been freed;
  *         the caller must clean up all preceding floors.
  */
 int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect);

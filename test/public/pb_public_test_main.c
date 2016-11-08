@@ -1,6 +1,5 @@
-#include <libcompat.h>
-#include <check.h>
 #include "pb_public_test.h"
+#include <check.h>
 
 #ifdef _WIN32
 #include <crtdbg.h>

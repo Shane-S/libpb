@@ -1,4 +1,4 @@
-#include <libcompat.h>
+#include "../test_util.h"
 #include <check.h>
 #include <pb/util/pb_graph.h>
 #include <pb/internal/pb_astar.h>

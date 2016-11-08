@@ -2,7 +2,7 @@
 #define PB_SQ_HOUSE_H
 
 #include <pb/pb_exports.h>
-#include <pb/pb_extrusion.h>
+#include <pb/pb_floor_plan.h>
 #include <pb/util/pb_hashmap.h>
 #include <pb/util/pb_geom.h>
 
@@ -14,7 +14,7 @@
 #define PB_SQ_HOUSE_HALLWAY "Hallway"
 #define PB_SQ_HOUSE_OUTSIDE "Outside"
 
-/* Sides of a rectangle. Each value can also be used to refer to a side in a pb_shape converted from a
+/* Sides of a rectangle. Each value can also be used to refer to a side in a pb_shape2D converted from a
  * pb_rect; SQ_HOUSE_LEFT (0) is the side from point 0 to 1, SQ_HOUSE_BOTTOM is the side from point 1 to 2, etc. */
 typedef enum side {
     SQ_HOUSE_LEFT = 0,
@@ -27,7 +27,7 @@ typedef enum side {
 extern "C" {
 #endif
 
-typedef struct _pb_sq_house_room_spec {
+typedef struct {
     char const* name;
     char const** adjacent;
     size_t num_adjacent;
@@ -36,7 +36,7 @@ typedef struct _pb_sq_house_room_spec {
     unsigned priority;
 } pb_sq_house_room_spec;
 
-typedef struct _pb_sq_house_house_spec {
+typedef struct {
     float height;
     float width;
     unsigned int num_rooms;

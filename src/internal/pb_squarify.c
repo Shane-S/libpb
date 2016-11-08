@@ -93,8 +93,8 @@ void layout(pb_rect *rect,
  * to lay out the rectangles with their aspect ratios close to 1.
  *
  * @param rect              The outer rectangle into which children will be laid out.
- * @param min_dim      The size of the smallest dimension of the current layout rectangle.
- * @param is_height    Non-zero if min_dim is the rectangle's height.
+ * @param min_dim           The size of the smallest dimension of the current layout rectangle.
+ * @param is_height         Non-zero if min_dim is the rectangle's height.
  * @param areas             A list of areas to be laid out as rectangles. There must be at least 2 areas.
  * @param num_areas         The number of areas to be laid out.
  * @param children          A list of rectangles to store the resulting layout.

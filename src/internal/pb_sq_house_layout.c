@@ -4,7 +4,6 @@
 #include <math.h>
 #include <pb/util/pb_hashmap.h>
 #include <pb/util/pb_hash_utils.h>
-#include <pb/util/pb_float_utils.h>
 #include <pb/pb_sq_house.h>
 #include <pb/internal/pb_sq_house_layout.h>
 
@@ -93,7 +92,7 @@ char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* 
     if (num_added != house_spec->num_rooms) {
         free(result);
         free(sorted);
-        fprintf(stderr, "pb_sq_house: house specification's num_rooms exceeds sum of all room_spec max_instances");
+        fprintf(stderr, "pb_sq_house: house specification's num_rooms exceeds sum of all room_spec max_instances\n");
         return NULL;
     } else {
         unsigned int outside_idx;
@@ -114,9 +113,9 @@ char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* 
             }
         }
 
-        /* No rooms connect to outside were selected; we need to randomly replace one with a room that CAN connect to outside */
+        /* No rooms that connect to outside were selected; we need to randomly replace one with a room that CAN connect to outside */
         if (!has_outside) {
-            unsigned int outside_room = -1;
+            int outside_room = -1;
             outside_idx = rand() % (house_spec->num_rooms + 1);
 
             for (i = 0; i < room_specs->size && outside_room == -1; ++i) {
@@ -130,10 +129,18 @@ char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* 
             }
 
             if (outside_room == -1) {
-                fprintf(stderr, "pb_sq_house: no rooms can connect to outside; at least one room must have PB_SQ_HOUSE_OUTSIDE in its adjacency list");
+                fprintf(stderr, "pb_sq_house: no rooms can connect to outside; at least one room must have PB_SQ_HOUSE_OUTSIDE in its adjacency list\n");
                 free(result);
                 result = NULL;
+            } else {
+                /* Replace room at the chosen index with a room that connects to outside */
+                result[outside_idx] = sorted[outside_room].name;
             }
+        } else {
+            /* Move the outside-connecting room to the start */
+            char* temp = result[outside_idx];
+            result[outside_idx] = result[0];
+            result[0] = temp;
         }
 
         free(sorted);
@@ -141,21 +148,21 @@ char** pb_sq_house_choose_rooms(pb_hashmap* room_specs, pb_sq_house_house_spec* 
     }
 }
 
-static void adjust_rect(pb_rect* rect, pb_point* bleft_adjust, float w_adjust, float h_adjust) {
+static void adjust_rect(pb_rect* rect, pb_point2D* bleft_adjust, float w_adjust, float h_adjust) {
     rect->bottom_left.x += bleft_adjust->x;
     rect->bottom_left.y += bleft_adjust->y;
     rect->w += w_adjust;
     rect->h += h_adjust;
 }
 
-static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape* stair_shape, unsigned int stair_index) {
+static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape2D* stair_shape, unsigned int stair_index) {
     pb_room* new_rooms = realloc(f->rooms, sizeof(pb_room) * (f->num_rooms + num_added));
     if (!new_rooms) return -1;
 
     /* Add the stairs to the list of rooms the current and next floors' room lists */
     f->rooms = new_rooms;
     f->num_rooms += num_added; /* + 1 since we're also adding stairs */
-    f->rooms[stair_index].room_shape = *stair_shape;
+    f->rooms[stair_index].shape = *stair_shape;
     f->rooms[stair_index].data = (void*)PB_SQ_HOUSE_STAIRS;
 
     return 0;
@@ -177,7 +184,14 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
     float stair_width;
     float max_house_dim;
     side last_stair_loc = 0;
-
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <math.h>
+#include <pb/util/pb_hashmap.h>
+#include <pb/util/pb_hash_utils.h>
+#include <pb/pb_sq_house.h>
+#include <pb/internal/pb_sq_house_layout.h>
     areas = malloc(sizeof(float) * h_spec->num_rooms);
     if (!areas) {
         return NULL;
@@ -241,12 +255,12 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
 
             pb_rect current_stair_rect = { 0 };
             pb_rect next_stair_rect = { 0 };
-            pb_shape current_stair_shape = { 0 };
-            pb_shape next_stair_shape = { 0 };
+            pb_shape2D current_stair_shape = { 0 };
+            pb_shape2D next_stair_shape = { 0 };
             unsigned int stair_index; /* The index into the rooms array where the stairs will be added for the current floor */
 
             /* The amount by which the bottom left corner of the current and next floor rectangles will need to be adjusted */
-            pb_point bottom_left_adjustment = { 0.f, 0.f };
+            pb_point2D bottom_left_adjustment = { 0.f, 0.f };
             float width_adjustment = 0.f;
             float height_adjustment = 0.f;
 
@@ -333,15 +347,15 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
                 current_room = 1;
             }
 
-            /* Convert the stair rectangles to pb_shape to add them to the floors */
+            /* Convert the stair rectangles to pb_shape2D to add them to the floors */
             num_rooms_added += current_room;
             stair_index = house->floors[current_floor].num_rooms;
             
-            if (pb_rect_to_pb_shape(&current_stair_rect, &current_stair_shape) == -1 ||
-                pb_rect_to_pb_shape(&next_stair_rect, &next_stair_shape) == -1) {
+            if (pb_rect_to_pb_shape2D(&current_stair_rect, &current_stair_shape) == -1 ||
+                pb_rect_to_pb_shape2D(&next_stair_rect, &next_stair_shape) == -1) {
                 /* These were already 0-initialised earlier, so we can safely try to free both of them */
-                pb_shape_free(&current_stair_shape);
-                pb_shape_free(&next_stair_shape);
+                pb_shape2D_free(&current_stair_shape);
+                pb_shape2D_free(&next_stair_shape);
                 goto err_return;
             }
 
@@ -358,7 +372,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
                 goto err_return;
             }
 
-            house->floors[current_floor].rooms[stair_index + 1].room_shape.points.items = NULL; /* Stop here when freeing if we go to err_return */
+            house->floors[current_floor].rooms[stair_index + 1].shape.points.items = NULL; /* Stop here when freeing if we go to err_return */
             
             floor_rects[current_floor] = current_floor_rect;
             current_floor_rect = next_floor_rect;
@@ -377,8 +391,8 @@ err_return:
     while (house->num_floors) {
         /* Only the shapes in rooms with non-null points arrays (i.e. the stairs) actually need to be freed */
         unsigned int i;
-        for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].room_shape.points.items; ++i) {
-            pb_shape_free(&house->floors[house->num_floors - 1].rooms[i].room_shape);
+        for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].shape.points.items; ++i) {
+            pb_shape2D_free(&house->floors[house->num_floors - 1].rooms[i].shape);
         }
         free(house->floors[house->num_floors - 1].rooms);
         house->num_floors--;
@@ -403,7 +417,7 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
 
     /* If there's only one room on the floor besides the stairs, it will take up the entire rectangle regardless */
     if (num_rooms == 1) {
-        if (pb_rect_to_pb_shape(floor_rect, &floor->rooms[floor->num_rooms - 1].room_shape) == -1) {
+        if (pb_rect_to_pb_shape2D(floor_rect, &floor->rooms[floor->num_rooms - 1].shape) == -1) {
             return -1;
         }
         floor->rooms[floor->num_rooms - 1].data = (void*)rooms[0];
@@ -433,12 +447,12 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
     /* num_rooms is the number of rooms from the room specification list; floor->num_rooms is that number
      * PLUS the number of stairs already placed on the floor*/
     num_stairs = floor->num_rooms - num_rooms;
-    /* Convert the rectangles from pb_squarify to pb_shapes for each room */
+    /* Convert the rectangles from pb_squarify to pb_shape2Ds for each room */
     for (i = num_stairs; i < floor->num_rooms; ++i) {
         floor->rooms[i].data = (void*)rooms[i - num_stairs];
-        floor->rooms[i].room_shape.points.items = NULL;
+        floor->rooms[i].shape.points.items = NULL;
 
-        if (pb_rect_to_pb_shape(&(rects[i - num_stairs]), &(floor->rooms[i].room_shape)) == -1) {
+        if (pb_rect_to_pb_shape2D(&(rects[i - num_stairs]), &(floor->rooms[i].shape)) == -1) {
             goto err_return;
         }
     }
@@ -453,10 +467,10 @@ err_return:
 
     /* The caller will be responsible for cleaning all other floors up */
     for (i = 0; i < floor->num_rooms; ++i) {
-        if (floor->rooms[i].room_shape.points.items == NULL) {
+        if (floor->rooms[i].shape.points.items == NULL) {
             break;
         } else {
-            pb_shape_free(&floor->rooms[i].room_shape);
+            pb_shape2D_free(&floor->rooms[i].shape);
         }
     }
 
@@ -469,7 +483,7 @@ void pb_sq_house_fill_remaining_floor(pb_rect* final_floor_rect, int rect_has_ch
     /* The floor will have unfilled space in two cases */
 
     /* Case 1: at least two rectangles (the one-rectangle case is handled elsewhere) were laid out in final_floor_rectangle, but they don't 
-     * compeletely fill it. */
+     * completely fill it. */
     if (rect_has_children) {
 
         /* The rectangles are laid out along the smallest dimension of the parent rectangle, so increase their size in the 

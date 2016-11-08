@@ -1,4 +1,4 @@
-#include <libcompat.h>
+#include "../test_util.h"
 #include <check.h>
 #include <pb/util/pb_vector.h>
 
@@ -170,6 +170,8 @@ START_TEST(reverse)
         int val = vec_ints[i];
         ck_assert_msg(val == expected[i], "vec[%d} should have been %d, was %d", i, expected[i], val);
     }
+
+    pb_vector_free(&vec);
 }
 END_TEST
 Suite* make_pb_vector_suite(void) {

@@ -126,7 +126,7 @@ PB_UTIL_DECLSPEC pb_graph* PB_UTIL_CALL pb_graph_create(pb_hash_func id_hash, pb
     return graph;
 }
 
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* vert_id, void* data) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void const* vert_id, void* data) {
     pb_vertex* vert = pb_vertex_create(data);
     if (!vert) {
         return -1;
@@ -140,7 +140,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_vertex(pb_graph* graph, void* ver
     }
 }
 
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void* vert_id) {
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void const* vert_id) {
     pb_vertex* vert;
     size_t i;
     if (pb_hashmap_get(graph->vertices, vert_id, (void**)&vert) == -1) {
