@@ -1,6 +1,6 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_vector.h>
+#include <pb/util/vector/vector.h>
 
 typedef struct _test_struct {
     int x;

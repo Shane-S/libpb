@@ -1,6 +1,6 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/pb_floor_plan.h>
+#include <pb/floor_plan.h>
 
 #ifdef _WIN32
 #include <malloc.h>

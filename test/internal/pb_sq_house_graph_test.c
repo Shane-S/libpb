@@ -1,8 +1,8 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/pb_sq_house.h>
-#include <pb/internal/pb_sq_house_graph.h>
-#include <pb/util/pb_hash_utils.h>
+#include <pb/sq_house.h>
+#include <pb/internal/sq_house_graph.h>
+#include <pb/util/hashmap/hash_utils.h>
 
 START_TEST(get_shared_wall_right)
 {

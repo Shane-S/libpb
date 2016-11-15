@@ -1,8 +1,8 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_graph.h>
-#include <pb/internal/pb_astar.h>
-#include <pb/util/pb_hash_utils.h>
+#include <pb/util/graph/graph.h>
+#include <pb/internal/astar.h>
+#include <pb/util/hashmap/hash_utils.h>
 #include <stdint.h>
 
 uint32_t int_hash(void* num) {

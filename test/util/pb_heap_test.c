@@ -1,6 +1,6 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_heap.h>
+#include <pb/util/heap/heap.h>
 
 /* Heap to use for the tests. */
 pb_heap* heap;

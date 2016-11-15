@@ -1,6 +1,6 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_graph.h>
+#include <pb/util/graph/graph.h>
 
 #ifdef _WIN32
 #include <malloc.h>

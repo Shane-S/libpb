@@ -1,6 +1,7 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_geom.h>
+#include <pb/util/geom/types.h>
+#include <pb/util/geom/rect_utils.h>
 
 /* We're going to assume that pb_graph_free and pb_graph_create work.
 * If not, then we'll find out later while profiling memory usage :) */

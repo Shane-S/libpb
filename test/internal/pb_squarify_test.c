@@ -1,6 +1,6 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/internal/pb_squarify.h>
+#include <pb/internal/squarify.h>
 
 START_TEST(simple_test)
 {

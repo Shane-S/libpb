@@ -1,6 +1,6 @@
 #include "../test_util.h"
-#include <pb/util/pb_hashmap.h>
-#include <pb/util/pb_hash_utils.h>
+#include <pb/util/hashmap/hashmap.h>
+#include <pb/util/hashmap/hash_utils.h>
 
 /* Hash map to use for the tests. */
 static pb_hashmap* map;

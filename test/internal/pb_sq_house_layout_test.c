@@ -1,10 +1,10 @@
 #include "../test_util.h"
 #include <check.h>
 #include <stdlib.h>
-#include <pb/pb_sq_house.h>
-#include <pb/internal/pb_sq_house_layout.h>
-#include <pb/util/pb_hash_utils.h>
-#include <pb/pb_floor_plan.h>
+#include <pb/sq_house.h>
+#include <pb/internal/sq_house_layout.h>
+#include <pb/util/hashmap/hash_utils.h>
+#include <pb/floor_plan.h>
 
 START_TEST(choose_rooms_single_room)
 {

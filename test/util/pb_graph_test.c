@@ -1,7 +1,7 @@
 #include "../test_util.h"
 #include <check.h>
-#include <pb/util/pb_graph.h>
-#include <pb/util/pb_hash_utils.h>
+#include <pb/util/graph/graph.h>
+#include <pb/util/hashmap/hash_utils.h>
 
 /* Simple hash functions to use for vertices (data will just be an integer) */
 static uint32_t test_hash(void const* key) {
