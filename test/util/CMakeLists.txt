@@ -6,7 +6,7 @@ set(SOURCES pb_heap_test.c
             pb_vector_test.c
             pb_geom_test.c
             pb_util_test_main.c
-            ../test_util.c)
+            ../test_util.c triangulate_test.c)
 set(HEADERS pb_util_test.h
             ../test_util.h)
 

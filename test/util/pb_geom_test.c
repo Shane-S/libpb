@@ -1,5 +1,4 @@
 #include "../test_util.h"
-#include <check.h>
 #include <pb/util/geom/types.h>
 #include <pb/util/geom/rect_utils.h>
 

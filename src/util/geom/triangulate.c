@@ -36,9 +36,9 @@ int pb_earclip_is_convex(pb_point2D const* point, pb_point2D const* prev, pb_poi
 
     float dot;
 
-    /* Find vector perpendicular to next->prev; this faces toward the interior of the polygon */
-    px = -(prev->y - next->y);
-    py = prev->x - next->x;
+    /* Find vector perpendicular to prev->next; this faces toward the interior of the polygon */
+    px = -(next->y - prev->y);
+    py = next->x - prev->x;
 
     /* Get vector vert->next */
     vx = next->x - point->x;
@@ -51,22 +51,7 @@ int pb_earclip_is_convex(pb_point2D const* point, pb_point2D const* prev, pb_poi
     return dot > 0;
 }
 
-/**
- * Tests whether the point p is contained in the triangle defined by t0, t1 and t2.
- *
- * Code adapted from StackOverflow since I don't remember barycentric coordinates
- * and am in a rush
- * http://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle#answer-14382692
- *
- * @param p  The point to check.
- * @param t0 The first point of the triangle.
- * @param t1 The second point of the triangle.
- * @param t2 The third point of the triangle.
- *
- * @return non-zero if the point is inside the triangle (including on one of the edges),
- *         0 if the point lies completely outside the triangle.
- */
-int pb_earclip_tri_contains(pb_point2D* const p, pb_point2D* const t0, pb_point2D* const t1, pb_point2D* const t2) {
+int pb_tri_contains(pb_point2D* const t0, pb_point2D* const t1, pb_point2D* const t2, pb_point2D* const p) {
     float area = 0.5f * (-t1->y * t2->x +
                          t0->y * (-t1->x + t2->x) +
                          t0->x * (t1->y - t2->y) +
@@ -101,9 +86,13 @@ int pb_earclip_is_ear(pb_vector const* list, size_t list_idx, pb_shape2D const* 
 
     size_t i;
     for(i = 0; i < list->size; ++i) {
-        if(ecpoints[i].pt == REFLEX) {    
+        /* Don't test against points that are part of the triangle */
+        if(i == t0_idx || i == t1_idx || i == t2_idx)
+            continue;
+
+        if(ecpoints[i].pt == REFLEX) {
             pb_point2D* p = points + ecpoints[i].point_idx;
-            if(!pb_earclip_tri_contains(p, t0, t1, t2)) {
+            if(pb_tri_contains(t0, t1, t2, p)) {
                 break;
             }
         }
@@ -168,7 +157,7 @@ size_t* pb_triangulate(pb_shape2D const* shape) {
         /* Convex polygon; triangulate in linear time by creating triangles from one vertex to
          * all other vertices */
         for(i = 1; i < point_list.size - 1; ++i) {
-            size_t* tri = tris + (i * 3);
+            size_t* tri = tris + ((i - 1) * 3);
             tri[0] = 0;
             tri[1] = i;
             tri[2] = i + 1;

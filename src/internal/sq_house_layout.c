@@ -6,6 +6,7 @@
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/sq_house.h>
 #include <pb/internal/sq_house_layout.h>
+#include <pb/util/geom/rect_utils.h>
 
 static void shuffle_arr(char const** arr, size_t size) {
     size_t i;
