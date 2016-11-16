@@ -32,7 +32,7 @@ START_TEST(triangle_contains_inside)
     pb_point2D t2 = {0.5f, 1.f};
     pb_point2D p = {0.5f, 0.5f};
 
-    ck_assert_msg(pb_tri_contains(&t0, &t1, &t2, &p), "Triangle should have contained {0.5, 0.5}");
+    ck_assert_msg(pb_tri_contains_point(&t0, &t1, &t2, &p), "Triangle should have contained {0.5, 0.5}");
 }
 END_TEST
 
@@ -45,7 +45,7 @@ START_TEST(triangle_contains_edge)
     pb_point2D t2 = {0.5f, 1.f};
     pb_point2D p = {0.25f, 0.5f};
 
-    ck_assert_msg(pb_tri_contains(&t0, &t1, &t2, &p), "Triangle should have contained {0.25, 0.5}");
+    ck_assert_msg(pb_tri_contains_point(&t0, &t1, &t2, &p), "Triangle should have contained {0.25, 0.5}");
 }
 END_TEST
 
@@ -58,7 +58,7 @@ START_TEST(triangle_contains_corner)
     pb_point2D t2 = {0.5f, 1.f};
     pb_point2D p = {1.f, 0.f};
 
-    ck_assert_msg(pb_tri_contains(&t0, &t1, &t2, &p), "Triangle should have contained {1, 0}");
+    ck_assert_msg(pb_tri_contains_point(&t0, &t1, &t2, &p), "Triangle should have contained {1, 0}");
 }
 END_TEST
 
@@ -71,7 +71,7 @@ START_TEST(triangle_contains_outside)
     pb_point2D t2 = {0.5f, 1.f};
     pb_point2D p = {1.f, 1.f};
 
-    ck_assert_msg(!pb_tri_contains(&t0, &t1, &t2, &p), "Triangle shouldn't have contained {1, 1}");
+    ck_assert_msg(!pb_tri_contains_point(&t0, &t1, &t2, &p), "Triangle shouldn't have contained {1, 1}");
 }
 END_TEST
 
@@ -299,6 +299,45 @@ START_TEST(triangulate_convex_polygon)
 }
 END_TEST
 
+START_TEST(triangulate_simple_polygon)
+{
+    /* Input: Shape as defined in is_ear_non_contained_reflex
+     * Expected output: triangle indices [{4, 5, 0}, {3, 4, 0}, {3, 0, 1}, {1, 2, 3}] */
+    pb_shape2D shape;
+    pb_point2D shape_points[] = {{0, 0.8f}, {0.9f, 0}, {1.1f, 0.3f}, {0.4f, 1.f}, {0.7f, 1.3f}, {0.5f, 1.5f}};
+    char unused = 1;
+
+    unsigned i;
+
+    size_t* results;
+    size_t expected[] = {4, 5, 0, 3, 4, 0, 3, 0, 1, 1, 2, 3};
+
+    pb_shape2D_init(&shape, 6);
+    for(i = 0; i < 6; ++i) {
+        pb_vector_push_back(&shape.points, &shape_points[i]);
+        pb_vector_push_back(&shape.connected, &unused);
+    }
+
+    results = pb_triangulate(&shape);
+
+    for(i = 0; i < 4; i += 3) {
+        ck_assert_msg(results[i * 3] == expected [i * 3],
+                      "Triangle %lu index 0 should have been %lu, was %lu",
+                      i, expected [i * 3], results[i * 3]);
+
+        ck_assert_msg(results[i * 3 + 1] == expected [i * 3 + 1],
+                      "Triangle %lu index 0 should have been %lu, was %lu",
+                      i, expected [i * 3 + 1], results[i * 3 + 1]);
+        ck_assert_msg(results[i * 3 + 2] == expected [i * 3 + 2],
+                      "Triangle %lu index 0 should have been %lu, was %lu",
+                      i, expected [i * 3 + 2], results[i * 3 + 2]);
+    }
+
+    pb_shape2D_free(&shape);
+    free(results);
+}
+END_TEST
+
 Suite* make_triangulate_suite(void) {
     Suite* s;
     TCase* tc_num_tris;
@@ -336,6 +375,7 @@ Suite* make_triangulate_suite(void) {
     suite_add_tcase(s, tc_triangulate);
     tcase_add_test(tc_triangulate, triangulate_triangle);
     tcase_add_test(tc_triangulate, triangulate_convex_polygon);
+    tcase_add_test(tc_triangulate, triangulate_simple_polygon);
 
     return s;
 }

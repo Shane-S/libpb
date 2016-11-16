@@ -51,7 +51,8 @@ int pb_earclip_is_convex(pb_point2D const* point, pb_point2D const* prev, pb_poi
     return dot > 0;
 }
 
-int pb_tri_contains(pb_point2D* const t0, pb_point2D* const t1, pb_point2D* const t2, pb_point2D* const p) {
+int PB_UTIL_DECLSPEC pb_tri_contains_point PB_UTIL_CALL (pb_point2D* const t0, pb_point2D* const t1,
+                                                         pb_point2D* const t2, pb_point2D* const p) {
     float area = 0.5f * (-t1->y * t2->x +
                          t0->y * (-t1->x + t2->x) +
                          t0->x * (t1->y - t2->y) +
@@ -92,7 +93,7 @@ int pb_earclip_is_ear(pb_vector const* list, size_t list_idx, pb_shape2D const* 
 
         if(ecpoints[i].pt == REFLEX) {
             pb_point2D* p = points + ecpoints[i].point_idx;
-            if(pb_tri_contains(t0, t1, t2, p)) {
+            if(pb_tri_contains_point(t0, t1, t2, p)) {
                 break;
             }
         }
@@ -101,8 +102,11 @@ int pb_earclip_is_ear(pb_vector const* list, size_t list_idx, pb_shape2D const* 
     return i == list->size;
 }
 
-/* TODO: This could definitely use some optimisation. */
-size_t* pb_triangulate(pb_shape2D const* shape) {
+/* TODO: This could definitely use some optimisation.
+ * Linked lists (could be array-backed) instead of vectors for better removal cost
+ * Detect when polygon becomes convex and do linear after that point
+ * Switch for an algorithm that's n log n or better to start with */
+PB_UTIL_DECLSPEC size_t* PB_UTIL_CALL pb_triangulate(pb_shape2D const* shape) {
     pb_point2D const* points = (pb_point2D*)shape->points.items;
 
     pb_vector point_list;
@@ -176,8 +180,9 @@ size_t* pb_triangulate(pb_shape2D const* shape) {
 
         /* Remove ears one by one until we're left with a triangle */
         while(1) {
-            size_t ear_prev_idx = ear_idx == 0 ? shape->points.size - 1 : ear_idx - 1;
-            size_t ear_next_idx = (ear_idx + 1) % shape->points.size;
+            size_t ear_prev_idx = ear_idx == 0 ? point_list.size - 1 : ear_idx - 1;
+            size_t ear_next_idx = (ear_idx + 1) % point_list.size;
+            int updated_ear_idx = 0;
 
             tris[tri_idx] = ecpoints[ear_prev_idx].point_idx;
             tris[tri_idx + 1] = ecpoints[ear_idx].point_idx;
@@ -191,17 +196,74 @@ size_t* pb_triangulate(pb_shape2D const* shape) {
             }
 
             /* Adjust next and prev indices after resize and check whether they became ears */
-            if(ear_idx == 0 || ear_idx == shape->points.size) {
-                ear_prev_idx = shape->points.size - 1;
+            if(ear_idx == 0 || ear_idx == point_list.size) {
+                ear_prev_idx = point_list.size - 1;
                 ear_next_idx = 0;
             } else {
                 ear_next_idx = ear_idx;
             }
 
+            /* Check whether points became convex to save us some time in checking earness later */
+            if(ecpoints[ear_prev_idx].pt == REFLEX) {
+                size_t ear_prev_prev_idx = ear_prev_idx == 0 ? point_list.size - 1 : ear_prev_idx - 1;
+                size_t ear_prev_next_idx = (ear_prev_idx + 1) % point_list.size;
+
+                if(pb_earclip_is_convex(points + ecpoints[ear_prev_idx].point_idx,
+                                        points + ecpoints[ear_prev_prev_idx].point_idx,
+                                        points + ecpoints[ear_prev_next_idx].point_idx)) {
+                    ecpoints[ear_prev_idx].pt = CONVEX;
+                }
+            }
+
+            if(ecpoints[ear_next_idx].pt == REFLEX) {
+                size_t ear_next_prev_idx = ear_next_idx == 0 ? point_list.size - 1 : ear_next_idx - 1;
+                size_t ear_next_next_idx = (ear_next_idx + 1) % point_list.size;
+                if(pb_earclip_is_convex(points + ecpoints[ear_next_idx].point_idx,
+                                        points + ecpoints[ear_next_prev_idx].point_idx,
+                                        points + ecpoints[ear_next_next_idx].point_idx)) {
+                    ecpoints[ear_next_idx].pt = CONVEX;
+                }
+            }
+
             /* Check whether points adjacent to the ear became convex and/or ears, then
-             * find the next ear index */
-            /*if(*/
+             * find the next ear index. According to the paper, an ear might not still be an ear after removal of
+             * another ear, so we need to check that too. I might revisit this later since I'm not convinced an ear
+             * can stop being an ear though. */
+            if(ecpoints[ear_prev_idx].pt == EAR || ecpoints[ear_prev_idx].pt == CONVEX) {
+                if(pb_earclip_is_ear(&point_list, ear_prev_idx, shape)) {
+                    ecpoints[ear_prev_idx].pt = EAR;
+                    ear_idx = ear_prev_idx;
+                    updated_ear_idx = 1;
+                } else {
+                    ecpoints[ear_prev_idx].pt = CONVEX;
+                }
+            }
+
+            if(ecpoints[ear_next_idx].pt == EAR || ecpoints[ear_next_idx].pt == CONVEX) {
+                if(pb_earclip_is_ear(&point_list, ear_next_idx, shape)) {
+                    ecpoints[ear_next_idx].pt = EAR;
+                    ear_idx = ear_next_idx;
+                    updated_ear_idx = 1;
+                } else {
+                    ecpoints[ear_next_idx].pt = CONVEX;
+                }
+            }
+
+            /* If neither point was or became an ear, find the next ear */
+            if(!updated_ear_idx) {
+                for(i = 0; i < point_list.size; ++i) {
+                    if(ecpoints[i].pt == EAR) {
+                        ear_idx = i;
+                        break;
+                    }
+                }
+            }
         }
+
+        /* There are only three points left, so we don't need to worry about ear_prev, next, etc. */
+        tris[tri_idx] = ecpoints[0].point_idx;
+        tris[tri_idx + 1] = ecpoints[1].point_idx;
+        tris[tri_idx + 2] = ecpoints[2].point_idx;
     }
 
     pb_vector_free(&point_list);

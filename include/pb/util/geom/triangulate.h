@@ -40,4 +40,5 @@ PB_UTIL_DECLSPEC size_t* PB_UTIL_CALL pb_triangulate(pb_shape2D const* shape);
  * @return non-zero if the point is inside the triangle (including on one of the edges),
  *         0 if the point lies completely outside the triangle.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_tri_contains(pb_point2D* const t0, pb_point2D* const t1, pb_point2D* const t2, pb_point2D* const p);
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_tri_contains_point(pb_point2D* const t0, pb_point2D* const t1,
+                                                        pb_point2D* const t2, pb_point2D* const p);
