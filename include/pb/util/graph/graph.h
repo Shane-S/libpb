@@ -44,6 +44,7 @@ struct pb_vertex {
     void *data;
     size_t edges_size;
     size_t edges_capacity;
+    size_t in_degree;
 };
 
 /*

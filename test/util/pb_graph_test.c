@@ -65,26 +65,15 @@ START_TEST(add_edge)
     pb_vertex const* v0;
     pb_vertex const* v1;
 
-    result = pb_graph_add_vertex(graph, (void*)((size_t)0), (void*)((size_t)0));
-    if (result == -1) {
-        ck_abort_msg("Ran out of memory while adding vertex.");
-    }
-
-    result = pb_graph_add_vertex(graph, (void*)((size_t)1), (void*)((size_t)1));
-    if (result == -1) {
-        ck_assert_msg("Ran out of memory while adding vertex.");
-    }
-
-	result = pb_graph_add_edge(graph, (void*)((size_t)0), (void*)((size_t)1), 0.0f, (void*)((size_t)5));
-	if (result == -1) {
-		/* Somehow we ran out of memory during the test. Oops */
-		ck_abort_msg("Unexpectedly out of memory during test.");
-	}
+    pb_graph_add_vertex(graph, (void*)((size_t)0), (void*)((size_t)0));
+    pb_graph_add_vertex(graph, (void*)((size_t)1), (void*)((size_t)1));
+	pb_graph_add_edge(graph, (void*)((size_t)0), (void*)((size_t)1), 0.0f, (void*)((size_t)5));
 
     v0 = pb_graph_get_vertex(graph, (void*)((size_t)0));
     v1 = pb_graph_get_vertex(graph, (void*)((size_t)1));
 
     ck_assert_msg(v0->edges_size == 1, "No edge was added to v0.");
+    ck_assert_msg(v1->in_degree == 1, "v1->in_degree should have been 1, was %lu", v1->in_degree);
 }
 END_TEST
 
@@ -116,24 +105,32 @@ START_TEST(remove_edge)
 {
     int result = pb_graph_remove_edge(graph, (void*)((size_t)0), (void*)((size_t)1));
     pb_vertex const* v0 = pb_graph_get_vertex(graph, (void*)((size_t)0));
+    pb_vertex const* v1 = pb_graph_get_vertex(graph, (void*)((size_t)1));
 
     ck_assert_msg(result == 0, "Incorrect return value (should have been 0, was %d).", result);
     ck_assert_msg(graph->edges->size == 0, "graph->edges->size should have been 0, was %lu", graph->edges->size);
     ck_assert_msg(v0->edges_size == 0, "v0->edges_size should have been 0, was %lu", v0->edges_size);
+    ck_assert_msg(v1->in_degree == 0, "v1->in_degree should have been 0, was $lu", v1->in_degree);
 }
 END_TEST
 
 START_TEST(remove_vertex_with_edge)
 {
     pb_vertex const* v1 = pb_graph_get_vertex(graph, (void*)((size_t)1));
+    pb_vertex const* v2;
+
+    pb_graph_add_vertex(graph, (void*)((size_t)2), (void*)((size_t)2));
+    v2 = pb_graph_get_vertex(graph, (void*)((size_t)2));
 
     pb_graph_add_edge(graph, (void*)((size_t)0), (void*)((size_t)1), 0.f, (void*)((size_t)10));
     pb_graph_add_edge(graph, (void*)((size_t)1), (void*)((size_t)0), 1.f, (void*)((size_t)3));
+    pb_graph_add_edge(graph, (void*)((size_t)0), (void*)((size_t)2), 2.f, NULL);
 
     pb_graph_remove_vertex(graph, (void*)((size_t)0));
     
     ck_assert_msg(graph->edges->size == 0, "graph->edges->size should have been 0, was %lu", graph->edges->size);
     ck_assert_msg(v1->edges_size == 0, "v1->edges_size should have been 0, was %lu", v1->edges_size);
+    ck_assert_msg(v2->in_degree == 0, "v2->in_degree should have been 0, was %lu", v2->in_degree);
 }
 END_TEST
 

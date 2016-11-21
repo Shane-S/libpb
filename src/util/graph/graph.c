@@ -24,6 +24,7 @@ PB_UTIL_DECLSPEC pb_vertex* PB_UTIL_CALL pb_vertex_create(void* data) {
     vert->edges = edges;
     vert->edges_capacity = 2;
     vert->edges_size = 0;
+    vert->in_degree = 0;
     vert->data = data;
     return vert;
 }
@@ -147,9 +148,10 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_remove_vertex(pb_graph* graph, void c
         return -1; /* There was no vertex with the given ID in this graph */
     }
 
-    /* Remove all edges originating from the given vertex */
+    /* Decrease destination vertices' in-degree */
     for (i = 0; i < vert->edges_size; ++i) {
-        pb_graph_remove_edge_internal(graph, vert->edges[i]);
+        vert->edges[i]->to->in_degree--;
+        pb_hashmap_remove(graph->edges, vert->edges[i]);
     }
 
     /* Iterate over the edges list to remove all edges to the given vertex */
@@ -207,10 +209,12 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_graph_add_edge(pb_graph *graph, void const*
         return -1;
     }
 
+    edge->to->in_degree++;
     return 0;
 }
 
 static void pb_graph_remove_edge_internal(pb_graph* graph, pb_edge* edge) {
+    edge->to->in_degree--;
     pb_vertex_remove_edge(edge->from, edge);
     pb_hashmap_remove(graph->edges, (void*)edge);
     free(edge);

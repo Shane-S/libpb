@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pb/util/util_exports.h>
+#include <float.h>
 
 PB_UTIL_DECLSPEC float PB_UTIL_CALL pb_float_clamp(float f, float min, float max) {
     if (f < min) {
@@ -18,6 +19,19 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_approx_eq(float f1, float f2, size_t 
     int32_t f2_int;
 
     unsigned int ulps_diff;
+
+    /* ULPs method doesn't work well around 0 because of 0's bit pattern 
+     * Use FLT_EPSILON instead of 0 in this case (not sure if this actually works) */
+    if(f1 == 0 || f2 == 0) {
+        if(f1 == f2) {
+            return 1;
+        } else if(f1 == 0) {
+            f1 = FLT_EPSILON;
+        } else {
+            f2 = FLT_EPSILON;
+        }
+    }
+
 
     /* Use memcpy to avoid breaking strict aliasing rules */
     /* We're assuming that float is the IEEE 754 single-precision float, which it probably is */
