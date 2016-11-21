@@ -3,7 +3,9 @@
 #include <pb/util/float_utils.h>
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/util/pair/pair.h>
+#include <pb/util/float_utils.h>
 #include <string.h>
+#include <pb/sq_house.h>
 
 int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     int shares_top = 0;
@@ -87,11 +89,12 @@ void pb_sq_house_get_wall_overlap(pb_room const* room1, pb_room const* room2, in
  * The edges in the graph are of type pb_sq_house_room_edge and indicate whether these rooms
  * could be connected by a door (based on their room_specs).
  *
+ * @param house_spec The house specification, which lists how big doors should be.
  * @param room_specs The map containing room specifications for this house.
  * @param floor      The floor for which the connectivity graph will be generated.
  * @return A graph containing the rooms' connections or NULL on failure.
  */
-pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* floor) {
+pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, pb_hashmap* room_specs, pb_floor* floor) {
     pb_graph* g = pb_graph_create(pb_pointer_hash, pb_pointer_eq); /* Hash based on each room's pointer */
 
     if (!g) return NULL;
@@ -124,7 +127,8 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* flo
                 if (!conn) goto err_return;
 
                 pb_sq_house_get_wall_overlap(floor->rooms + i, floor->rooms + j, shared_wall, &start, &end);
-                
+
+                conn->room = floor->rooms + i;
                 conn->neighbour = floor->rooms + j;
                 conn->overlap_start = start;
                 conn->overlap_end = end;
@@ -134,7 +138,14 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_hashmap* room_specs, pb_floor* flo
                 /* Check whether the room spec for room i allows a connection to room j */
                 for (adj = 0; adj < spec->num_adjacent; ++adj) {
                     if (strcmp((char*)floor->rooms[j].data, spec->adjacent[adj]) == 0) {
-                        conn->can_connect = 1;
+                        /* Check whether there's enough wall surface area to actually fit a door here */
+                        float delta;
+                        if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+                            delta = conn->overlap_end.y - conn->overlap_start.y;
+                        } else {
+                            delta = conn->overlap_end.x - conn->overlap_start.x;
+                        }
+                        conn->can_connect = delta >= house_spec->door_size;
                         break;
                     }
                 }

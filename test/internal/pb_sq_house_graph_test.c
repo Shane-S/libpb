@@ -3,6 +3,8 @@
 #include <pb/sq_house.h>
 #include <pb/internal/sq_house_graph.h>
 #include <pb/util/hashmap/hash_utils.h>
+#include <pb/util/geom/rect_utils.h>
+#include <pb/floor_plan.h>
 
 START_TEST(get_shared_wall_right)
 {
@@ -156,8 +158,12 @@ START_TEST(get_wall_overlap_top)
 
     pb_sq_house_get_wall_overlap(&r1, &r2, SQ_HOUSE_TOP, &start, &end);
 
-    ck_assert_msg(start.x == s_expected.x && start.y == s_expected.y, "Start should have been {%.3f, %.3f}, was {%.3f, %.3f}", s_expected.x, s_expected.y, start.x, start.y);
-    ck_assert_msg(end.x == e_expected.x && end.y == e_expected.y, "Start should have been {%.3f, %.3f}, was {%.3f, %.3f}", e_expected.x, e_expected.y, end.x, end.y);
+    ck_assert_msg(start.x == s_expected.x && start.y == s_expected.y,
+                  "Start should have been {%.3f, %.3f}, was {%.3f, %.3f}",
+                  s_expected.x, s_expected.y, start.x, start.y);
+    ck_assert_msg(end.x == e_expected.x && end.y == e_expected.y,
+                  "Start should have been {%.3f, %.3f}, was {%.3f, %.3f}",
+                  e_expected.x, e_expected.y, end.x, end.y);
 }
 END_TEST
 
@@ -218,6 +224,7 @@ START_TEST(generate_floor_graph_multi_room)
         { "Kitchen", &adj_lists[3], 1, 7.f, 1, 2 },
     };
     pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
+    pb_sq_house_house_spec h_spec;
 
     char const* room_names[] = { "Living Room", "Bedroom", "Bathroom", "Kitchen", "Bathroom", "Bedroom" };
 
@@ -243,9 +250,9 @@ START_TEST(generate_floor_graph_multi_room)
      * int can_connect;
      */
     pb_sq_house_room_conn conns[] = {
-        { &rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
-        { &rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
-        { &rooms[4], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
+        { &rooms[0], &rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+        { &rooms[0], &rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
+        { &rooms[0], &rooms[4], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
     };
 
     /* Create the hash map of room specs */
@@ -264,8 +271,10 @@ START_TEST(generate_floor_graph_multi_room)
     f.num_rooms = 6;
     f.rooms = &rooms[0];
 
+    h_spec.door_size = 0.5f;
+
     /* Generate the floor graph for this floor */
-    result = pb_sq_house_generate_floor_graph(room_specs, &f);
+    result = pb_sq_house_generate_floor_graph(&h_spec, room_specs, &f);
 
     /* Check the living room connections as a sanity check */
     /* I'm not checking the overlap points because we've already shown that to be working in the get_overlap tests */
@@ -275,7 +284,9 @@ START_TEST(generate_floor_graph_multi_room)
         ck_assert_msg(edge != NULL, "Edge from Living Room to %s didn't exist.", (char*)(conns[i].neighbour->data));
         
         c = (pb_sq_house_room_conn*)edge->data;
-        ck_assert_msg(c->can_connect == conns[i].can_connect, "Edge from Living Room to %s should have had a door but did not.", (char*)(conns[i].neighbour->data));
+        ck_assert_msg(c->can_connect == conns[i].can_connect,
+                      "Edge from Living Room to %s should have had a door but did not.",
+                      (char*)(conns[i].neighbour->data));
     }
 
     /* Free the connections */
@@ -294,6 +305,79 @@ START_TEST(generate_floor_graph_multi_room)
 }
 END_TEST
 
+START_TEST(generate_floor_graph_no_door_space)
+{
+    pb_graph* result;
+
+    char const* room_name = "Room";
+    char const* adj_lists[]= { room_name };
+    pb_sq_house_room_spec specs[] = {
+            { room_name, &adj_lists[0], 2, 11.f, 1, 0 },
+    };
+    pb_hashmap* room_specs = pb_hashmap_create(pb_str_hash, pb_str_eq);
+    pb_sq_house_house_spec h_spec;
+
+    /* Make two rooms that only have 0.2 overlapping space */
+    pb_rect rect0 = {{0.f, 0.f}, 5.f, 5.f};
+    pb_rect rect1 = {{5.f, 4.8f}, 5.f, 5.f};
+
+    pb_shape2D shape0;
+    pb_shape2D shape1;
+
+    pb_room rooms[2];
+    pb_shape2D shapes[2];
+
+    pb_floor f;
+
+    pb_sq_house_room_conn conns[] = {
+            { &rooms[0], &rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+            { &rooms[0], &rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
+            { &rooms[0], &rooms[4], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_TOP, 1 },
+    };
+
+    unsigned i;
+
+    pb_rect_to_pb_shape2D(&rect0, &shape0);
+    pb_rect_to_pb_shape2D(&rect1, &shape1);
+    pb_hashmap_put(room_specs, (void*)room_name, (void*)&specs[0]);
+
+    rooms[0].shape = shape0;
+    rooms[0].data = (void*)room_name;
+
+    rooms[1].shape = shape1;
+    rooms[1].data = (void*)room_name;
+
+    f.num_rooms = 2;
+    f.rooms = &rooms[0];
+
+    h_spec.door_size = 0.5f;
+
+    result = pb_sq_house_generate_floor_graph(&h_spec, room_specs, &f);
+    {
+        pb_sq_house_room_conn* conn;
+        pb_edge const* edge = pb_graph_get_edge(result, &rooms[0], &rooms[1]);
+        ck_assert_msg(edge, "Edge should have existed between rooms 0 and 1");
+
+        conn = (pb_sq_house_room_conn*)edge->data;
+        ck_assert_msg(conn->can_connect == 0, "There should not have been a connection between rooms 0 and 1");
+
+        edge = pb_graph_get_edge(result, &rooms[1], &rooms[0]);
+        ck_assert_msg(edge, "Edge should have existed between rooms 1 and 0");
+
+        conn = (pb_sq_house_room_conn*)edge->data;
+        ck_assert_msg(conn->can_connect == 0, "There should not have been a connection between rooms 1 and 0.");
+    }
+
+    pb_shape2D_free(&shape0);
+    pb_shape2D_free(&shape1);
+
+    pb_graph_for_each_edge(result, pb_graph_free_edge_data, NULL);
+    pb_graph_free(result);
+    pb_hashmap_free(room_specs);
+
+}
+END_TEST
+
 START_TEST(find_disconnected_rooms_basic)
 {
     /* Given a pb_floor with three rooms and a pb_graph holding the floor connectivity graph with a connection between rooms 0 and 1
@@ -304,10 +388,10 @@ START_TEST(find_disconnected_rooms_basic)
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
     pb_sq_house_room_conn conns[] = {
-        { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
-        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 1 },
-        { &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
-        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 },
+        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 1 },
+        { &fake_rooms[0], &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
+        { &fake_rooms[2], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 },
     };
     pb_hashmap* result;
     pb_room* room;
@@ -329,7 +413,7 @@ START_TEST(find_disconnected_rooms_basic)
     result = pb_sq_house_find_disconnected_rooms(floor_graph, &fake_floor);
     ck_assert_msg(result->size == 1, "result should contain one element, has %lu", result->size);
 
-    pb_hashmap_get(result, &fake_rooms[2], &room);
+    pb_hashmap_get(result, &fake_rooms[2], (void**)&room);
     ck_assert_msg(room = &fake_rooms[2], "result should have contained &fake_rooms[2], had %p", room);
 
     pb_hashmap_free(result);
@@ -347,8 +431,8 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
     pb_sq_house_room_conn conns[] = {
-        { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
-        { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 }
+        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
+        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 }
     };
     pb_hashmap* result;
 
@@ -406,8 +490,8 @@ START_TEST(find_disconnected_rooms_outside_multi_disconnected)
         pb_room fake_rooms[2] = { 0 }; /* We just need the addresses; don't need to populate this at all */
         pb_floor fake_floor;
         pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
-        pb_sq_house_room_conn conns[2] = { { &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
-                                           { &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 } };
+        pb_sq_house_room_conn conns[2] = { { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
+                                           { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 } };
         pb_hashmap* result;
 
         unsigned i;
@@ -456,6 +540,7 @@ Suite *make_pb_sq_house_graph_suite(void)
     tc_sq_house_generate_floor_graph = tcase_create("Floor graph creation tests");
     suite_add_tcase(s, tc_sq_house_generate_floor_graph);
     tcase_add_test(tc_sq_house_generate_floor_graph, generate_floor_graph_multi_room);
+    tcase_add_test(tc_sq_house_generate_floor_graph, generate_floor_graph_no_door_space);
 
     tc_sq_house_find_disconnected = tcase_create("Disconnected room finding tests");
     suite_add_tcase(s, tc_sq_house_find_disconnected);

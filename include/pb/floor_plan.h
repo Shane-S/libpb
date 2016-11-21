@@ -23,12 +23,6 @@ typedef struct {
     pb_point2D* windows;
     size_t num_windows;
 
-    /* Contains the name of the room if the algorithm assigns rooms names. Check pb_building.has_names to see
-     * whether a given algorithm assigns room names.
-     *
-     * The floor plan generation algorithm may point this to read-only data, so treat it as a const char*. */
-    char* name;
-
     /* Data supplied by the algorithm that created the building plan. */
     void *data;
 } pb_room;
