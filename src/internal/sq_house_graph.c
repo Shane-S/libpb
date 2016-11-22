@@ -138,6 +138,8 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
                 /* Check whether the room spec for room i allows a connection to room j */
                 for (adj = 0; adj < spec->num_adjacent; ++adj) {
                     if (strcmp((char*)floor->rooms[j].data, spec->adjacent[adj]) == 0) {
+                        conn->can_connect = 1;
+
                         /* Check whether there's enough wall surface area to actually fit a door here */
                         float delta;
                         if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
@@ -145,7 +147,7 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
                         } else {
                             delta = conn->overlap_end.x - conn->overlap_start.x;
                         }
-                        conn->can_connect = delta >= house_spec->door_size;
+                        conn->has_door = delta >= house_spec->door_size;
                         break;
                     }
                 }
@@ -201,12 +203,18 @@ static void process_disconnected_room(void const* vert_id, pb_vertex* vert, void
         pb_edge const* neighbour_edge = pb_graph_get_edge(g, edge->to->data, vert_id);
         pb_sq_house_room_conn* conn2 = (pb_sq_house_room_conn*)neighbour_edge->data;
 
-        if (conn->can_connect == 1 || conn2->can_connect == 1) {
-            /* If just one of the rooms said there was a valid connection, assume that there should be a connection
-             * and set both to have one */
+        /* has_door implies connectivity */
+        if(conn->has_door || conn2->has_door) {
+            conn->has_door = 1;
+            conn2->has_door = 1;
             conn->can_connect = 1;
             conn2->can_connect = 1;
+
             break;
+        } else if (conn->can_connect || conn2->can_connect) {
+            /* If just one side said it could connect, then both can connect */
+            conn->can_connect = 1;
+            conn2->can_connect = 1;
         }
     }
 

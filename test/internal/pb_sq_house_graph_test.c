@@ -359,13 +359,13 @@ START_TEST(generate_floor_graph_no_door_space)
         ck_assert_msg(edge, "Edge should have existed between rooms 0 and 1");
 
         conn = (pb_sq_house_room_conn*)edge->data;
-        ck_assert_msg(conn->can_connect == 0, "There should not have been a connection between rooms 0 and 1");
+        ck_assert_msg(conn->has_door == 0, "There should not have been a connection between rooms 0 and 1");
 
         edge = pb_graph_get_edge(result, &rooms[1], &rooms[0]);
         ck_assert_msg(edge, "Edge should have existed between rooms 1 and 0");
 
         conn = (pb_sq_house_room_conn*)edge->data;
-        ck_assert_msg(conn->can_connect == 0, "There should not have been a connection between rooms 1 and 0.");
+        ck_assert_msg(conn->has_door == 0, "There should not have been a connection between rooms 1 and 0.");
     }
 
     pb_shape2D_free(&shape0);
@@ -388,10 +388,10 @@ START_TEST(find_disconnected_rooms_basic)
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
     pb_sq_house_room_conn conns[] = {
-        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
-        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 1 },
-        { &fake_rooms[0], &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0 },
-        { &fake_rooms[2], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 },
+        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1, 1 },
+        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 1, 1 },
+        { &fake_rooms[0], &fake_rooms[2], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 0, 0 },
+        { &fake_rooms[2], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0, 0 },
     };
     pb_hashmap* result;
     pb_room* room;
@@ -431,8 +431,8 @@ START_TEST(find_disconnected_rooms_one_sided_connection)
     pb_floor fake_floor;
     pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
     pb_sq_house_room_conn conns[] = {
-        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1 },
-        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0 }
+        { &fake_rooms[0], &fake_rooms[1], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_RIGHT, 1, 1 },
+        { &fake_rooms[1], &fake_rooms[0], { 0.f, 0.f }, { 0.f, 0.f }, SQ_HOUSE_LEFT, 0, 0 }
     };
     pb_hashmap* result;
 
