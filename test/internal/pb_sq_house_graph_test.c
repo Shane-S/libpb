@@ -5,6 +5,8 @@
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/util/geom/rect_utils.h>
 #include <pb/floor_plan.h>
+#include <pb/util/pair/pair.h>
+#include <pb/util/graph/graph.h>
 
 START_TEST(get_shared_wall_right)
 {
@@ -514,6 +516,152 @@ START_TEST(find_disconnected_rooms_outside_multi_disconnected)
     }
 END_TEST
 
+START_TEST(internal_graph_simple)
+{
+    /* Input: graph representing 10x10 house evenly divided into 4 rooms
+     *           (5, 10)
+     *         _____.______
+     *        |     |      |
+     *        |  2  |  3   |
+     * (0, 5) *-----.------* (10, 5)
+     *        |     |      |
+     *        |  0  |  1   |
+     *        |_____.______|
+     *            (5, 0)
+     *
+     * Expected output: graph with 5 points (centre point and five four cardinal points) with appropriate edges */
+
+    pb_room rooms[4] = {0};               /* room,     neighbour  overlap_start, overlap_end, ignored*/
+    pb_sq_house_room_conn room_conns[8] = {{&rooms[0], &rooms[1], {5.f, 0.f},    {5.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[0], &rooms[2], {0.f, 5.f},    {5.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[1], &rooms[0], {5.f, 0.f},    {5.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[1], &rooms[3], {5.f, 5.f},    {10.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[2], &rooms[0], {0.f, 5.f},    {5.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[2], &rooms[3], {5.f, 5.f},    {5.f, 10.f}, (side) 0, 0, 0},
+                                           {&rooms[3], &rooms[1], {5.f, 5.f},    {10.f, 5.f}, (side) 0, 0, 0},
+                                           {&rooms[3], &rooms[2], {5.f, 5.f},    {5.f, 10.f}, (side) 0, 0, 0}};
+
+    pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+
+    pb_graph* result;
+    pb_point2D expected_points[] = {{0, 5}, {5, 0}, {5, 5}, {5, 10}, {10, 5}};
+    pb_pair expected_edge_points[] = {{&expected_points[0], &expected_points[2]},
+                                      {&expected_points[1], &expected_points[2]},
+                                      {&expected_points[3], &expected_points[2]},
+                                      {&expected_points[4], &expected_points[2]},
+                                      {&expected_points[2], &expected_points[0]},
+                                      {&expected_points[2], &expected_points[1]},
+                                      {&expected_points[2], &expected_points[3]},
+                                      {&expected_points[2], &expected_points[4]}};
+    /* Unfortunately there are two possible room connections for each edge because the graph's internal vertex order
+     * isn't defined */
+    pb_sq_house_room_conn* expected_room_conns[] = {&room_conns[1], &room_conns[4],
+                                                    &room_conns[0], &room_conns[2],
+                                                    &room_conns[5], &room_conns[7],
+                                                    &room_conns[3], &room_conns[6],
+                                                    &room_conns[1], &room_conns[4],
+                                                    &room_conns[0], &room_conns[2],
+                                                    &room_conns[5], &room_conns[7],
+                                                    &room_conns[3], &room_conns[6]};
+
+    unsigned i;
+    for(i = 0; i < 4; ++i) {
+        pb_graph_add_vertex(floor_graph, &rooms[i], &rooms[i]);
+    }
+    for(i = 0; i < 8; i += 2) {
+        pb_graph_add_edge(floor_graph, room_conns[i].room, room_conns[i].neighbour, 0, &room_conns[i]);
+        pb_graph_add_edge(floor_graph, room_conns[i + 1].room, room_conns[i + 1].neighbour, 0, &room_conns[i + 1]);
+    }
+
+    result = pb_sq_house_generate_internal_graph(floor_graph);
+    ck_assert_msg(result->vertices->size == 5, "result graph should have had 5 vertices, had %lu", result->vertices->size);
+    ck_assert_msg(result->edges->size == 8, "result graph should have had 8 edges, had %lu", result->edges->size);
+
+    for(i = 0; i < 5; ++i) {
+        pb_vertex const* vert = pb_graph_get_vertex(result, &expected_points[i]);
+        ck_assert_msg(vert, "graph should have contained point (%.1f, .1f)", expected_points[i].x, expected_points[i].y);
+    }
+
+    for(i = 0; i < 8; i += 2) {
+        pb_edge const* edge = pb_graph_get_edge(result, expected_edge_points[i].first, expected_edge_points[i].second);
+        pb_sq_house_room_conn* rconn = (pb_sq_house_room_conn*)edge->data;
+        unsigned conn_idx = i * 2;
+
+        ck_assert_msg(edge, "graph should have had edge from between (%.1f, %.1f) and (%.1f, %.1f)",
+                      ((pb_point2D*)expected_edge_points[i].first)->x, ((pb_point2D*)expected_edge_points[i].second)->y,
+                      ((pb_point2D*)expected_edge_points[i].second)->x, ((pb_point2D*)expected_edge_points[i].second)->y);
+
+        ck_assert_msg(edge->weight == 25, "all edge weights should be 25");
+
+        ck_assert_msg(rconn == expected_room_conns[conn_idx] || rconn == expected_room_conns[conn_idx + 1],
+                      "edge %u should have had connection %u or %u", i, conn_idx, conn_idx + 1);
+    }
+
+    pb_graph_free(result);
+}
+END_TEST
+
+ /*
+*   Stair test (stair coordinates might not exactly match other coordinates wrt float value, so test these)
+    []  Input: Graph representing square house with two rooms: room placed by squarification, and stairs
+        ->  two pb_rooms
+            (+) room 0: rect with [{0, 0}, 13, 10}]
+            (+) room 1: rect with width 7, height = building height, calculate dimensions using stair calculations
+        ->  "stair calculations": we'll have the stairs on the right in this case, so:
+            (+) stair_rect.bottom_left = {floor_rect.w - stair_width, 0}
+            (+) stair_rect.h = floor_rect.h
+            (+) stair_rect.w = stair_width
+        ->  two edges (room_conns)
+            (+) room 0: conn to room 1 with overlap start {13, 0}, overlap end {13, 10}
+            (+) room 1: conn to room 0 with overlap start {13, 0}, overlap end {13, 10}
+    []  Output:
+        ->  Graph with two vertices and 2 edges
+            (+) vertex at {13, 0} with edge to vertex {13, 10} with weight 10
+            (+) vertex at {13, 10} with edge to vertex {13, 0} with weight 10
+
+*   Multiple overlaps
+    []  Input: Graph representing square house with two larger room and 3 smaller rooms
+        ->  five pb_room's
+            (+) rects: [{{0, 0}, 5, 5}, {{0, 5}, 5, 5}, {{5, 0}, 5, 10/3}, {5, 10/3}, 5, 10/3}, {5, 20/3}, 5, 10/3}]
+        ->  fourteen edges (room_conns) (weight 0/ignored for all edges)
+            (+) room 0: conn to room 1 with overlap start {0, 5}, overlap end {5, 5};
+                        conn to room 2 with overlap start {5, 0}, overlap end {5, 10/3};
+                        conn to room 3 with overlap start {5, 10/3), overlap end {5, 5}
+            (+) room 1: conn to room 0 with overlap start {0, 5}, overlap end {5, 5};
+                        conn to room 3 with overlap start {5, 5}, overlap end {5, 20/3}
+                        conn to room 4 with overlap start {5, 20/3}, overlap end {5, 10};
+            (+) room 2: conn to room 0 with overlap start {5, 0}, overlap end {5, 10/3};
+                        conn to room 3 with overlap start {5, 10/3}, overlap end {10, 10/3}
+            (+) room 3: conn to room 0 with overlap start {5, 10/3}, overlap end {5, 5};
+                        conn to room 1 with overlap start {5, 5}, overlap end {5, 20/3}
+                        conn to room 2 with overlap start {5, 10/3}, overlap end {10, 10/3}
+                        conn to room 4 with overlap start {5, 20/3}, overlap end {10, 20/3}
+            (+) room 4: coon to room 1 with overlap start {5, 20/3}, overlap end, {5, 10}
+                        conn to room 3 with overlap start {5, 20/3}, overlap end {10, 20/3}
+    []  Output: graph with 8 vertices and 16 edges
+        ->  vertex {5, 0}
+            (+) edge to {5, 10/3} with weight = 10/3, data = pointer to room 0 connection 1
+        ->  vertex {5, 10/3}
+            (+) edge to {5, 0} with weight = 10/3, data = pointer to room 0 connection 1
+            (+) edge to {10, 10/3} with weight = 5, data = pointer to room 2 connection 1
+            (+) edge to {5, 20/3} with weight = 10/3, data  = pointer to room 0 connection 2
+        ->  vertex {10, 10/3}
+            (+) edge to {5, 10/3} with weight = 5, data = pointer to room 2 connection 1
+        ->  vertex {5, 5}
+            (+) edge to {5, 10/3} with weight = 10/3, data = pointer to room 0 connection 2
+            (+) edge to {5, 20/3} with weight = 10/3, data = pointer to room 1 connection 1
+            (+) edge to {0, 5} with weight = 5, data = pointer to room 0 connection 0
+        ->  vertex {0, 5}
+            (+) edge to {5, 5} with weight = 5, data = pointer to room 0 connection 0
+        ->  vertex {5, 20/3}
+            (+) edge to {5, 5} with weight = 10/3, data = pointer to room 1 connection 1
+            (+) edge to {5, 10} with weight = 10/3, data = pointer to room 1 connection 2
+            (+) edge to {10, 20/3} with weight = 5, data = pointer to room 3 connection 3
+        ->  vertex {5, 10}
+            (+) edge to {5, 20/3} with weight = 10/3, data = pointer to room 1 connection 2
+        ->  vertex {10, 20/3}
+            (+) edge to {5, 20/3} with weight = 5, data = pointer to room 3 connection 3
+*/
 Suite *make_pb_sq_house_graph_suite(void)
 {
     Suite* s;
@@ -521,6 +669,7 @@ Suite *make_pb_sq_house_graph_suite(void)
     TCase* tc_sq_house_get_wall_overlap;
     TCase* tc_sq_house_generate_floor_graph;
     TCase* tc_sq_house_find_disconnected;
+    TCase* tc_sq_house_internal_graph;
 
     s = suite_create("Squarified house generation graph algorithms");
 
@@ -548,6 +697,10 @@ Suite *make_pb_sq_house_graph_suite(void)
     tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_one_sided_connection);
     tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_single_disconnected);
     tcase_add_test(tc_sq_house_find_disconnected, find_disconnected_rooms_outside_multi_disconnected);
+
+    tc_sq_house_internal_graph = tcase_create("Internal graph generation tests");
+    suite_add_tcase(s, tc_sq_house_internal_graph);
+    tcase_add_test(tc_sq_house_internal_graph, internal_graph_simple);
 
     return s;
 }

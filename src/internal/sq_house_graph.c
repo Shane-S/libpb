@@ -112,7 +112,7 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
     for (i = 0; i < floor->num_rooms; ++i) {
         unsigned j;
         pb_sq_house_room_spec* spec;
-        pb_hashmap_get(room_specs, (void*)floor->rooms[i].data, (void**)&spec);
+        pb_hashmap_get(room_specs, floor->rooms[i].data, (void**)&spec);
 
         for (j = 0; j < floor->num_rooms; ++j) {
             if (i == j) continue;
@@ -249,4 +249,84 @@ pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor*
         }
         return disconnected;
     }
+}
+
+static uint32_t point_hash(void const* point) {
+    pb_point2D const* p = (pb_point2D*)point;
+    uint32_t x_fuzzed = pb_fuzz_float(p->x, 5);
+    uint32_t y_fuzzed = pb_fuzz_float(p->y, 5);
+
+    /* This might not actually be half-bad, but we can revisit it if necessary */
+    return x_fuzzed + y_fuzzed;
+}
+
+static int point_eq(void const* point1, void const* point2) {
+    pb_point2D const* p1 = (pb_point2D*)point1;
+    pb_point2D const* p2 = (pb_point2D*)point2;
+
+    uint32_t x1_fuzzed = pb_fuzz_float(p1->x, 5);
+    uint32_t y1_fuzzed = pb_fuzz_float(p1->y, 5);
+
+    uint32_t x2_fuzzed = pb_fuzz_float(p2->x, 5);
+    uint32_t y2_fuzzed = pb_fuzz_float(p2->y, 5);
+
+    return (x1_fuzzed == x2_fuzzed) && (y1_fuzzed == y2_fuzzed);
+}
+
+static void add_internal_points(void const* vert_id, pb_vertex* vert, void* params) {
+    pb_pair* params_pair = (pb_pair*)params;
+    pb_graph* internal_graph = (pb_graph*)params_pair->first;
+    int* error = (int*)params_pair->second;
+
+    /* Add each point from each room to the graph so that we can do hallway pathfinding on it */
+    size_t i;
+    for(i = 0; i < vert->edges_size; ++i) {
+        pb_sq_house_room_conn* conn = (pb_sq_house_room_conn*)vert->edges[i]->data;
+
+        /* Add points and edge between them to graph if they don't already exist */
+        if (pb_graph_get_vertex(internal_graph, &conn->overlap_start) == NULL) {
+            if (pb_graph_add_vertex(internal_graph, &conn->overlap_start, &conn->overlap_start) == -1) {
+                *error = 1;
+                return;
+            }
+        }
+
+        if (pb_graph_get_vertex(internal_graph, &conn->overlap_end) == NULL) {
+            if (pb_graph_add_vertex(internal_graph, &conn->overlap_end, &conn->overlap_end) == -1) {
+                *error = 1;
+                return;
+            }
+        }
+
+        if (pb_graph_get_edge(internal_graph, &conn->overlap_start, &conn->overlap_end) == NULL) {
+            float x_diff_squared = (conn->overlap_end.x - conn->overlap_start.x) *
+                                   (conn->overlap_end.x - conn->overlap_start.x);
+            float y_diff_squared = (conn->overlap_end.y - conn->overlap_start.y) *
+                                   (conn->overlap_end.y - conn->overlap_start.y);
+
+            /* Store the squared distance as the weight - we're only using it for pathfinding */
+            float weight = x_diff_squared + y_diff_squared;
+
+            /* Both edges have a reference to the conn, which stores both neighbours in the overlap */
+            if (pb_graph_add_edge(internal_graph, &conn->overlap_start, &conn->overlap_end, weight, conn) == -1 ||
+                pb_graph_add_edge(internal_graph, &conn->overlap_end, &conn->overlap_start, weight, conn) == -1) {
+                *error = 1;
+                return;
+            }
+        }
+    }
+}
+
+pb_graph* pb_sq_house_generate_internal_graph(pb_graph* floor_graph) {
+    pb_graph* internal = pb_graph_create(point_hash, point_eq);
+    int error = 0;
+    pb_pair params = {internal, &error};
+
+    pb_graph_for_each_vertex(floor_graph, add_internal_points, &params);
+    if (error) {
+        pb_graph_free(internal);
+        return NULL;
+    }
+
+    return internal;
 }
