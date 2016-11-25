@@ -601,50 +601,6 @@ START_TEST(internal_graph_simple)
 }
 END_TEST
 
-/*   Multiple overlaps
-   []  Input: Graph representing square house with two larger room and 3 smaller rooms
-       ->  five pb_room's
-           (+) rects: [{{0, 0}, 5, 5}, {{0, 5}, 5, 5}, {{5, 0}, 5, 10/3}, {5, 10/3}, 5, 10/3}, {5, 20/3}, 5, 10/3}]
-       ->  fourteen edges (room_conns) (weight 0/ignored for all edges)
-           (+) room 0: conn to room 1 with overlap start {0, 5}, overlap end {5, 5};
-                       conn to room 2 with overlap start {5, 0}, overlap end {5, 10/3};
-                       conn to room 3 with overlap start {5, 10/3), overlap end {5, 5}
-           (+) room 1: conn to room 0 with overlap start {0, 5}, overlap end {5, 5};
-                       conn to room 3 with overlap start {5, 5}, overlap end {5, 20/3}
-                       conn to room 4 with overlap start {5, 20/3}, overlap end {5, 10};
-           (+) room 2: conn to room 0 with overlap start {5, 0}, overlap end {5, 10/3};
-                       conn to room 3 with overlap start {5, 10/3}, overlap end {10, 10/3}
-           (+) room 3: conn to room 0 with overlap start {5, 10/3}, overlap end {5, 5};
-                       conn to room 1 with overlap start {5, 5}, overlap end {5, 20/3}
-                       conn to room 2 with overlap start {5, 10/3}, overlap end {10, 10/3}
-                       conn to room 4 with overlap start {5, 20/3}, overlap end {10, 20/3}
-           (+) room 4: coon to room 1 with overlap start {5, 20/3}, overlap end, {5, 10}
-                       conn to room 3 with overlap start {5, 20/3}, overlap end {10, 20/3}
-   []  Output: graph with 8 vertices and 16 edges
-       ->  vertex {5, 0}
-           (+) edge to {5, 10/3} with weight = 10/3, data = pointer to room 0 connection 1
-       ->  vertex {5, 10/3}
-           (+) edge to {5, 0} with weight = 10/3, data = pointer to room 0 connection 1
-           (+) edge to {10, 10/3} with weight = 5, data = pointer to room 2 connection 1
-           (+) edge to {5, 5} with weight = 10/3, data  = pointer to room 0 connection 2
-       ->  vertex {10, 10/3}
-           (+) edge to {5, 10/3} with weight = 5, data = pointer to room 2 connection 1
-       ->  vertex {5, 5}
-           (+) edge to {5, 10/3} with weight = 10/3, data = pointer to room 0 connection 2
-           (+) edge to {5, 20/3} with weight = 10/3, data = pointer to room 1 connection 1
-           (+) edge to {0, 5} with weight = 5, data = pointer to room 0 connection 0
-       ->  vertex {0, 5}
-           (+) edge to {5, 5} with weight = 5, data = pointer to room 0 connection 0
-       ->  vertex {5, 20/3}
-           (+) edge to {5, 5} with weight = 10/3, data = pointer to room 1 connection 1
-           (+) edge to {5, 10} with weight = 10/3, data = pointer to room 1 connection 2
-           (+) edge to {10, 20/3} with weight = 5, data = pointer to room 3 connection 3
-       ->  vertex {5, 10}
-           (+) edge to {5, 20/3} with weight = 10/3, data = pointer to room 1 connection 2
-       ->  vertex {10, 20/3}
-           (+) edge to {5, 20/3} with weight = 5, data = pointer to room 3 connection 3
-*/
-
 START_TEST(internal_graph_multiple_overlap)
 {
     /* Input: graph representing 10x10 house evenly divided into 4 rooms
