@@ -257,7 +257,10 @@ static uint32_t point_hash(void const* point) {
     uint32_t y_fuzzed = pb_fuzz_float(p->y, 5);
 
     /* This might not actually be half-bad, but we can revisit it if necessary */
-    return x_fuzzed + y_fuzzed;
+    uint32_t hash = x_fuzzed;
+    hash += hash * 37;
+    hash += y_fuzzed;
+    return hash;
 }
 
 static int point_eq(void const* point1, void const* point2) {
@@ -321,6 +324,10 @@ pb_graph* pb_sq_house_generate_internal_graph(pb_graph* floor_graph) {
     pb_graph* internal = pb_graph_create(point_hash, point_eq);
     int error = 0;
     pb_pair params = {internal, &error};
+
+    if (internal == NULL) {
+        return NULL;
+    }
 
     pb_graph_for_each_vertex(floor_graph, add_internal_points, &params);
     if (error) {

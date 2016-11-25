@@ -86,8 +86,8 @@ static uint32_t edge_hash(void const* edge) {
 
     /* Hash the addresses; every edge will have a different pair of vertices, so the combination of
      * addresses will identify the edge */
-    hash += 31 * pb_murmurhash3((void*)actual->from, (int)sizeof(pb_vertex*));
-    hash += 31 * pb_murmurhash3((void*)actual->to, (int)sizeof(pb_vertex*));
+    hash += 31 * pb_murmurhash3((void*)&actual->from, (int)sizeof(pb_vertex*));
+    hash += 31 * pb_murmurhash3((void*)&actual->to, (int)sizeof(pb_vertex*));
 
     return hash;
 }

@@ -6,7 +6,7 @@
 
 /**
  * Masks out the last "fuzz_bits" bits of the mantissa so that the float can be
- * better more reliably compared for equality.
+ * more reliably compared for equality.
  *
  * 0 and all subnormals are converted to the smallest possible float value
  * (2 ^ -126 * (1 + 2 ^ -23)) since that's close enough to 0 for this application.
