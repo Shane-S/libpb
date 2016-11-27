@@ -1,10 +1,9 @@
 #include "../test_util.h"
 #include <check.h>
-#include <stdlib.h>
 #include <pb/sq_house.h>
 #include <pb/internal/sq_house_layout.h>
 #include <pb/util/hashmap/hash_utils.h>
-#include <pb/floor_plan.h>
+#include <pb/util/geom/rect_utils.h>
 
 START_TEST(choose_rooms_single_room)
 {
