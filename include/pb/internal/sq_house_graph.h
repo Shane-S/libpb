@@ -89,4 +89,17 @@ pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor*
  */
 pb_graph* pb_sq_house_generate_internal_graph(pb_graph* floor_graph);
 
+/**
+ * Creates a series of hallways to make any disconnected rooms accessible.
+ *
+ * @param f              The floor being processed.
+ * @param floor_graph    The graph representing the rooms on the floor and their connections.
+ * @param internal_graph The graph containing the floor's internal points.
+ * @param disconnected   The set of disconnected rooms.
+ * @return               A pb_vector of pb_vectors. Each vector contains a list of edges in the internal graph which
+ *                       together represent a hallway.
+ */
+pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph* internal_graph,
+                                    pb_hashmap* disconnected);
+
 #endif /* PB_SQ_HOUSE_GRAPH_H */

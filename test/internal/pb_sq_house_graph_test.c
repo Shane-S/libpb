@@ -710,6 +710,87 @@ START_TEST(internal_graph_multiple_overlap)
 }
 END_TEST
 
+START_TEST(room0_disconnected_simple)
+{
+    /* Input:
+     * -    A floor with three rooms occupying rectangles {(0, 0), 5, 5}, {(0, 5), 5, 5}, and
+     *      {(5, 0), 5, 10}
+     * -    An internal floor graph with the points (0, 5), (5, 0), (5, 5), (5, 10) and appropriate edges
+     * -    A hashmap containing a pointer to floor 0
+     *
+     * Expected output: a pb_vector of size 1, containing another pb_vector of size 3, with edges (5, 0)->(5, 5) and
+     * (5, 5)->(5, 10) */
+    pb_floor f;
+    pb_graph* floor_graph = pb_graph_create(pb_pointer_hash, pb_pointer_eq);
+    pb_graph* internal_graph;
+    pb_rect rects[] = {{{0, 0}, 5, 5}, {{0, 5}, 5, 5}, {{5, 0}, 5, 10}};
+    pb_rect frect = {{0, 0}, 10, 10};
+    pb_point2D points[] = {{0, 5}, {5, 0}, {5, 5}, {5, 10}};
+    pb_room rooms[3] = {0};
+    pb_sq_house_room_conn conns[] = {{&rooms[0], &rooms[1], {0.f, 5.f}, {5.f, 5.f},  (side) 0, 0, 0},
+                                     {&rooms[0], &rooms[2], {5.f, 0.f}, {5.f, 5.f},  (side) 0, 0, 0},
+                                     {&rooms[1], &rooms[0], {0.f, 5.f}, {5.f, 5.f},  (side) 0, 0, 0},
+                                     {&rooms[1], &rooms[2], {5.f, 5.f}, {5.f, 10.f}, (side) 0, 0, 0},
+                                     {&rooms[2], &rooms[0], {5.f, 0.f}, {5.f, 5.f},  (side) 0, 0, 0},
+                                     {&rooms[2], &rooms[1], {5.f, 5.f}, {5.f, 10.f}, (side) 0, 0, 0}};
+    pb_pair expected_edge = {&points[1], &points[2]};
+    pb_hashmap* disconnected = pb_hashmap_create(pb_pointer_hash, pb_pointer_eq);
+
+    pb_vector* result;
+    pb_vector* hallway;
+    pb_edge** hallway_edges;
+
+    /* Set up the data */
+    int i;
+    for(i = 0; i < 3; ++i) {
+        pb_rect_to_pb_shape2D(&rects[i], &rooms[i].shape);
+    }
+    for(i = 0; i < 3; ++i) {
+        pb_graph_add_vertex(floor_graph, &rooms[i], &rooms[i]);
+    }
+    for(i = 0; i < 6; ++i) {
+        pb_graph_add_edge(floor_graph, conns[i].room, conns[i].neighbour, 0, &conns[i]);
+    }
+    internal_graph = pb_sq_house_generate_internal_graph(floor_graph);
+    pb_hashmap_put(disconnected, &rooms[0], &rooms[0]);
+
+    f.rooms = &rooms[0];
+    pb_rect_to_pb_shape2D(&frect, &f.shape);
+
+    /* Generate the hallways */
+    result = pb_sq_house_get_hallways(&f, floor_graph, internal_graph, disconnected);
+
+    ck_assert_msg(result->size == 1, "result should have only had one hallway, had %lu", result->size);
+    hallway = (pb_vector*)result->items;
+    hallway_edges = (pb_edge**)hallway->items;
+    ck_assert_msg(hallway->size == 1, "hallway should have had one edge, had %lu", hallway->size);
+
+    {
+        pb_vertex const *e_from = pb_graph_get_vertex(internal_graph, expected_edge.first);
+        pb_vertex const *e_to = pb_graph_get_vertex(internal_graph, expected_edge.second);
+
+        pb_point2D *from_point = (pb_point2D *) hallway_edges[0]->from->data;
+        pb_point2D *e_from_point = (pb_point2D *) e_from->data;
+
+        pb_point2D *to_point = (pb_point2D *) hallway_edges[0]->to->data;
+        pb_point2D *e_to_point = (pb_point2D *) e_to->data;
+
+        ck_assert_msg(hallway_edges[0]->from == e_from,
+                      "hallway edge incorrect, had from point (%.2f, %.2f) instead of"
+                              "(%.2f, %.2f)", from_point->x, from_point->y, e_from_point->x, e_from_point->y);
+
+        ck_assert_msg(hallway_edges[0]->to == e_to, "hallway edge incorrect, had to point (%.2f, %.2f) instead of"
+                "(%.2f, %.2f)", to_point->x, to_point->y, e_to_point->x, e_to_point->y);
+    }
+
+    pb_graph_free(floor_graph);
+    pb_graph_free(internal_graph);
+    pb_hashmap_free(disconnected);
+    pb_vector_free(hallway);
+    pb_vector_free(result);
+}
+END_TEST
+
 Suite *make_pb_sq_house_graph_suite(void)
 {
     Suite* s;
@@ -718,6 +799,10 @@ Suite *make_pb_sq_house_graph_suite(void)
     TCase* tc_sq_house_generate_floor_graph;
     TCase* tc_sq_house_find_disconnected;
     TCase* tc_sq_house_internal_graph;
+    TCase* tc_sq_house_find_hallways;
+    TCase* tc_sq_house_place_hallways;
+    TCase* tc_sq_house_place_doors;
+    TCase* tc_sq_house_place_windows;
 
     s = suite_create("Squarified house generation graph algorithms");
 
@@ -750,6 +835,10 @@ Suite *make_pb_sq_house_graph_suite(void)
     suite_add_tcase(s, tc_sq_house_internal_graph);
     tcase_add_test(tc_sq_house_internal_graph, internal_graph_simple);
     tcase_add_test(tc_sq_house_internal_graph, internal_graph_multiple_overlap);
+
+    tc_sq_house_find_hallways = tcase_create("Hallway finding tests");
+    suite_add_tcase(s, tc_sq_house_find_hallways);
+    tcase_add_test(tc_sq_house_find_hallways, room0_disconnected_simple);
 
     return s;
 }

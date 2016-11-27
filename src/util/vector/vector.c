@@ -67,17 +67,17 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item
     }
 
     items = (unsigned char*)vec->items;
-    start = items + (vec->item_size * (vec->size - 1));
-    end = items + (vec->item_size * i);
+    end = items + (vec->item_size * vec->size);
+    start = items + (vec->item_size * i);
 
-    /* Shift items i through vec->size - 1 up by one */
-    for (cur = start, prev = items + (vec->item_size * vec->size); cur >= end; cur -= vec->item_size) {
-        memcpy(prev, cur, vec->item_size);
-        prev = cur;
+    /* Shift items i through the end of the vector up by one */
+    for (cur = end; cur > start; cur -= vec->item_size) {
+        prev = cur - vec->item_size;
+        memcpy(cur, prev, vec->item_size);
     }
     
     /* Copy the item into its position */
-    memcpy(end, item, vec->item_size);
+    memcpy(start, item, vec->item_size);
     vec->size++;
 
     return 0;
