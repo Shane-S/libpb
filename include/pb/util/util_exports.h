@@ -1,6 +1,8 @@
 #ifndef PB_UTIL_EXPORTS_H
 #define PB_UTIL_EXPORTS_H
 
+#if BUILD_SHARED
+
 /* Stolen from SDL2 (and modified to actually detect _WIN32). Defines exports and calling convention for functions in the library. */
 #ifndef PB_UTIL_DECLSPEC
 # if defined(_WIN32) || defined(__WINRT__)
@@ -34,5 +36,12 @@
 #define PB_UTIL_CALL
 #endif
 #endif /* PBCALL */
+
+#else
+
+#define PB_UTIL_DECLSPEC
+#define PB_UTIL_CALL __cdecl
+
+#endif /*BUILD_SHARED*/
 
 #endif /* PB_UTIL_EXPORTS_H */

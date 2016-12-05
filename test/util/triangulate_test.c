@@ -75,7 +75,7 @@ START_TEST(triangle_contains_outside)
 }
 END_TEST
 
-/* I didn't want these to be accessible to other stuff for the time being, so we need to forward-declare it */
+/* Forward declarations since these functions aren't visible (not sure if they will be, so leave tests for now) */
 extern int pb_earclip_is_convex(pb_point2D const* point, pb_point2D const* prev, pb_point2D const* next);
 START_TEST(is_convex_convex)
 {
@@ -320,16 +320,16 @@ START_TEST(triangulate_simple_polygon)
 
     results = pb_triangulate(&shape);
 
-    for(i = 0; i < 4; i += 3) {
+    for(i = 0; i < 4; ++i) {
         ck_assert_msg(results[i * 3] == expected [i * 3],
                       "Triangle %lu index 0 should have been %lu, was %lu",
                       i, expected [i * 3], results[i * 3]);
 
         ck_assert_msg(results[i * 3 + 1] == expected [i * 3 + 1],
-                      "Triangle %lu index 0 should have been %lu, was %lu",
+                      "Triangle %lu index 1 should have been %lu, was %lu",
                       i, expected [i * 3 + 1], results[i * 3 + 1]);
         ck_assert_msg(results[i * 3 + 2] == expected [i * 3 + 2],
-                      "Triangle %lu index 0 should have been %lu, was %lu",
+                      "Triangle %lu index 2 should have been %lu, was %lu",
                       i, expected [i * 3 + 2], results[i * 3 + 2]);
     }
 

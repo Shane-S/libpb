@@ -32,10 +32,18 @@ if( NOT CHECK_FOUND )
             # pkg-config didn't set the check include dir on Windows last time I tried
             # see what we can do about that
             
-            # get all include directories and find which one 
-            string( REGEX MATCHALL "[/-]I\s*\S+" INCLUDE_DIRS "${CHECK_CFLAGS}" "${CHECK_CFLAGS_OTHER}" )
+            # properly stringify pkg-config output to handle directories with spaces
+            # this probablt needs to happen for all platforms, but I currently have a path without spaces on Linux
+            # so this will have to do for now
+            string( REPLACE ";" " " CHECK_CFLAGS_STRING "${CHECK_CFLAGS}")
+            string( REPLACE ";" " " CHECK_CFLAGS_OTHER_STRING "${CHECK_CFLAGS_OTHER}")
+            set( CHECK_ALL_CFLAGS_STRING "${CHECK_CFLAGS_STRING} ${CHECK_CFLAGS_OTHER_STRING}")
+            
+            # get all include directories and find which one (if any) contains check.h
+            string( REGEX MATCHALL "-I[^-]*" INCLUDE_DIRS ${CHECK_ALL_CFLAGS_STRING} ) 
             foreach( INCLUDE_DIR IN LISTS INCLUDE_DIRS )
-                string( REGEX REPLACE "[/-]I\s*" "" STRIPPED_DIR)
+                string( REGEX REPLACE "[/-]I\\s*" "" STRIPPED_DIR "${INCLUDE_DIR}")
+                string( STRIP "${STRIPPED_DIR}" STRIPPED_DIR )
                 if( EXISTS "${STRIPPED_DIR}/check.h" )
                     set( CHECK_INCLUDE_DIR "${STRIPPED_DIR}" )
                     set( TO_REMOVE "${INCLUDE_DIR}")
@@ -46,7 +54,7 @@ if( NOT CHECK_FOUND )
             # None of the include directories contained check
             # This probably shouldn't happen, but we'll leave it just in case
             if( NOT CHECK_INCLUDE_DIR )
-                set( CHECK_FOUND FALSE)
+                set( CHECK_FOUND FALSE )
             else( NOT CHECK_INCLUDE_DIR )
                 # Remove the include from CFLAGS since it will be added anyway
                 string( REPLACE "${TO_REMOVE}" "" CHECK_CFLAGS "${CHECK_CFLAGS}" )

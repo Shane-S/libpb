@@ -2,10 +2,6 @@
 #include <pb/util/geom/types.h>
 #include <pb/util/geom/rect_utils.h>
 
-/* We're going to assume that pb_graph_free and pb_graph_create work.
-* If not, then we'll find out later while profiling memory usage :) */
-
-/* TODO: One day, we should probably just use a fixture for the graph. Since I don't currently feel like doing that, I won't. */
 START_TEST(rect_to_shape)
 {
     pb_shape2D shape;
@@ -83,9 +79,6 @@ START_TEST(shape_to_rect_bad_shape) {
 END_TEST
 
 Suite *make_pb_geom_suite(void) {
-    /* Life test case tests lifetime events (create and destroy);
-    * Adjacency test case tests all functions related to the adjacency list
-    */
     Suite *s;
     TCase *tc_pb_rect_conversion;
 

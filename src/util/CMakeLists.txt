@@ -27,6 +27,7 @@ set(SOURCES hashmap/hashmap.c
             float_utils.c)
             
 add_library(pb_util ${SOURCES} ${HEADERS})
+target_compile_definitions(pb_util PRIVATE "BUILD_SHARED=0")
 
 if(UNIX)
     target_link_libraries(pb_util -lm)

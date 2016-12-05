@@ -3,11 +3,13 @@
 #include <pb/util/float_utils.h>
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/util/pair/pair.h>
+#include <limits.h>
 #include <pb/util/float_utils.h>
 #include <string.h>
 #include <pb/sq_house.h>
 #include <pb/extrusion.h>
 #include <pb/util/vector/vector.h>
+#include <pb/internal/astar.h>
 
 int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     int shares_top = 0;
@@ -340,13 +342,77 @@ pb_graph* pb_sq_house_generate_internal_graph(pb_graph* floor_graph) {
     return internal;
 }
 
+typedef struct {
+    /* Input */
+    pb_graph* internal_graph;
+    pb_vector* hallway_points;
+    pb_floor* floor;
+    int closest;
+
+    /* Output */
+    pb_point2D* start;
+    pb_point2D* goal;
+    pb_room* start_room;
+    float dist;
+} pb_hallway_room_selection_params;
+
+static void get_next_pair(pb_hashmap_entry* entry, void* param) {
+    pb_hallway_room_selection_params* params = (pb_hallway_room_selection_params*) param;
+    pb_room* room = (pb_room*)entry->val;
+
+    pb_point2D* fpoints = (pb_point2D*)params->floor->shape.points.items;
+    pb_point2D* room_points = (pb_point2D*)room->shape.points.items;
+    pb_point2D** hpoints = (pb_point2D**)params->hallway_points->items;
+
+    unsigned i;
+    for(i = 0; i < room->shape.points.size; ++i) {
+        unsigned j;
+        /* Check that the point is an internal point */
+        if (!pb_point_eq(&room_points[i], fpoints) &&
+            !pb_point_eq(&room_points[i], fpoints + 1) &&
+            !pb_point_eq(&room_points[i], fpoints + 2) &&
+            !pb_point_eq(&room_points[i], fpoints + 3)) {
+
+            /* Check if we beat the min or max and update if so */
+            for(j = 0; j < params->hallway_points->size; ++j) {
+                float x_diff = room_points[i].x - hpoints[j]->x;
+                float y_diff = room_points[i].y - hpoints[j]->y;
+                float dist = x_diff * x_diff + y_diff * y_diff;
+                int better = params->closest ? dist < params->dist : dist > params->dist;
+                if (better) {
+                    params->start = &room_points[i];
+                    params->start_room = room;
+                    params->goal = hpoints[j];
+                    params->dist = dist;
+                }
+            }
+        }
+    }
+}
+
+static float euclid_squared(pb_vertex const* vert, pb_vertex const* goal) {
+    pb_point2D const* v_point = (pb_point2D*)vert->data;
+    pb_point2D const* g_point = (pb_point2D*)goal->data;
+
+    float x_diff = v_point->x - g_point->x;
+    float y_diff = v_point->y - g_point->y;
+    float dist = x_diff * x_diff + y_diff * y_diff;
+    return dist;
+}
+
 pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph* internal_graph,
                                     pb_hashmap* disconnected) {
-
     pb_vector hallway_points;
     pb_vector* hallways;
     pb_point2D* fpoints = (pb_point2D*)f->shape.points.items;
     pb_room* room;
+    pb_hallway_room_selection_params params;
+
+    pb_vector* astar_points;
+    pb_vertex const* start;
+    pb_vertex const* goal;
+
+    unsigned i;
 
     hallways = pb_vector_create(sizeof(pb_vector), 0);
     if (!hallways) {
@@ -422,47 +488,116 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
             free(hallways);
             return NULL;
     }
-/*
-// First, we find the furthest pair of points
-List of valid goal points = list of goal room points that are contained in internal graph
-For each disconnected room in disconnected room map
-    For each point in disconnected room
-        If internal graph contains point
-            For each point in valid goal points
-                If distance (room point, goal point) > max // Well distance squared since we only care that it's bigger
-                    start point = room point
-                    end point = goal point
 
-Remove start room from disconnected list
+    if (pb_vector_init(&hallway_points, sizeof(pb_point2D*), 0) == -1) {
+        pb_vector_free(hallways);
+        return NULL;
+    }
 
-A* points = A* (start point, end point)
-First hallway's edges = empty list
-For each point in A* points - 1
-    Get edge from point to point + 1
-    Remove edge.data.room and edge.data.neighbour from disconnected list
-    Add edge to first hallway's edges
+    /* Get list of internal goal points, which in this case means points that aren't on a corner of the floor */
+    for(i = 0; i < f->rooms->shape.points.size; ++i) {
+        pb_point2D const* p = ((pb_point2D*)f->rooms->shape.points.items) + i;
+        pb_point2D const* fp = (pb_point2D*)f->shape.points.items;
+        if (!pb_point_eq(p, fp) && !pb_point_eq(p, fp + 1) && !pb_point_eq(p, fp + 2) && !pb_point_eq(p, fp + 3)) {
+            if (pb_vector_push_back(&hallway_points, &p) == -1) {
+                goto err_return;
+            }
+        }
+    }
 
-Append result of A* points to hallway points
-Add first hallway's edges to list of lists
-Free A* points
+    params.internal_graph = internal_graph;
+    params.hallway_points = &hallway_points;
+    params.floor = f;
+    params.closest = 0;
+    params.dist = 0.f;
 
-For each disconnected room
-    Find closest point in hallway points
-    Get suitable point on wall segment to get to closest hallway point
-    A* points = Perform A* (suitable point on wall segment, closest hallway point)
+    while(disconnected->size) {
+        pb_vector hallway;
+        size_t i;
+        if (pb_vector_init(&hallway, sizeof(pb_edge*), 0) == -1) {
+            goto err_return;
+        }
 
-    Remove start room from disconnected list
+        pb_hashmap_for_each(disconnected, get_next_pair, &params);
 
-    D/C Room hallway edges = empty list
-    // This is actually safe since entries are processed "in order"; we can't skip any
-    For each point in A* points -1
-        Get edge from point to point - 1
-        Remove edge.data.room and edge.data.neighbour from disconnected list
-        Add edge to D/C Room hallway edges
+        /* Using the closest point to the hallway won't include a full wall segment of the room,
+         * so use the point "behind" the closest point as the start point */
+        if (params.closest) {
+            float x_diff = params.start->x - params.goal->x;
+            float y_diff = params.start->y - params.goal->y;
+            pb_point2D const* start_points = (pb_shape2D*)params.start_room->shape.points.items;
 
-    Add D/C Room hallway edges to edges list of lists
+            /* Figure out which point is the start point */
+            for (i = 0; i < params.start_room->shape.points.size; ++i) {
+                if (pb_point_eq(params.start, start_points + i)) {
+                    break;
+                }
+            }
 
-Free hallway points
-Return hallway edges list of lists
-     */
+            /* If we're moving more in the x direction, use point along the x axis and vice-versa */
+            if (fabsf(x_diff) > fabsf(y_diff)) {
+                params.start = start_points + (3 - i); /* Maps 1<->2, 0<->3*/
+            } else {
+                params.start = i == 0 || i == 1 ? 1 - i : (4 % i) + 2; /* Maps 0<->1, 2<->3 */
+            }
+        }
+
+        /* Remove disconnected room from the list */
+        pb_hashmap_remove(disconnected, params.start_room);
+
+        start = pb_graph_get_vertex(internal_graph, params.start);
+        goal = pb_graph_get_vertex(internal_graph, params.goal);
+        if (pb_astar(start, goal, euclid_squared, &astar_points) == -1) {
+            /* Couldn't find a path */
+            pb_vector_free(&hallway);
+            continue;
+        }
+
+        {
+            /* TODO: Refactor this garbage to use mixed declarations and code */
+            /* Remove any disconnected rooms that this hallway touches */
+            pb_vertex** verts = (pb_vertex**)astar_points->items;
+            for (i = 0; i < astar_points->size - 1; ++i) {
+                pb_point2D* p0 = (pb_point2D*)verts[i]->data;
+                pb_point2D* p1 = (pb_point2D*)verts[i + 1]->data;
+
+                pb_edge const* edge = pb_graph_get_edge(internal_graph, p0, p1);
+                pb_hashmap_remove(disconnected, ((pb_sq_house_room_conn*)edge->data)->room);
+                pb_hashmap_remove(disconnected, ((pb_sq_house_room_conn*)edge->data)->neighbour);
+
+                if (pb_vector_push_back(&hallway, &edge) == -1) {
+                    pb_vector_free(&hallway);
+                    goto err_return;
+                }
+
+                if (pb_vector_push_back(&hallway_points, p0) == -1) {
+                    pb_vector_free(&hallway);
+                    goto err_return;
+                }
+            }
+
+            /* Add the last point to the list of points and add the constructed hallway to the hallway list */
+            if (pb_vector_push_back(hallways, &hallway) == -1 ||
+                pb_vector_push_back(&hallway_points, verts[astar_points->size - 1]->data) == -1) {
+                pb_vector_free(&hallway);
+                goto err_return;
+            }
+        }
+        params.closest = 1;
+        params.dist = INFINITY;
+    }
+
+    pb_vector_free(&hallway_points);
+    return hallways;
+
+    err_return:
+    {
+        pb_vector* hallway_items = (pb_vector*)hallways->items;
+        for(i = 0; i < hallways->size; ++i) {
+            pb_vector_free(hallway_items + i);
+        }
+        pb_vector_free(&hallway_points);
+        pb_vector_free(hallways);
+        free(hallways);
+    }
 }

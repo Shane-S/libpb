@@ -51,7 +51,7 @@ int pb_earclip_is_convex(pb_point2D const* point, pb_point2D const* prev, pb_poi
     return dot > 0;
 }
 
-int PB_UTIL_DECLSPEC pb_tri_contains_point PB_UTIL_CALL (pb_point2D* const t0, pb_point2D* const t1,
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_tri_contains_point (pb_point2D* const t0, pb_point2D* const t1,
                                                          pb_point2D* const t2, pb_point2D* const p) {
     float area = 0.5f * (-t1->y * t2->x +
                          t0->y * (-t1->x + t2->x) +

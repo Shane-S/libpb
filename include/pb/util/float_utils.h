@@ -2,6 +2,7 @@
 #define PB_FLOAT_MATH_H
 
 #include <stddef.h>
+#include <stdint.h>
 #include <pb/util/util_exports.h>
 
 /**
