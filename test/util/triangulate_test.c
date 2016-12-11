@@ -145,7 +145,6 @@ START_TEST(is_ear_simple)
     pb_shape2D_init(&rect, 4);
     for(i = 0; i < 4; ++i) {
         pb_vector_push_back(&rect.points, &rect_points[i]);
-        pb_vector_push_back(&rect.connected, &unused);
     }
 
     pb_vector_init(&earclip_list, sizeof(pb_earclip_point), 4);
@@ -201,7 +200,6 @@ START_TEST(is_ear_non_contained_reflex)
     pb_shape2D_init(&shape, 6);
     for(i = 0; i < 6; ++i) {
         pb_vector_push_back(&shape.points, &shape_points[i]);
-        pb_vector_push_back(&shape.connected, &unused);
     }
 
     pb_vector_init(&earclip_list, sizeof(pb_earclip_point), 4);
@@ -234,7 +232,6 @@ START_TEST(is_ear_contained_reflex)
     pb_shape2D_init(&shape, 6);
     for(i = 0; i < 6; ++i) {
         pb_vector_push_back(&shape.points, &shape_points[i]);
-        pb_vector_push_back(&shape.connected, &unused);
     }
 
     pb_vector_init(&earclip_list, sizeof(pb_earclip_point), 4);
@@ -315,7 +312,6 @@ START_TEST(triangulate_simple_polygon)
     pb_shape2D_init(&shape, 6);
     for(i = 0; i < 6; ++i) {
         pb_vector_push_back(&shape.points, &shape_points[i]);
-        pb_vector_push_back(&shape.connected, &unused);
     }
 
     results = pb_triangulate(&shape);

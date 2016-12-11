@@ -11,10 +11,6 @@ typedef struct {
 typedef struct {
     /* Vector of pb_point2D with the shape's points */
     pb_vector points;
-
-    /* Vector of char indicating whether an edge exists, e.g.
-     * if connected[0] == 1 then there is an edge between points[0] and points[1] */
-    pb_vector connected;
 } pb_shape2D;
 
 typedef struct {

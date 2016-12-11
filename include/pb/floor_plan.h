@@ -17,14 +17,21 @@ typedef struct {
     /* The polygon occupied by the room. */
     pb_shape2D shape;
 
+    /* Specifies which sides of the shape have walls (non-zero for a given index means there is a wall) */
+    pb_vector walls;
+
     pb_point2D* doors;
     size_t num_doors;
 
     pb_point2D* windows;
     size_t num_windows;
 
+    int has_floor;
+    int has_ceiling;
+
     /* Data supplied by the algorithm that created the building plan. */
     void *data;
+    char const* name;
 } pb_room;
 
 /**
@@ -55,8 +62,11 @@ typedef struct {
     /* Data supplied by the algorithm that created the building plan. */
     void *data;
 
-    /* If this is non-zero, then every room in the plan has a null-terminated name.
-     * The floor plan generation algorithm must set this. */
+    /* If non-zero, then the name pointer in every pb_room points to a
+     * null-terminated string representing the room's name. The pointers' contents
+     * are undefined otherwise.
+     * 
+     * The floor plan generation algorithm must set this variable. */
     int has_names;
 } pb_building;
 

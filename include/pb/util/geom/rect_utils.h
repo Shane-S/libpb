@@ -28,3 +28,37 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_to_pb_shape2D(pb_rect* rect, pb_shape2
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape2D_to_pb_rect(pb_shape2D* shape, pb_rect* out);
 
+/**
+ * For a shape with 3 or more points, gets the bounding rectangle.
+ *
+ * @param shape The shape for which to retrieve the bounding rectangle.
+ * @param out   The variable where the resulting rectangle will be stored, if there is one.
+ *
+ * @return 0 on success, -1 on failure (shape had < 3 points).
+ */
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape2D_get_bounding_rect(pb_shape2D const* shape, pb_rect* out);
+
+/**
+ * Determines whether the given rectangle contains the given point. Points on an edge are considered contained.
+ * 
+ * @param rect  The rectangle to use as a container.
+ * @param point The point to check for containment
+ *
+ * @return Non-zero if the point is contained, 0 if not.
+ */
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_contains_point(pb_rect const* rect, pb_point2D const point);
+
+/**
+ * Determines whether and where two rectangles overlap.
+ *
+ * @param rect  The first rectangle to check for overlap.
+ * @param other The second rectangle to check for overlap.
+ * @param start The start point of overlap, if any. If is_edge is 0, then this contains the first
+ *              intersection point.
+ * @param end   The end point of overlap, if any. If is_edge is 0, then this contains the second
+ *              intersection point. This point may not be on the same side of rect as the start point.
+ *
+ * @return Non-zero if the rectangles overlap, 0 if not.
+ */
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_get_overlap(pb_rect const* rect, pb_rect const* other, pb_point2D* start, pb_point2D* end, int* is_edge);
+

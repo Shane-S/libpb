@@ -13,7 +13,6 @@ START_TEST(rect_to_shape)
         {20.f, 10.f}
     };
     pb_point2D* points;
-    char* connected;
     int i;
 
     rect.bottom_left.x = 0;
@@ -23,16 +22,12 @@ START_TEST(rect_to_shape)
 
     pb_rect_to_pb_shape2D(&rect, &shape);
     ck_assert_msg(shape.points.size == 4, "Shape should have had 4 points, instead had %u points", shape.points.size);
-    ck_assert_msg(shape.connected.size == 4, "Shape should have had 4 connected entries, instead had %u", shape.connected.size);
 
     points = (pb_point2D*)shape.points.items;
-    connected = (char*)shape.connected.items;
     for (i = 0; i < 4; ++i) {
         ck_assert_msg(points[i].x == expected[i].x && points[i].y == expected[i].y,
             "Point %d should have been {%f, %f}, was {%f, %f}",
             i, expected[i].x, expected[i].y, points[i].x, points[i].y);
-
-        ck_assert_msg(connected[i] == 1, "Connected[%d] should have been 1, was %c", i, connected[i]);
     }
 
     pb_shape2D_free(&shape);

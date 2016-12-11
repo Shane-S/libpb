@@ -116,7 +116,7 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
     for (i = 0; i < floor->num_rooms; ++i) {
         unsigned j;
         pb_sq_house_room_spec* spec;
-        pb_hashmap_get(room_specs, floor->rooms[i].data, (void**)&spec);
+        pb_hashmap_get(room_specs, floor->rooms[i].name, (void**)&spec);
 
         for (j = 0; j < floor->num_rooms; ++j) {
             if (i == j) continue;
@@ -141,7 +141,7 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
 
                 /* Check whether the room spec for room i allows a connection to room j */
                 for (adj = 0; adj < spec->num_adjacent; ++adj) {
-                    if (strcmp((char*)floor->rooms[j].data, spec->adjacent[adj]) == 0) {
+                    if (strcmp(floor->rooms[j].name, spec->adjacent[adj]) == 0) {
                         conn->can_connect = 1;
 
                         /* Check whether there's enough wall surface area to actually fit a door here */
@@ -600,4 +600,665 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
         pb_vector_free(hallways);
         free(hallways);
     }
+}
+
+static void vert_copy(void const* key, pb_vertex* vert, void* param) {
+    pb_pair* pair = (pb_pair*)param;
+    pb_graph* pruned = (pb_graph*)pair->first;
+    int* err = (int*)pair->second;
+
+    if (*err == 0 && pb_graph_add_vertex(pruned, key, key) == -1) {
+        *err = 1;
+    }
+}
+
+/**
+ * Determines the axes along which this point is part of a line segment.
+ *
+ * @param vert  The vertex to check.
+ * @param has_x Whether this point is part of a line parallel to the x axis.
+ * @param has_y Whether this point is part of a line parallel to the y axis.
+ */
+static void get_point_axes(pb_vertex const* vert, size_t* has_x, size_t* has_y) {
+    pb_point2D* point = (pb_point2D*)vert->data;
+    switch (vert->edges_size) {
+    case 1:
+    {
+        pb_point2D* next = (pb_point2D*)vert->edges[0]->to->data;
+        float xdiff = point->x - next->x;
+        float ydiff = point->y - next->y;
+        *has_x = fabsf(xdiff) > fabsf(ydiff);
+        *has_y = !*has_x;
+        break;
+    }
+    case 2:
+    {
+        pb_point2D* n0 = (pb_point2D*)vert->edges[0]->to->data;
+        pb_point2D* n1 = (pb_point2D*)vert->edges[1]->to->data;
+
+        float xdiff0 = point->x - n0->x;
+        float ydiff0 = point->y - n0->y;
+
+        *has_x = fabsf(xdiff0) > fabsf(ydiff0);
+        *has_y = !*has_x;
+
+        float xdiff1 = point->x - n1->x;
+        float ydiff1 = point->y - n1->y;
+
+        *has_x = *has_x || fabsf(xdiff1) > fabsf(ydiff1);
+        *has_y = *has_y || fabsf(ydiff1) > fabsf(xdiff1);
+        break;
+    }
+    case 3:
+    case 4:
+        *has_x = 1;
+        *has_y = 1;
+        break;
+    }
+}
+
+static uint32_t line_segment_hash(void const* line_key) {
+    pb_pair const* pair = (pb_pair*)line_key;
+    return (uint32_t)((size_t)pair->first + (size_t)pair->second);
+}
+
+static int line_segment_eq(void const* lhs, void const* rhs) {
+    pb_pair const* lpair = (pb_pair*)lhs;
+    pb_pair const* rpair = (pb_pair*)rhs;
+
+    return lpair->first == rpair->first && lpair->second == rpair->second;
+}
+
+typedef struct {
+    pb_point2D start;
+    pb_point2D end;
+} pb_wall_pair;
+
+/* TODO: This function needs major refactoring.
+ * []   It's way too long
+ * []   My "cleverness" in parts basically just made it an unreadable mess
+ * []   There are magic numbers everywhere */
+int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_hashmap* room_specs,
+                               pb_graph* floor_graph, pb_graph* internal_graph, pb_vector* hallways) {
+    pb_vector* hallway_list = (pb_vector*)hallways->items;
+    
+    /* Find smallest dimension so that we can set the hallway dimensions */
+    size_t i;
+    float hallway_size = INFINITY;
+    for (i = 0; i < hallways->size; ++i) {
+        size_t j;
+        for (j = 0; j < hallway_list[i].size; ++j) {
+            pb_edge const* edge = ((pb_edge**)hallway_list[i].items)[j];
+            pb_sq_house_room_conn const* conn = (pb_sq_house_room_conn*)edge->data;
+            pb_point2D const* room_points = (pb_point2D*)conn->room->shape.points.items;
+            pb_point2D const* neighbour_points = (pb_point2D*)conn->neighbour->shape.points.items;
+
+            float local_min;
+            int is_x = conn->overlap_start.y == conn->overlap_end.y;
+            if (is_x) {
+                float room_height = room_points[0].y - room_points[1].y;
+                float neighbour_height = neighbour_points[0].y - neighbour_points[1].y;
+                local_min = fminf(room_height, neighbour_height);
+            } else {
+                float room_width = room_points[2].x - room_points[1].x;
+                float neighbour_width = neighbour_points[2].x - neighbour_points[1].x;
+                local_min = fminf(room_width, neighbour_width);
+            }
+
+            hallway_size = fminf(hallway_size, local_min);
+        }
+    }
+    hallway_size = fminf(hallway_size * 0.25f, hspec->hallway_width);
+
+    pb_graph* pruned = pb_graph_create(internal_graph->vertices->hash, internal_graph->vertices->key_eq);
+    if (pruned == NULL) {
+        return -1;
+    }
+
+    /* Copy vertices to the pruned graph */
+    int err = 0;
+    pb_pair params = { pruned, &err };
+    pb_graph_for_each_vertex(internal_graph, vert_copy, &params);
+    if (err) {
+        pb_graph_free(pruned);
+        return -1;
+    }
+
+    /* Only copy hallway edges and the edges in the other direction to the new graph.
+     * Vertices that aren't in hallways will still be in the graph but will be inaccessible. */
+    for (i = 0; i < hallways->size; ++i) {
+        size_t j;
+        pb_edge** edges = (pb_edge**)hallway_list[i].items;
+
+        for (j = 0; j < hallway_list[i].size; ++j) {
+            pb_point2D* from_point = (pb_point2D*)edges[j]->from->data;
+            pb_point2D* to_point = (pb_point2D*)edges[j]->to->data;
+
+            if (pb_graph_add_edge(pruned, from_point, to_point, edges[j]->weight, edges[j]->data) == -1 ||
+                pb_graph_add_edge(pruned, to_point, from_point, edges[j]->weight, edges[j]->data) == -1) {
+
+                pb_graph_free(pruned);
+                return -1;
+            }
+        }
+    }
+
+    pb_vector hallway_segments;
+    pb_vector point_queue;
+    point_queue.items = NULL;
+    hallway_segments.items = NULL;
+    if (pb_vector_init(&hallway_segments, sizeof(pb_vector), 0) == -1 ||
+        pb_vector_init(&point_queue, sizeof(pb_pair), pruned->vertices->size) == -1) {
+        goto err_return;
+    }
+
+    /* Get the start vertex from the pruned graph, since otherwise it will still have connections to vertices in the full graph */
+    pb_vertex* start_vert = ((pb_edge**)hallway_list[0].items)[0]->from;
+    pb_point2D* start_key = (pb_point2D*)start_vert->data;
+    start_vert = pb_graph_get_vertex(pruned, start_key);
+
+    size_t has_x;
+    size_t has_y;
+    pb_pair start;
+    get_point_axes(start_vert, &has_x, &has_y);
+    start.first = start_vert;
+    start.second = (void*)has_x;
+
+    if (pb_vector_push_back(&point_queue, &start) == -1) {
+        goto err_return;
+    }
+
+    pb_hashmap* segments_disjoint_set = pb_hashmap_create(line_segment_hash, line_segment_eq);
+    if (segments_disjoint_set == NULL) {
+        goto err_return;
+    }
+
+    size_t num_4way = 0;
+
+    /* Get a list of straight hallway segments to be expanded. Should use a queue for better performance. */
+    while (point_queue.size) {
+        pb_pair* pairs = (pb_pair*)point_queue.items;
+        pb_vertex* cur = (pb_vertex*)pairs[0].first;
+        size_t is_x = (size_t)pairs[0].second;
+
+        pb_vector_remove_at(&point_queue, 0);
+
+        /* Go as far as we can in the given direction (left if is_x, down otherwise) */
+        pb_vertex* line_start = NULL;
+        while (!line_start) {
+            size_t j;
+            for (j = 0; j < cur->edges_size; ++j) {
+                pb_vertex* neighbour = cur->edges[j]->to;
+                pb_point2D* npoint = (pb_point2D*)neighbour->data;
+                if (is_x) {
+                    float xdiff = npoint->x - ((pb_point2D*)cur->data)->x;
+                    if (xdiff < 0) {
+                        cur = neighbour;
+                        break;
+                    }
+                } else {
+                    float ydiff = npoint->y - ((pb_point2D*)cur->data)->y;
+                    if (ydiff < 0) {
+                        cur = neighbour;
+                        break;
+                    }
+                }
+            }
+            /* Couldn't go any further in given direction - found the start point */
+            if (j == cur->edges_size) {
+                line_start = cur;
+            }
+        }
+
+        pb_pair line_rep = { line_start, is_x }; /* "Representative" for this line */
+        void* dummy;
+        if (pb_hashmap_get(segments_disjoint_set, &line_rep, &dummy) == -1) {
+            /* We haven't explored this line yet - add it to the set and check it out */
+            pb_pair* line_key = malloc(sizeof(pb_pair));
+            if (!line_key) {
+                goto err_return;
+            }
+
+            *line_key = line_rep;
+            if (pb_hashmap_put(segments_disjoint_set, line_key, line_key) == -1) {
+                free(line_key);
+                goto err_return;
+            }
+
+            pb_vector segment;
+            if (pb_vector_init(&segment, sizeof(pb_vertex*), 0) == -1) {
+                goto err_return;
+            }
+
+            while (1) {
+                size_t cur_edges_size = cur->edges_size;
+
+                /* Keep track of how many 4-way intersections there are to realloc the floor's rooms array later */
+                if (cur->edges_size == 4) {
+                    num_4way++;
+                }
+
+                /* Add each point to this segment */
+                if (pb_vector_push_back(&segment, &cur) == -1) {
+                    goto err_return;
+                }
+
+                /* Add "points of interest" to the list of points to check */
+                size_t has_x, has_y;
+                get_point_axes(cur, &has_x, &has_y);
+                if (is_x && has_y) {
+                    pb_pair poi = { cur, 0 };
+                    if (pb_vector_push_back(&point_queue, &poi) == -1) {
+                        goto err_return;
+                    }
+                } else if (!is_x && has_x) {
+                    pb_pair poi = { cur, 1 };
+                    if (pb_vector_push_back(&point_queue, &poi) == -1) {
+                        goto err_return;
+                    }
+                }
+
+                /* Find the next point on the line, if any */
+                size_t j;
+                for (j = 0; j < cur->edges_size; ++j) {
+                    pb_vertex* neighbour = cur->edges[j]->to;
+                    pb_point2D* npoint = (pb_point2D*)neighbour->data;
+                    if (is_x) {
+                        float xdiff = npoint->x - ((pb_point2D*)cur->data)->x;
+                        if (xdiff > 0) {
+                            cur = neighbour;
+                            break;
+                        }
+                    }
+                    else {
+                        float ydiff = npoint->y - ((pb_point2D*)cur->data)->y;
+                        if (ydiff > 0) {
+                            cur = neighbour;
+                            break;
+                        }
+                    }
+                }
+
+                /* Continue until we find a point where not a single edge goes in the correct direction */
+                if (j == cur_edges_size) {
+                    break;
+                }
+            }
+
+            if (pb_vector_push_back(&hallway_segments, &segment) == -1) {
+                pb_vector_free(&segment);
+                goto err_return;
+            }
+        }
+    }
+
+    /* Create new rooms using the line segments and add them to the floor */
+
+    size_t old_num_rooms = f->num_rooms;
+    size_t new_num_rooms = f->num_rooms + num_4way + hallway_segments.size;
+
+    pb_room* new_rooms_list = realloc(f->rooms, sizeof(pb_room) * new_num_rooms);
+    if (!new_rooms_list) {
+        goto err_return;
+    }
+
+    f->rooms = new_rooms_list;
+
+    err = 0;
+    for (i = 0; i < hallway_segments.size; ++i) {
+        pb_vector* segment = ((pb_vector*)hallway_segments.items) + i;
+        pb_vertex const** points = (pb_vertex**)segment->items;
+
+        pb_point2D const* first = (pb_point2D*)points[0]->data;
+        pb_point2D const* last = (pb_point2D*)points[segment->size - 1]->data;
+        int is_x = last->x - first->x > last->y - first->y;
+
+        pb_point2D room_start = *first;
+        pb_point2D room_end;
+
+        /* Whether to knock out the start and/or end wall for the next room
+        * (wall[0]/wall[2] for vertical segments, wall[1]/wall[3] for horizontal) */
+        int ko_start_wall = 0;
+        int ko_end_wall = 0;
+
+        /* For vertical walls, denotes which side a horizontal corner is on (if any)
+        * None = -1, Left = 0, Right = 1 */
+        int top_corner_side = -1;
+        int bottom_corner_side = -1;
+
+        float half_size = hallway_size / 2;
+
+        /* Which gaps should be processed in reverse */
+        int reverse = is_x; /* The list 1 goes in reverse when moving vertically, and list 0 when horiztonal */
+
+        pb_vector gaps[2] = { 0 };
+        if (pb_vector_init(&gaps[0], sizeof(pb_wall_pair), 0) == -1 ||
+            pb_vector_init(&gaps[1], sizeof(pb_wall_pair), 0) == -1) {
+
+            err = 1;
+            break;
+        }
+
+        int add_room = 0;
+        size_t j;
+        for (j = 0; j < segment->size && !err; ++j) {
+            pb_point2D* cur_point = (pb_point2D*)points[j]->data;
+
+            add_room = j == segment->size - 1;
+
+            /* Check for corner point or T-intersection */
+            switch (points[j]->edges_size) {
+                /* Set end point if we're at a dead end */
+            case 1:
+                if (j == segment->size - 1) {
+                    room_end = *((pb_point2D*)points[j]->data);
+                }
+                break;
+            case 2:
+                /* Check for corner point
+                 * If we find one, vertical segments will be expanded to fill space and have an extra gap added,
+                 * horizontal segments will be shrunk. */
+                if (j == 0 || j == segment->size - 1) {
+                    pb_point2D* n0 = (pb_point2D*)points[j]->edges[0]->to->data;
+                    pb_point2D* n1 = (pb_point2D*)points[j]->edges[1]->to->data;
+
+                    int n0_is_x = fabsf(cur_point->x - n0->x) > fabsf(cur_point->y - n0->y);
+                    int n1_is_x = fabsf(cur_point->x - n1->x) > fabsf(cur_point->y - n1->y);
+                    int is_corner = (n0_is_x != is_x) || (n1_is_x != is_x);
+                    if (is_corner) {
+                        if (j == 0) {
+                            if (is_x) {
+                                room_start.x += half_size;
+                                ko_start_wall = 1;
+                            } else {
+                                room_start.y -= half_size;
+                                bottom_corner_side = n0_is_x != is_x ? (n0->x - cur_point->x) > 0
+                                    : (n1->x - cur_point->x) > 0;
+                            }
+                        } else {
+                            room_end = *cur_point;
+                            if (is_x) {
+                                room_end.x -= half_size;
+                                ko_end_wall = 1;
+                            }
+                            else {
+                                room_end.y += half_size;
+                                top_corner_side = n0_is_x != is_x ? (n0->x - cur_point->x) > 0
+                                    : (n1->x - cur_point->x) > 0;
+                            }
+                        }
+                    }
+                }
+                break;
+            case 3:
+                /* We're at a T-intersection
+                 * If we're at one of the line segment's ends, we're the descending part of the T;
+                 * If we're somewhere in the middle of the segment, we're the top of the T */
+                if (j == 0) {
+                    ko_start_wall = 1;
+                    if (is_x) {
+                        room_start.x += half_size;
+                    } else {
+                        room_start.y += half_size;
+                    }
+                } else if (j == segment->size - 1) {
+                    ko_end_wall = 1;
+                    if (is_x) {
+                        room_end.x -= half_size;
+                    } else {
+                        room_end.y -= half_size;
+                    }
+                } else {
+                    /* Figure out which side the intersection is on */
+                    pb_point2D* n0 = (pb_point2D*)points[j]->edges[0]->to->data;
+                    pb_point2D* n1 = (pb_point2D*)points[j]->edges[1]->to->data;
+                    pb_point2D* n2 = (pb_point2D*)points[j]->edges[2]->to->data;
+                    pb_point2D* t_shaft;
+                    int n0_is_x = fabsf(cur_point->x - n0->x) > fabsf(cur_point->y - n0->y);
+                    int n1_is_x = fabsf(cur_point->x - n1->x) > fabsf(cur_point->y - n1->y);
+                    int n2_is_x = fabsf(cur_point->x - n2->x) > fabsf(cur_point->y - n2->y);
+
+                    t_shaft = n0_is_x == is_x ? (n1_is_x == is_x ? n2 : n1) : n0;
+                    if (is_x) {
+                        int is_above = t_shaft->y - cur_point->y > 0;
+                        int which_list = is_above;
+                        float delta = half_size * (1 + ((!is_above) * -2)); /* Who knows if this is actually more efficient... */
+                        float y = cur_point->y + delta;
+                        pb_wall_pair gap;
+                        gap.start.x = cur_point->x - half_size;
+                        gap.start.y = y;
+                        gap.end.x = cur_point->x + half_size;
+                        gap.end.y = y;
+
+                        if (pb_vector_push_back(&gaps[which_list], &gap) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    }
+                    else {
+                        int is_right = t_shaft->x - cur_point->x > 0;
+                        int which_list = is_right;
+                        float delta = half_size * (1 + ((!is_right) * -2));
+                        float x = cur_point->x + delta;
+
+                        pb_wall_pair gap;
+                        gap.start.x = x;
+                        gap.start.y = cur_point->y - half_size;
+                        gap.end.x = x;
+                        gap.end.y = cur_point->y + half_size;
+
+                        if (pb_vector_push_back(&gaps[which_list], &gap) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    }
+                }
+                break;
+            case 4:
+                /* Pls no */
+                if (is_x) {
+                    room_end = *cur_point;
+                    room_end.x -= half_size;
+                    add_room = 1;
+                }
+                else {
+                    pb_wall_pair gap_left;
+                    pb_wall_pair gap_right;
+
+                    gap_left.start.y = cur_point->y - half_size;
+                    gap_left.start.x = cur_point->x - half_size;
+                    gap_left.end.y = cur_point->y + half_size;
+                    gap_left.end.x = cur_point->x - half_size;
+
+                    gap_right.start.x = cur_point->x + half_size;
+                    gap_right.start.y = gap_left.start.y;
+                    gap_right.end.x = cur_point->x + half_size;
+                    gap_right.end.y = gap_left.end.y;
+
+                    if (pb_vector_push_back(&gaps[0], &gap_left) == -1 ||
+                        pb_vector_push_back(&gaps[1], &gap_right) == -1) {
+
+                        err = 1;
+                        break;
+                    }
+                }
+                break;
+            }
+
+            if (add_room) {
+                pb_room* next = f->rooms + f->num_rooms++;
+                pb_rect room_rect;
+                if (is_x) {
+                    room_rect.bottom_left.x = room_start.x;
+                    room_rect.bottom_left.y = room_start.y - half_size;
+                    room_rect.w = room_end.x - room_start.x;
+                    room_rect.h = hallway_size;
+
+                    ko_start_wall = ko_start_wall || (room_start.x != ((pb_point2D*)(points[0]->data))->x);
+
+                    /* We're adding an intermediate room - move the start point to the next spot and kill necessary walls */
+                    if (j != segment->size - 1) {
+                        ko_end_wall = 1;
+                        room_start.x = room_end.x + hallway_size;
+                        room_start.y = cur_point->y;
+                    }
+                } else {
+                    room_rect.bottom_left.x = room_start.x - half_size;
+                    room_rect.bottom_left.y = room_start.y;
+                    room_rect.w = hallway_size;
+                    room_rect.h = room_end.y - room_start.y;
+                }
+
+                size_t num_walls = 4 + (gaps[0].size + gaps[1].size) * 2;
+                num_walls += top_corner_side != -1 ? 1 : 0;
+                num_walls += bottom_corner_side != -1 ? 1 : 0;
+
+                if (pb_rect_to_pb_shape2D(&room_rect, &next->shape) == -1) {
+                    err = 1;
+                    break;
+                } else if (pb_vector_init(&next->walls, sizeof(int), num_walls) == -1) {
+                    pb_shape2D_free(&next->shape);
+                    err = 1;
+                    break;
+                }
+
+                next->walls.size = num_walls;
+
+                int* walls = next->walls.items;
+                size_t start_wall_idx = is_x ? 0
+                                             : 1 + (gaps[0].size * 2)
+                                               + (top_corner_side == 0 ? 1 : 0)
+                                               + (bottom_corner_side == 0 ? 1 : 0);
+                size_t end_wall_idx = is_x ? 2 + (gaps[0].size * 2) : num_walls - 1;
+                
+                walls[start_wall_idx] = !ko_start_wall;
+                walls[end_wall_idx] = !ko_end_wall;
+
+                /* UUUUGHHH */
+                size_t wall_idx_offsets[2] = { !is_x && top_corner_side == 0, !is_x && bottom_corner_side == 1 };
+
+                /* Special cased stuff for vertical walls since they might have corners... 
+                 * Man do I ever hate this function 
+                 * The reason that I have to insert at shape.points.size - 1 and 1 is because the vectors haven't expanded yet;
+                 * even though I know the final indices, I can't use them because they're likely outside the vector right now */
+                if (!is_x) {
+                    if (top_corner_side == 1) {
+                        walls[end_wall_idx - 1] = 0;
+                        pb_point2D to_add = { room_rect.bottom_left.x + hallway_size, room_end.y - hallway_size };
+                        if (pb_vector_insert_at(&next->shape.points, &to_add, next->shape.points.size - 1) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    } 
+                    
+                    if (bottom_corner_side == 0) {
+                        walls[start_wall_idx - 1] = 0;
+                        pb_point2D to_add = { room_rect.bottom_left.x, room_start.y + hallway_size };
+                        if (pb_vector_insert_at(&next->shape.points, &to_add, 1) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    }
+                }
+
+                size_t gap_list_idx, gap_idx;
+                for (gap_list_idx = 0; gap_list_idx < 2 && !err; ++gap_list_idx) {
+                    pb_wall_pair* pairs = (pb_wall_pair*)gaps[gap_list_idx].items;
+                    int reversed = gap_list_idx == reverse;
+
+                    /* Where to insert the points in the room shape's point list 
+                     * TODO: Come up with a less ridiculous way to determine this */
+                    size_t point_insert_idx = reversed ? (end_wall_idx + 2) % num_walls : (start_wall_idx + 2) % num_walls;
+                    int wall_idx = point_insert_idx + wall_idx_offsets[gap_list_idx];
+
+                    for (gap_idx = 0; gap_idx < gaps[gap_list_idx].size; ++gap_idx) {
+                        size_t point_idx = reversed ? gaps[gap_list_idx].size - 1 - gap_idx : gap_idx;
+                        pb_point2D start_point = reversed ? pairs[point_idx].end : pairs[point_idx].start;
+                        pb_point2D end_point = reversed ? pairs[point_idx].start : pairs[point_idx].end;
+
+                        if (point_insert_idx == 0) {
+                            if (pb_vector_push_back(&next->shape.points, &end_point) == -1 ||
+                                pb_vector_push_back(&next->shape.points, &start_point) == -1) {
+
+                                err = 1;
+                                break;
+                            }
+                        } else {
+                            if (pb_vector_insert_at(&next->shape.points, &end_point, point_insert_idx) == -1 ||
+                                pb_vector_insert_at(&next->shape.points, &start_point, point_insert_idx) == -1) {
+
+                                err = 1;
+                                break;
+                            }
+                        }
+
+                        walls[wall_idx] = 0;
+                        walls[(wall_idx - 1) % num_walls] = 1;
+                        wall_idx += 2;
+                    }
+
+                    walls[(wall_idx - 1) % num_walls] = 1;
+                }
+
+                if (!is_x) {
+                    if (top_corner_side == 0) {
+                        walls[0] = 0;
+                        pb_point2D to_add = { room_rect.bottom_left.x, room_end.y - hallway_size };
+                        if (pb_vector_insert_at(&next->shape.points, &to_add, num_walls - 1) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    }
+
+                    if (bottom_corner_side == 1) {
+                        walls[start_wall_idx + 1] = 0;
+                        pb_point2D to_add = { room_rect.bottom_left.x + hallway_size, room_start.y + hallway_size };
+                        if (pb_vector_insert_at(&next->shape.points, &to_add, start_wall_idx + 2) == -1) {
+                            err = 1;
+                            break;
+                        }
+                    }
+                }
+                ko_start_wall = 0;
+                ko_end_wall = 0;
+                add_room = 0;
+            }
+        }
+        pb_vector_free(&gaps[0]);
+        pb_vector_free(&gaps[1]);
+        if (err) {
+            goto err_return;
+        }
+    }
+    /* Reconstruct floor graph */
+
+    /* Clean up */
+    pb_graph_free(pruned);
+    pb_vector_free(&point_queue);
+
+    for (i = 0; i < hallway_segments.size; ++i) {
+        pb_vector* vec = ((pb_vector*)hallway_segments.items) + i;
+        pb_vector_free(vec);
+    }
+    pb_vector_free(&hallway_segments);
+    pb_hashmap_for_each(segments_disjoint_set, pb_hashmap_free_entry_data, NULL);
+    return 0;
+
+err_return:
+    /* Clean up everything that exists */
+    pb_graph_free(pruned);
+    pb_vector_free(&point_queue);
+
+    if (hallway_segments.items) {
+        for (i = 0; i < hallway_segments.size; ++i) {
+            pb_vector* vec = ((pb_vector*)hallway_segments.items) + i;
+            pb_vector_free(vec);
+        }
+        pb_vector_free(&hallway_segments);
+    }
+
+    if (segments_disjoint_set) {
+        pb_hashmap_for_each(segments_disjoint_set, pb_hashmap_free_entry_data, NULL);
+    }
+    return -1;
 }

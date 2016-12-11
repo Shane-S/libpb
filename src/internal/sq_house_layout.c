@@ -156,15 +156,34 @@ static void adjust_rect(pb_rect* rect, pb_point2D* bleft_adjust, float w_adjust,
     rect->h += h_adjust;
 }
 
-static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape2D* stair_shape, unsigned int stair_index) {
-    pb_room* new_rooms = realloc(f->rooms, sizeof(pb_room) * (f->num_rooms + num_added));
-    if (!new_rooms) return -1;
+static int add_stairs(pb_floor* f, unsigned int num_added, pb_shape2D* stair_shape, unsigned int stair_index,
+                      int has_ceiling, int has_floor) {
+    pb_room* new_rooms = NULL;
+    
+    new_rooms = realloc(f->rooms, sizeof(pb_room) * (f->num_rooms + num_added));
+    if (!new_rooms) {
+        return -1;
+    } else if (pb_vector_init(&new_rooms[stair_index].walls, sizeof(int), 4) == -1) {
+        free(new_rooms);
+        return -1;
+    }
 
     /* Add the stairs to the list of rooms the current and next floors' room lists */
     f->rooms = new_rooms;
     f->num_rooms += num_added; /* + 1 since we're also adding stairs */
     f->rooms[stair_index].shape = *stair_shape;
-    f->rooms[stair_index].data = (void*)PB_SQ_HOUSE_STAIRS;
+    f->rooms[stair_index].name = (void*)PB_SQ_HOUSE_STAIRS;
+
+    /* The room has all four walls */
+    int* walls = (int*)f->rooms[stair_index].walls.items;
+    f->rooms[stair_index].walls.size = 4;
+    walls[0] = 1;
+    walls[1] = 1;
+    walls[2] = 1;
+    walls[3] = 1;
+
+    f->rooms[stair_index].has_ceiling = has_ceiling;
+    f->rooms[stair_index].has_floor = has_floor;
 
     return 0;
 }
@@ -361,8 +380,8 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
 
             house->floors[current_floor + 1].num_rooms = 0;
 
-            if (add_stairs(house->floors + current_floor, current_room + 1, &current_stair_shape, stair_index) == -1 ||
-                add_stairs(house->floors + current_floor + 1, 1, &next_stair_shape, 0) == -1) {
+            if (add_stairs(house->floors + current_floor, current_room + 1, &current_stair_shape, stair_index, 0, 1) == -1 ||
+                add_stairs(house->floors + current_floor + 1, 1, &next_stair_shape, 0, 1, 0) == -1) {
                 goto err_return;
             }
 
@@ -387,6 +406,7 @@ err_return:
         unsigned int i;
         for (i = 0; house->floors[house->num_floors - 1].rooms && house->floors[house->num_floors - 1].rooms[i].shape.points.items; ++i) {
             pb_shape2D_free(&house->floors[house->num_floors - 1].rooms[i].shape);
+            pb_vector_free(&house->floors[house->num_floors - 1].rooms[i].walls);
         }
         free(house->floors[house->num_floors - 1].rooms);
         house->num_floors--;
@@ -414,7 +434,7 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
         if (pb_rect_to_pb_shape2D(floor_rect, &floor->rooms[floor->num_rooms - 1].shape) == -1) {
             return -1;
         }
-        floor->rooms[floor->num_rooms - 1].data = (void*)rooms[0];
+        floor->rooms[floor->num_rooms - 1].name = rooms[0];
         return 0;
     }
 
@@ -443,12 +463,24 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
     num_stairs = floor->num_rooms - num_rooms;
     /* Convert the rectangles from pb_squarify to pb_shape2Ds for each room */
     for (i = num_stairs; i < floor->num_rooms; ++i) {
-        floor->rooms[i].data = (void*)rooms[i - num_stairs];
+        floor->rooms[i].name = rooms[i - num_stairs];
         floor->rooms[i].shape.points.items = NULL;
+        floor->rooms[i].walls.items = NULL;
 
-        if (pb_rect_to_pb_shape2D(&(rects[i - num_stairs]), &(floor->rooms[i].shape)) == -1) {
+        if (pb_rect_to_pb_shape2D(&(rects[i - num_stairs]), &(floor->rooms[i].shape)) == -1 ||
+            pb_vector_init(&floor->rooms[i].walls, sizeof(int), 4) == -1) {
             goto err_return;
         }
+
+        int* walls = (int*)floor->rooms[i].walls.items;
+        walls[0] = 1;
+        walls[1] = 1;
+        walls[2] = 1;
+        walls[3] = 1;
+        floor->rooms[i].walls.size = 4;
+        
+        floor->rooms[i].has_ceiling = 1;
+        floor->rooms[i].has_floor = 1;
     }
 
     free(areas);
@@ -465,6 +497,7 @@ err_return:
             break;
         } else {
             pb_shape2D_free(&floor->rooms[i].shape);
+            pb_vector_free(&floor->rooms[i].walls);
         }
     }
 
