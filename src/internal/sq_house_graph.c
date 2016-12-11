@@ -1242,6 +1242,7 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
     }
     pb_vector_free(&hallway_segments);
     pb_hashmap_for_each(segments_disjoint_set, pb_hashmap_free_entry_data, NULL);
+    pb_hashmap_free(segments_disjoint_set);
     return 0;
 
 err_return:
@@ -1259,6 +1260,7 @@ err_return:
 
     if (segments_disjoint_set) {
         pb_hashmap_for_each(segments_disjoint_set, pb_hashmap_free_entry_data, NULL);
+        pb_hashmap_free(segments_disjoint_set);
     }
     return -1;
 }
