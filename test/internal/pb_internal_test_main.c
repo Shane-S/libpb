@@ -11,9 +11,7 @@ int main(void)
 	int nf;
 
 #ifdef _WIN32
-#ifdef DEBUG
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF | _CRTDBG_ALLOC_MEM_DF);
-#endif
 #endif
 
     sr = srunner_create(make_pb_sq_house_layout_suite());

@@ -44,13 +44,6 @@ PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_remove_at(pb_vector* vec, unsigned 
     vec->size--;
 }
 
-static int pb_vector_expand(pb_vector* vec, size_t new_cap) {
-    void* new_items = realloc(vec->items, new_cap * vec->item_size);
-    if (!new_items) return -1;
-    vec->items = new_items;
-    return 0;
-}
-
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item, unsigned i) {
     unsigned char* items;
     unsigned char* prev;
@@ -60,10 +53,9 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item
 
     if (vec->size == vec->cap) {
         size_t new_cap = (size_t)(vec->cap * PB_VECTOR_GROWTH_RATE);
-        if (pb_vector_expand(vec, new_cap) == -1) {
+        if (pb_vector_resize(vec, new_cap) == -1) {
             return -1;
         }
-        vec->cap = new_cap;
     }
 
     items = (unsigned char*)vec->items;
@@ -85,6 +77,14 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_insert_at(pb_vector* vec, void* item
 
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_push_back(pb_vector* vec, void* item) {   
     return pb_vector_insert_at(vec, item, vec->size);
+}
+
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_resize(pb_vector* vec, size_t cap) {
+    void* new_items = realloc(vec->items, cap * vec->item_size);
+    if (!new_items) return -1;
+    vec->items = new_items;
+    vec->cap = cap;
+    return 0;
 }
 
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_vector_reverse_no_alloc(pb_vector* vec, void* tmp) {

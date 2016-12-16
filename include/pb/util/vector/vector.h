@@ -7,7 +7,7 @@
 extern "C" {
 #endif
 
-    static const size_t PB_VECTOR_DEFAULT_CAPACITY = 16;
+    static const size_t PB_VECTOR_DEFAULT_CAPACITY = 8;
 
     typedef struct {
         void* items;
@@ -61,6 +61,19 @@ extern "C" {
      * @return 0 on success, -1 on out of memory.
      */
     PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_push_back(pb_vector* vec, void* item);
+
+    /**
+     * Attempts to resize the vector to the new given size. Note that shrinking the vector
+     * will make any elements beyond the new capacity inaccessible, so they should be freed
+     * if necessary first.
+     *
+     * @param vec The vector to resize.
+     * @param cap The new capacity, which will be multiplied by vec->item_size.
+     *
+     * @return 0 on success, -1 on failure. If the operation fails, the items pointer
+     *         will still be in a valid state, so it can be cleaned up if necessary.
+     */
+    PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_vector_resize(pb_vector* vec, size_t cap);
 
     /**
      * Reverses the vector vec in-place.

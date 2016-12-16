@@ -46,19 +46,4 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape2D_get_bounding_rect(pb_shape2D const*
  *
  * @return Non-zero if the point is contained, 0 if not.
  */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_contains_point(pb_rect const* rect, pb_point2D const point);
-
-/**
- * Determines whether and where two rectangles overlap.
- *
- * @param rect  The first rectangle to check for overlap.
- * @param other The second rectangle to check for overlap.
- * @param start The start point of overlap, if any. If is_edge is 0, then this contains the first
- *              intersection point.
- * @param end   The end point of overlap, if any. If is_edge is 0, then this contains the second
- *              intersection point. This point may not be on the same side of rect as the start point.
- *
- * @return Non-zero if the rectangles overlap, 0 if not.
- */
-PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_get_overlap(pb_rect const* rect, pb_rect const* other, pb_point2D* start, pb_point2D* end, int* is_edge);
-
+PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_contains_point(pb_rect const* rect, pb_point2D const* point);

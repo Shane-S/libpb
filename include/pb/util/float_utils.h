@@ -31,7 +31,7 @@ PB_UTIL_DECLSPEC uint32_t PB_UTIL_CALL pb_fuzz_float(float f, size_t fuzz_bits);
  * @param f2        The second float to compare.
  * @param fuzz_bits The number of bits to and out of the mantissa for comparison.
  *
- * @return Whether f1 and f2 are separated by <= max_ulps.
+ * @return 1 if the floats are equal to within the last 5 bits of the mantissa, 0 otherwise.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_float_approx_eq(float f1, float f2, size_t fuzz_bits);
 

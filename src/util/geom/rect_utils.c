@@ -87,13 +87,17 @@ PB_UTIL_DECLSPEC int pb_shape2D_get_bounding_rect(pb_shape2D const* shape, pb_re
     for (i = 0; i < shape->points.size; ++i) {
         if (points[i].x > max_x) {
             max_x = points[i].x;
-        } else if (points[i].x < min_x) {
+        }
+        
+        if (points[i].x < min_x) {
             min_x = points[i].x;
         }
 
         if (points[i].y > max_y) {
-            max_x = points[i].y;
-        } else if (points[i].y < min_y) {
+            max_y = points[i].y;
+        } 
+        
+        if (points[i].y < min_y) {
             min_y = points[i].y;
         }
     }

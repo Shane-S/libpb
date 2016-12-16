@@ -1,15 +1,15 @@
 #include <math.h>
-#include <pb/internal/sq_house_graph.h>
-#include <pb/util/float_utils.h>
-#include <pb/util/hashmap/hash_utils.h>
-#include <pb/util/pair/pair.h>
 #include <limits.h>
-#include <pb/util/float_utils.h>
 #include <string.h>
 #include <pb/sq_house.h>
 #include <pb/extrusion.h>
-#include <pb/util/vector/vector.h>
 #include <pb/internal/astar.h>
+#include <pb/internal/sq_house_graph.h>
+#include <pb/util/vector/vector.h>
+#include <pb/util/pair/pair.h>
+#include <pb/util/hashmap/hash_utils.h>
+#include <pb/util/float_utils.h>
+#include <pb/util/geom/rect_utils.h>
 
 int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2) {
     int shares_top = 0;
@@ -602,6 +602,750 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
     }
 }
 
+/**
+ * Determines whether the given room and hallway intersect, and if so, adjusts the room's shape and stores all overlapping
+ * pairs between the resulting shape and the hallway in the overlap_pairs vector.
+ *
+ * @param room_rect     The room's bounding rectangle.
+ * @param hallway_rect  The hallway room's bounding rectangle.
+ * @param room_shape    The room's actual 2D shape.
+ * @param overlap_pairs The pairs of points where the two shapes overlap. Should be allocated to hold 6 points, which is the max
+ *                      number of overlap points possible.
+ *
+ * @return Whether the shapes overlapped.
+ */
+static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect, pb_shape2D* room_shape,
+                           pb_point2D* ovlap0, pb_point2D* ovlap1) {
+    
+    pb_point2D* room_points = (pb_point2D*)room_shape->points.items;
+
+    pb_point2D rrect[4];
+    pb_point2D hrect[4];
+
+    /* I could use pb_rect_to_pb_shape2D, but I want to do this on the stack */
+    rrect[1] = room_rect->bottom_left;
+    rrect[0] = rrect[1];
+    rrect[0].y += room_rect->h;
+    rrect[2] = rrect[1];
+    rrect[2].x += room_rect->w;
+    rrect[3] = rrect[0];
+    rrect[3].x += room_rect->w;
+
+    hrect[1] = hallway_rect->bottom_left;
+    hrect[0] = hrect[1];
+    hrect[0].y += hallway_rect->h;
+    hrect[2] = hrect[1];
+    hrect[2].x += hallway_rect->w;
+    hrect[3] = hrect[0];
+    hrect[3].x += hallway_rect->w;
+
+    /* Figure out which hallway points the room's bounding rectangle contains */
+    pb_point2D* hc0 = NULL;
+    pb_point2D* hc1 = NULL;
+    int hc0_idx;
+    int hc1_idx;
+    int i;
+    for (i = 0; i < 4; ++i) {
+        if (pb_rect_contains_point(room_rect, &hrect[i])) {
+            if (hc0 == NULL) {
+                hc0 = &hrect[i];
+                hc0_idx = i;
+            } else {
+                hc1 = &hrect[i];
+                hc1_idx = i;
+                break;
+            }
+        }
+    }
+
+    pb_point2D* rc0 = NULL;
+    pb_point2D* rc1 = NULL;
+    int rc0_idx;
+    int rc1_idx;
+    for (i = 0; i < 4; ++i) {
+        if (pb_rect_contains_point(hallway_rect, &rrect[i])) {
+            if (rc0 == NULL) {
+                rc0 = &rrect[i];
+                rc0_idx = i;
+            }
+            else {
+                rc1 = &rrect[i];
+                rc1_idx = i;
+                break;
+            }
+        }
+    }
+
+    if (hc0) {
+        if (hc1) {
+            /* Room rect contains two of the hallway rect's points
+             * Possible cases:
+             *  _____________   _______________   _____________
+             * |             | |               | |             |
+             * |             | |               | |             |
+             * |    ______   | |______         | |_____________|
+             * |___|______|__| |______|________| |_____________|
+             *     |______|    |______|          |_____________|
+             *
+             */
+            if (rc0 && rc1) {
+                /* Last case - hallway does not abut any other hallways, happens to match the wall exactly 
+                 * Because hallways will never overlap, we know that both of these points still exist in the actual 
+                 * room shape, so find them and push them to the correct spots */
+                pb_point2D* real_rc0 = NULL;
+                pb_point2D* real_rc1 = NULL;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(rc0, room_points + i)) {
+                        real_rc0 = room_points + i;
+                        real_rc1 = room_points + i + 1;
+                        break;
+                    }
+                }
+
+                /* Determine where to put the points */
+                float xdiff = rc1->x - rc0->x;
+                float ydiff = rc1->y - rc0->y;
+                int is_x = fabsf(xdiff) > fabsf(ydiff);
+                
+                pb_point2D first;
+                pb_point2D second;
+
+                /* There will be no duplicates in this case - if there were vertical hallways, they'd
+                 * cause the horizontal hallway's start and/or end to be offset from the edge. */
+                if (is_x) {
+                    real_rc0->y = hc0->y;
+                    real_rc1->y = hc0->y;
+
+                    *ovlap0 = real_rc0->x < real_rc1->x ? *real_rc0 : *real_rc1;
+                    *ovlap1 = real_rc0->x < real_rc1->x ? *real_rc1 : *real_rc0;
+                }
+                else {
+                    real_rc0->x = hc0->x;
+                    real_rc1->x = hc1->x;
+                    *ovlap0 = real_rc0->y < real_rc1->y ? *real_rc0 : *real_rc1;
+                    *ovlap1 = real_rc0->y < real_rc1->y ? *real_rc1 : *real_rc0;
+                }
+                return 1;
+            } else if (rc0) {
+                /* Second case - hallway possibly abutting another hallway along the other axis on one side */
+                /* Move the room point to the hallway edge point and add points to the room's shape, removing any
+                 * duplicates found */
+                float hcxdiff = hc0->x - hc1->x;
+                float hcydiff = hc0->y - hc1->y;
+                int is_x = fabsf(hcxdiff) > fabsf(hcydiff);
+
+                int delta_mult = is_x ? (hc0_idx == 0 ? -1 : 1) : (hcydiff < 0 ? -1 : 1);
+                pb_point2D* edge_point = is_x ? (pb_float_approx_eq(hc0->x, rc0->x, 5) ? hc0 : hc1)
+                                              : (pb_float_approx_eq(hc0->y, rc0->y, 5) ? hc0 : hc1);
+                pb_point2D* non_edge_point = edge_point == hc0 ? hc1 : hc0;
+                pb_point2D intersect;
+
+                if (is_x) {
+                    intersect.x = non_edge_point->x; 
+                    intersect.y = non_edge_point->y + (hallway_rect->h / 2 * delta_mult);
+                } else {
+                    intersect.x = non_edge_point->x + (hallway_rect->w / 2 * delta_mult);
+                    intersect.y = non_edge_point->y;
+                }
+                
+                size_t real_rc0_idx;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(rc0, room_points + i)) {
+                        real_rc0_idx = i;
+                        break;
+                    }
+                }
+
+                /* For both axes, if the previous point's x or y coordinate (when is_x and !is_x, respectively) 
+                 * isn't equal to ours, it means we're at the end of one of the rectangle's edges when following
+                 * the points CCW; in that case, we need to insert the points before us. In the other case, we need to
+                 * insert them after us. E.g. if we're at point 2 and are going along the x axis, then we're at the end
+                 * of wall 1 and need to insert the non-edge hallway rectangle point, then the intersect point, both at point
+                 * 2 such that the order is intersect->non-edge->point 2. */
+                size_t insert_idx_add = (is_x * pb_float_approx_eq(rc0->x, rrect[(rc0_idx - 1) % 4].x, 5)) +
+                                        (!is_x * pb_float_approx_eq(rc0->y, rrect[(rc0_idx - 1) % 4].y, 5));
+                size_t insert_idx = (real_rc0_idx + insert_idx_add) % room_shape->points.size;
+                
+                int removed_intersect = 0;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, &intersect)) {
+                        pb_vector_remove_at(&room_shape->points, i);
+                        removed_intersect = 1;
+                        real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
+                        insert_idx = i < insert_idx ? insert_idx - 1 : insert_idx;
+                        break;
+                    }
+                }
+                
+                int removed_non_edge = 0;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, non_edge_point)) {
+                        pb_vector_remove_at(&room_shape->points, i);
+                        removed_non_edge = 1;
+                        real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
+                        insert_idx = i < insert_idx ? insert_idx - 1 : insert_idx;
+                    }
+                }
+
+                int result;
+                if (!removed_non_edge) {
+                    if (removed_intersect) {
+                        /* The non-edge point is still guaranteed to to be in the shape, so insert just that */
+                        if (insert_idx == 0) {
+                            result = pb_vector_push_back(&room_shape->points, non_edge_point);
+                        }
+                        else {
+                            result = pb_vector_insert_at(&room_shape->points, non_edge_point, insert_idx);
+                        }
+                    }
+                    else {
+                        pb_point2D* insert_first = insert_idx_add ? &intersect : non_edge_point;
+                        pb_point2D* insert_second = insert_idx_add ? non_edge_point : &intersect;
+
+                        if (insert_idx == 0) {
+                            result = pb_vector_push_back(&room_shape->points, insert_second);
+                            result = result == -1 ? -1 : pb_vector_push_back(&room_shape->points, insert_first);
+                        }
+                        else {
+                            result = pb_vector_insert_at(&room_shape->points, insert_first, insert_idx);
+                            result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, insert_second, insert_idx);
+                        }
+                    }
+                }
+                
+                if (result == -1) {
+                    return -1;
+                }
+                room_points = (pb_point2D*)room_shape->points.items; /* Might have changed while inserting */
+                real_rc0_idx = insert_idx == 0 || insert_idx_add ? real_rc0_idx : real_rc0_idx + 2 - removed_intersect - removed_non_edge;
+                room_points[real_rc0_idx] = *edge_point;
+                return 1;
+            } else {
+                /* First case - hallway abutting a hallway along the other axis. possibly on both sides */
+                /* Find intersection points - if the room already contains any of those points, remove them 
+                 * Add remaining points and mark them as overlaps */
+                float xdiff = hc0->x - hc1->x;
+                float ydiff = hc0->y - hc1->y;
+                int is_x = fabsf(xdiff) > fabsf(ydiff);
+
+                float cmpdiff = is_x ? xdiff : ydiff;
+                pb_point2D* point0 = cmpdiff < 0 ? hc0 : hc1;
+                pb_point2D* point1 = cmpdiff < 0 ? hc1 : hc0;
+                pb_point2D intersect0 = cmpdiff > 0 ? hrect[1 + is_x] : hrect[0 + is_x];
+                pb_point2D intersect1 = cmpdiff > 0 ? hrect[0 + is_x] : hrect[1 + is_x];
+
+                pb_point2D* rect_point;
+                size_t rect_point_idx;
+
+                if (is_x) {
+                    intersect0.y += hallway_rect->h / 2;
+                    intersect1.y += hallway_rect->h / 2;
+                } else {
+                    intersect0.x += hallway_rect->w / 2;
+                    intersect1.x += hallway_rect->w / 2;
+                }
+
+                size_t intersect0_idx = -1;
+                size_t intersect1_idx = -1;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_float_approx_eq(intersect0.y, room_points[i].y, 5)) {
+                        rect_point = room_points + i;
+                        rect_point_idx = i;
+                        break;
+                    }
+
+                    if (pb_point_eq(room_points + i, &intersect0)) {
+                        intersect0_idx = i;
+                    } else if (pb_point_eq(room_points + i, &intersect1)) {
+                        intersect1_idx = i;
+                    }
+                }
+
+                if (intersect0_idx != -1) {
+                    pb_vector_remove_at(&room_shape->points, intersect0_idx);
+                    rect_point_idx = rect_point_idx < intersect0_idx ? rect_point_idx - 1 : rect_point_idx;
+                }
+
+                if (intersect1_idx != -1) {
+                    intersect1_idx = intersect0_idx < intersect1_idx ? intersect1_idx - 1 : intersect1_idx;
+                    rect_point_idx = rect_point_idx < intersect1_idx ? rect_point_idx - 1 : rect_point_idx;
+                    pb_vector_remove_at(&room_shape->points, intersect1_idx);
+                }
+
+                size_t insert_idx = (rect_point_idx + 1) % room_shape->points.size;
+                int result;
+                int removed_intersect0 = intersect0_idx != -1;
+                int removed_intersect1 = intersect1_idx != -1;
+                if (insert_idx == 0) {
+                    result = pb_vector_push_back(&room_shape->points, point1);
+                    if (!removed_intersect0) {
+                        result = result == -1 ? -1 : pb_vector_push_back(&room_shape->points, &intersect1);
+                    }
+                    if (!removed_intersect1) {
+                        result = result == -1 ? -1 : pb_vector_push_back(&room_shape->points, &intersect0);
+                    }
+                    result = result == -1 ? -1 : pb_vector_push_back(&room_shape->points, point0);
+                } else {
+                    result = pb_vector_insert_at(&room_shape->points, point1, insert_idx);
+                    if (!removed_intersect0) {
+                        result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, &intersect1, insert_idx);
+                    }
+                    if (!removed_intersect1) {
+                        result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, &intersect0, insert_idx);
+                    }
+                    result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, point0, insert_idx);
+                }
+                if (result == -1) {
+                    return -1;
+                }
+
+                *ovlap0 = *point0;
+                *ovlap1 = *point1;
+
+                return 1;
+            }
+        } else {
+            /* Room rect contains one of the hallway rect's points; possible cases: 
+             *  _____________       ____________
+             * |             |     |            |
+             * |             |     |            |
+             * |    _________|__   |____________|___________
+             * |___|_________|  |  |____________|
+             *     |____________|  |________________________
+             */
+            int is_edge = 0;
+            int is_x;
+            pb_point2D* r_start;
+            pb_point2D* r_end;
+            
+            for (i = 0; i < 3; ++i) {
+                r_start = &rrect[i];
+                r_end = &rrect[i + 1];
+                is_x = fabsf(r_start->x - r_end->x) > (r_start->y - r_end->y);
+                
+                if ((is_x && pb_float_approx_eq(r_start->x, hc0->x, 5)) ||
+                    pb_float_approx_eq(r_start->y, hc0->y, 5)) {
+                    is_edge = 1;
+                    break;
+                }
+            }
+
+            if (is_edge) {
+                /* Second case */
+                pb_point2D* real_rc0 = NULL;
+                pb_point2D* real_rc1 = NULL;
+                size_t real_rc0_idx;
+                size_t real_rc1_idx;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(r_start, room_points + i)) {
+                        real_rc0_idx = i;
+                        real_rc1_idx = (i + 1) % room_shape->points.size;
+                        real_rc0 = room_points + i;
+                        real_rc1 = room_points + real_rc1_idx;
+                        break;
+                    }
+                }
+
+                pb_point2D real_rc0_adjusted = *real_rc0;
+                pb_point2D real_rc1_adjusted = *real_rc1;
+
+                pb_point2D* first;
+                pb_point2D* second;
+                if (is_x) {
+                    real_rc0_adjusted.y = hc0->y;
+                    real_rc1_adjusted.y = hc0->y;
+
+                    first = real_rc0->x < real_rc1->x ? &real_rc0_adjusted : &real_rc1_adjusted;
+                    second = real_rc0->x < real_rc1->x ? &real_rc1_adjusted : &real_rc0_adjusted;
+                } else {
+                    real_rc0_adjusted.x = hc0->x;
+                    real_rc1_adjusted.x = hc0->x;
+
+                    first = real_rc0->y < real_rc1->y ? &real_rc0_adjusted : &real_rc1_adjusted;
+                    second = real_rc0->y < real_rc1->y ? &real_rc1_adjusted : &real_rc0_adjusted;
+                }
+
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, &real_rc0_adjusted)) {
+                        pb_vector_remove_at(&room_shape->points, i);
+                        real_rc1_idx--;
+                        real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                        real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
+                        pb_vector_remove_at(&room_shape->points, real_rc0_idx);
+                        break;
+                    }
+                }
+                if (i == room_shape->points.size) {
+                    room_points[real_rc0_idx] = real_rc0_adjusted;
+                }
+
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, &real_rc1_adjusted)) {
+                        pb_vector_remove_at(&room_shape->points, i);
+                        real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                        pb_vector_remove_at(&room_shape->points, real_rc1_idx);
+                        break;
+                    }
+                }
+                if (i == room_shape->points.size) {
+                    room_points[real_rc1_idx] = real_rc1_adjusted;
+                }
+
+                *ovlap0 = *first;
+                *ovlap1 = *second;
+            } else {
+                /* First case */
+
+                /* There's a currently unfixed edge case here: 
+                 *  ______|__   |
+                 * |      |  |  |
+                 * |      |  |  |
+                 * |      |__|__|___
+                 * |_______|_|
+                 *         | 
+                 *         |_________
+                 *
+                 * The bottom horizontal rectangle is a hallway that just barely overlaps the top-left rectangle (a room).
+                 * The other rectangle is a vertical hallway that abuts the horizontal one. If the overlap between the horizontal
+                 * hallway and the room is < hallway_size / 2, then the abutting vertical hallway will push the overlap point
+                 * (the intersect between the horizontal hallway's top wall and the room's right wall) behind the horizontal
+                 * hallway's top-left corner, which means that that's no longer a valid overlap. Looking down the vertical hallway
+                 * towards the room would then have part of the wall not present, and the inside of the room would be visible.
+                 */
+
+                pb_point2D delta = { rc0->x - hc0->x, rc0->y - hc0->y };
+                pb_point2D intersect0 = { hc0->x + delta.x, hc0->y };
+                pb_point2D intersect1 = { hc0->x, hc0->y + delta.y };
+
+                pb_point2D* larger_ovlap_point = delta.x > delta.y ? &intersect0 : &intersect1;
+                pb_point2D* ovlap0_point = larger_ovlap_point == &intersect0 ? (hc0->x < intersect0.x ? hc0 : &intersect0)
+                                                                             : (hc0->y < intersect1.y ? hc0 : &intersect1);
+                *ovlap0 = *ovlap0_point;
+                *ovlap1 = ovlap0_point == hc0 ? *larger_ovlap_point : *hc0;
+
+                int removed_intersect0 = 0;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, &intersect0)) {
+                        pb_vector_remove_at(&room_shape->points, i);
+                        removed_intersect0 = 1;
+                        break;
+                    }
+                }
+
+                int removed_intersect1 = 0;
+                if (!removed_intersect0) {
+                    for (i = 0; i < room_shape->points.size; ++i) {
+                        if (pb_point_eq(room_points + i, &intersect1)) {
+                            pb_vector_remove_at(&room_shape->points, i);
+                            removed_intersect1 = 1;
+                            break;
+                        }
+                    }
+                }
+                
+                int would_remove_corner = 0;
+                size_t corner_idx;
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(room_points + i, hc0)) {
+                        would_remove_corner = 1;
+                        corner_idx = i;
+                        break;
+                    }
+                }
+
+                /* Find the corner point in the rectangle */
+                pb_point2D* real_rc0;
+                size_t real_rc0_idx;
+
+                for (i = 0; i < room_shape->points.size; ++i) {
+                    if (pb_point_eq(rc0, room_points + i)) {
+                        real_rc0 = room_points + i;
+                        real_rc0_idx = i;
+                        break;
+                    }
+                }
+
+                if (would_remove_corner) {
+                    /* If we would have removed the corner, then there will only be one intersection point left, so
+                     * move the contained corner point to there and then remove it */
+                    room_points[real_rc0_idx] = removed_intersect0 ? intersect1 : intersect0;
+                    pb_vector_remove_at(&room_shape->points, corner_idx);
+                } else if (removed_intersect0 || removed_intersect1) {
+                    /* The corner and 1 of the intersects are left; move the contained point to the corner and add
+                     * the remaining intersect in the correct spot */
+                    pb_point2D* first = !(hc0_idx % 2) ? &intersect0 : &intersect1;
+                    pb_point2D* second = !(hc0_idx % 2) ? &intersect1 : &intersect0;
+                    size_t insert_idx = first == &intersect0 ? (removed_intersect0 ? real_rc0_idx : real_rc0_idx + 1)
+                                                             : (removed_intersect1 ? real_rc0_idx : real_rc0_idx + 1);
+                    pb_point2D* to_insert = removed_intersect0 ? &intersect1 : &intersect0;
+                    insert_idx = insert_idx % room_shape->points.size;
+
+                    room_points[real_rc0_idx] = *hc0;
+                    
+                    int result = 0;
+                    if (insert_idx == 0) {
+                        result = pb_vector_push_back(&room_shape->points, to_insert);
+                    } else {
+                        result = pb_vector_insert_at(&room_shape->points, to_insert, insert_idx);
+                    }
+
+                    if (result == -1) {
+                        return -1;
+                    }
+                } else {
+                    /* Otherwise, all 3 points are left (any other hallway that would share an intersection
+                     * point with this one would also share the corner). */
+                    pb_point2D* first = !(hc0_idx % 2) ? &intersect1 : &intersect0;
+                    pb_point2D* second = !(hc0_idx % 2) ? &intersect0 : &intersect1;
+
+                    int result = 0;
+
+                    *real_rc0 = *hc0;
+                    if (real_rc0_idx == room_shape->points.size - 1) {
+                        result = pb_vector_push_back(&room_shape->points, second);
+                        result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, first, real_rc0_idx);
+                    } else if (real_rc0_idx == 0) {
+                        result = pb_vector_insert_at(&room_shape->points, second, real_rc0_idx + 1);
+                        result = result == -1 ? -1 : pb_vector_push_back(&room_shape->points, first);
+                    } else {
+                        result = pb_vector_insert_at(&room_shape->points, second, real_rc0_idx + 1);
+                        result = result == -1 ? -1 : pb_vector_insert_at(&room_shape->points, first, real_rc0_idx);
+                    }
+
+                    if (result == -1) {
+                        return -1;
+                    }
+                }
+            }
+            return 1;
+        }
+    } else {
+        /* Neither room contains any of the other room's points - there's no overlap */
+        if (!rc0) {
+            return 0;
+        } else {
+            pb_point2D* real_rc0 = NULL;
+            pb_point2D* real_rc1 = NULL;
+            pb_point2D real_rc0_adjusted;
+            pb_point2D real_rc1_adjusted;
+            size_t real_rc0_idx;
+            size_t real_rc1_idx;
+            for (i = 0; i < room_shape->points.size; ++i) {
+                if (pb_point_eq(rc0, room_points + i)) {
+                    real_rc0_idx = i;
+                    real_rc1_idx = (i + 1) % room_shape->points.size;
+                    real_rc0 = room_points + i;
+                    real_rc1 = room_points + real_rc1_idx;
+                    break;
+                }
+            }
+
+            real_rc0_adjusted = *real_rc0;
+            real_rc1_adjusted = *real_rc1;
+
+            /* If the room didn't contain any of the hallway rect's points, but the hallway contained one point,
+             * then it definitely contains two points and overlaps a whole wall:
+             *           _____________
+             *          |             |
+             *          |             |
+             *     _____|_____________|__
+             *          |_____________|  |
+             *     ______________________|
+             */
+            float xdiff = rc0->x - rc1->x;
+            float ydiff = rc0->y - rc1->y;
+            int is_x = fabsf(xdiff) > fabsf(ydiff);
+            if (is_x) {
+                if (xdiff > 0) {
+                    /* Room's top wall - use hallway bottom wall y-coord */
+                    real_rc0_adjusted.y = hrect[2].y;
+                    real_rc1_adjusted.y = hrect[2].y;
+                } else {
+                    /* Room's bottom wall - use hallway top wall y-coord */
+                    real_rc0_adjusted.y = hrect[0].y;
+                    real_rc1_adjusted.y = hrect[0].y;
+                }
+            } else {
+                if (ydiff > 0) {
+                    /* Room's left wall - use hallway right wall x-coord */
+                    real_rc0_adjusted.x = hrect[2].x;
+                    real_rc1_adjusted.x = hrect[2].x;
+                } else {
+                    /* Room's right wall - user hallway left wall x-coord */
+                    real_rc0_adjusted.x = hrect[0].x;
+                    real_rc1_adjusted.x = hrect[0].x;
+                }
+            }
+
+            int removed_realrc0 = 0;
+            for (i = 0; i < room_shape->points.size; ++i) {
+                if (pb_point_eq(room_points + i, &real_rc0_adjusted)) {
+                    pb_vector_remove_at(&room_shape->points, i);
+                    real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
+                    pb_vector_remove_at(&room_shape->points, real_rc0_idx);
+
+                    real_rc1_idx--;
+                    real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                    removed_realrc0 = 1;
+                    break;
+                }
+            }
+            if (i == room_shape->points.size) {
+                room_points[real_rc0_idx] = real_rc0_adjusted;
+            }
+
+            for (i = 0; i < room_shape->points.size; ++i) {
+                if (pb_point_eq(room_points + i, &real_rc1_adjusted)) {
+                    real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                    pb_vector_remove_at(&room_shape->points, i);
+                    pb_vector_remove_at(&room_shape->points, real_rc1_idx);
+                    break;
+                }
+            }
+            if (i == room_shape->points.size) {
+                room_points[real_rc1_idx] = real_rc1_adjusted;
+            }
+
+            *ovlap0 = real_rc0_adjusted;
+            *ovlap1 = real_rc1_adjusted;
+            return 1;
+        }
+    }
+}
+
+static void vert_remove_edges(void const* key, pb_vertex* vert, void* param) {
+    pb_graph* g = (pb_graph*)param;
+    size_t i;
+    for (i = 0; i < vert->edges_size; ++i) {
+        void* other_key = vert->edges[i]->to->data;
+        pb_graph_remove_edge(g, key, other_key);
+    }
+}
+
+/**
+ * Reconstructs the floor graph after adding hallways.
+ *
+ * @param floor_graph The floor graph to reconstruct.
+ * @param floor       The floor for which to construct a new graph.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, size_t num_hallways) {  
+    size_t i, j;
+
+    /* Won't be needing this anymore */
+    pb_graph_for_each_edge(floor_graph, pb_graph_free_edge_data, NULL);
+    pb_graph_for_each_vertex(floor_graph, vert_remove_edges, floor_graph);
+    
+    /* Remove and all the vertices in the graph since the floor rooms array may have been assigned a new pointer */
+    for (i = 0; i < floor_graph->vertices->cap; ++i) {
+        floor_graph->vertices->states[i] = EMPTY;
+    }
+    floor_graph->vertices->size = 0;
+    for (i = 0; i < f->num_rooms; ++i) {
+        pb_graph_add_vertex(floor_graph, f->rooms + i, f->rooms + i);
+    }
+    
+    /* First pass: expand hallways, reshape rooms */
+    
+    for (i = 0; i < f->num_rooms - num_hallways; ++i) {
+
+        pb_rect room_rect;
+        pb_shape2D_to_pb_rect(&f->rooms[i].shape, &room_rect);
+
+        for (j = f->num_rooms - num_hallways; j < f->num_rooms; ++j) {
+
+            pb_rect hallway_rect;
+            pb_shape2D_get_bounding_rect(&f->rooms[j].shape, &hallway_rect);
+
+            pb_point2D start, end;
+            int result = intrude_hallway(&room_rect, &hallway_rect, &f->rooms[i], &start, &end);
+
+            if (result == -1) {
+                /* Uh oh... */
+            } else if (result == 1) {
+                /* Allocate a connection storing the overlap. After processing all hallways, we'll check whether
+                 * points have moved */
+                pb_sq_house_room_conn* conn = malloc(sizeof(pb_sq_house_room_conn));
+
+                if (!conn) {
+                    /* Uh oh... */
+                }
+
+                conn->overlap_start = start;
+                conn->overlap_end = end;
+                conn->room = f->rooms + i;
+                conn->neighbour = f->rooms + j;
+
+                if (pb_graph_add_edge(floor_graph, f->rooms + i, f->rooms + j, 0, conn) == -1) {
+                    /* Uh oh... */
+                }
+            }
+        }
+
+        /* All hallway edges have been added - now figure out which ones are still valid, pick the largest 
+         * one to use as overlap edge, free the other ones (if any) and mark whether there's a door */
+        pb_vertex* vert = pb_graph_get_vertex(floor_graph, f->rooms + i);
+        size_t cur_edge;
+        for (cur_edge = 0; cur_edge < vert->edges_size; ++cur_edge) {
+            pb_edge* edge = vert->edges[cur_edge];
+            pb_vector* conn_list = (pb_vector*)edge->data;
+            pb_sq_house_room_conn** conns = (pb_sq_house_room_conn**)conn_list->items;
+
+            pb_sq_house_room_conn* hallway_conn = malloc(sizeof(pb_sq_house_room_conn));
+            if (!hallway_conn) {
+                /* Uh oh... */
+            }
+
+            /* If there's a single connection, then the two vertices are definitely still there - 
+             * find them, update wall info, add an edge from the hallway room, and call it a day */
+            if (conn_list->size == 1) {
+
+            }
+        }
+
+        /* Finally, realloc the walls array to the new size and set all walls to 1 */
+        if (f->rooms[i].walls.cap < f->rooms[i].shape.points.size) {
+            if (pb_vector_resize(&f->rooms[i].walls, f->rooms[i].shape.points.size) == -1) {
+                /* Uh oh...*/
+            }
+
+            size_t wall;
+            int* walls = (int*)f->rooms[i].walls.items;
+            for (wall = 0; wall < f->rooms[i].shape.points.size; ++wall) {
+                walls[wall] = 1;
+            }
+        }
+    }
+
+    /* Second pass: connect all adjacent non-hallway rooms */
+    //size_t i, j;
+    //for (i = 0; i < f->num_rooms; ++i) {
+    //    if (strequal(f->rooms[i].name, PB_SQ_HOUSE_HALLWAY) == 0)
+    //        continue;
+
+    //    pb_rect room_rect;
+    //    pb_shape2D_to_pb_rect(&rooms[i].shape, &room_rect);
+
+    //    for (j = 0; j < f->num_rooms; ++j) {
+    //        if (strequal(f->rooms[i].name, PB_SQ_HOUSE_HALLWAY) == 0)
+    //            continue;
+
+    //        pb_rect other_rect;
+    //        pb_point2D start, end;
+    //        int is_edge;
+    //        pb_shape2D_get_bounding_rect(&rooms[j].shape, &other_rect);
+
+    //        if (i != j && pb_rect_get_overlap(&room_rect, &other_rect, &start, &end, &is_edge))
+
+    //    }
+    //}
+
+err_return:
+    /* Free all overlaps that were added to the current room */
+    return -1;
+}
+
 static void vert_copy(void const* key, pb_vertex* vert, void* param) {
     pb_pair* pair = (pb_pair*)param;
     pb_graph* pruned = (pb_graph*)pair->first;
@@ -676,7 +1420,7 @@ typedef struct {
 
 /* TODO: This function needs major refactoring.
  * []   It's way too long
- * []   My "cleverness" in parts basically just made it an unreadable mess
+ * []   "Cleverness" in parts basically just made it an unreadable mess
  * []   There are magic numbers everywhere */
 int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_hashmap* room_specs,
                                pb_graph* floor_graph, pb_graph* internal_graph, pb_vector* hallways) {
@@ -783,6 +1527,10 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
 
         pb_vector_remove_at(&point_queue, 0);
 
+        if (cur->edges_size == 4 && is_x) {
+            num_4way++;
+        }
+
         /* Go as far as we can in the given direction (left if is_x, down otherwise) */
         pb_vertex* line_start = NULL;
         while (!line_start) {
@@ -832,11 +1580,6 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
 
             while (1) {
                 size_t cur_edges_size = cur->edges_size;
-
-                /* Keep track of how many 4-way intersections there are to realloc the floor's rooms array later */
-                if (cur->edges_size == 4) {
-                    num_4way++;
-                }
 
                 /* Add each point to this segment */
                 if (pb_vector_push_back(&segment, &cur) == -1) {
@@ -888,6 +1631,10 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
             if (pb_vector_push_back(&hallway_segments, &segment) == -1) {
                 pb_vector_free(&segment);
                 goto err_return;
+            }
+        } else {
+            if (cur->edges_size == 4 && is_x) {
+                num_4way--;
             }
         }
     }
@@ -1230,7 +1977,11 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
             goto err_return;
         }
     }
-    /* Reconstruct floor graph */
+
+    if (reconstruct_floor_graph(floor_graph, f, new_num_rooms - old_num_rooms) == -1) {
+        /* :( */
+        goto err_return;
+    }
 
     /* Clean up */
     pb_graph_free(pruned);
