@@ -1567,7 +1567,7 @@ START_TEST(place_hallways_2_corners_same_side)
      *         - house spec with hallway_width = 0.5
      *
      * Expected Output: - floor contains 7 rooms with shapes
-     *                    []  {0, 10}, {0, 0}, {5, 0}, {5, 10/3 - 0.25}, {4.75, 10/3 - 0.25}, {4.75, 10/3 + 0.25}, {5, 10/3 + 0.25}, {5, 10}
+     *                    []  {0, 10}, {0, 0}, {5, 0}, {5, 10/3 - 0.25}, {4.75, 10/3 - 0.25}, {4.75, 20/3 + 0.25}, {5, 20/3 + 0.25}, {5, 10}
      *                    []  {5, 10/3 - 0.25}, {5, 0}, {10, 0}, {10, 10/3 - 0.25}
      *                    []  {5.25, 20/3 - 0.25}, {5.25, 10/3 + 0.25}, {10, 10/3 + 0.25}, {10, 20/3 - 0.25}
      *                    []  {5, 10}, {5, 20/3 + 0.25}, {10, 20/3 + 0.25}, {10, 10}
@@ -1579,6 +1579,8 @@ START_TEST(place_hallways_2_corners_same_side)
      *                  - connection between hallway 1 and room 0 with overlap points {4.75, 4.75}, {4.75, 10}
      *                  - connection between hallway 1 and room 2 with overlap points {5.25, 5.25} and {5.25, 10}
      */
+
+    size_t i, j;
 
     char* adj[] = { "Small Room", "Big Room" };
     pb_sq_house_room_spec specs[2];
@@ -1634,7 +1636,6 @@ START_TEST(place_hallways_2_corners_same_side)
                                           { 5.f, 20.f / 3.f },
                                           { 10.f, 20.f / 3.f } };
 
-    size_t i;
     size_t num_points = sizeof(input_hallway_points) / sizeof(pb_point2D);
 
     pb_vector_init(&hallway, sizeof(pb_edge*), num_points - 1);
@@ -1694,6 +1695,51 @@ START_TEST(place_hallways_2_corners_same_side)
                 i, j, hallway_expected_walls[i][j], hallway_room_walls[j]);
         }
     }
+
+    /* Check that rooms have the correct shapes and connections */
+    pb_point2D expected_room0_points[] = { { 0.f, 10.f },
+                                           { 0.f, 0.f },
+                                           { 5.f, 0.f },
+                                           { 5.f, 10.f / 3.f - 0.25f },
+                                           { 4.75f, 10.f / 3.f - 0.25f },
+                                           { 4.75f, 20.f / 3.f + 0.25f },
+                                           { 5.f, 20.f / 3.f + 0.25f },
+                                           { 5.f, 10.f } };
+    pb_point2D expected_room1_points[] = { { 5.f, 10.f / 3.f - 0.25f },
+                                           { 5.f, 0.f },
+                                           { 10.f, 0.f },
+                                           { 10.f, 10.f / 3.f - 0.25f } };
+    pb_point2D expected_room2_points[] = { { 5.25f, 10.f / 3.f + 0.25f },
+                                           { 10.f, 10.f / 3.f + 0.25f },
+                                           { 10.f, 20.f / 3.f - 0.25f },
+                                           { 5.25f, 20.f / 3.f - 0.25f } };
+    pb_point2D expected_room3_points[] = { { 5.f, 10.f },
+                                           { 5.f, 20.f / 3.f + 0.25f },
+                                           { 10.f, 20.f / 3.f + 0.25f },
+                                           { 10.f, 10.f } };
+
+    size_t expected_room_point_counts[] = { sizeof(expected_room0_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room1_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room2_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room3_points) / sizeof(pb_point2D) };
+    pb_point2D* expected_room_points[] = { &expected_room0_points[0],
+        &expected_room1_points[0],
+        &expected_room2_points[0],
+        &expected_room3_points[0] };
+
+    for (i = 0; i < sizeof(expected_room_points) / sizeof(pb_point2D*); ++i) {
+        pb_room* room = f.rooms + i;
+        pb_point2D* points = (pb_point2D*)room->shape.points.items;
+        ck_assert_msg(room->shape.points.size == expected_room_point_counts[i], "room %d should have had %lu points, had %lu",
+            i, expected_room_point_counts[i], room->shape.points.size);
+        for (j = 0; j < expected_room_point_counts[i]; ++j) {
+            pb_point2D* real = points + j;
+            pb_point2D* expected = expected_room_points[i] + j;
+            ck_assert_msg(pb_float_approx_eq(real->x, expected->x, 5) && pb_float_approx_eq(real->y, expected->y, 5),
+                "room %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
+        }
+    }
+
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
@@ -1844,6 +1890,41 @@ START_TEST(place_hallways_t_intersection_y_axis)
                 i, j, hallway_expected_walls[i][j], hallway_room_walls[j]);
         }
     }
+
+    /* Check that rooms have the correct shapes and connections */
+    pb_point2D expected_room0_points[] = { { 0.f, 10.f },
+                                           { 0.f, 0.f },
+                                           { 4.75f, 0.f },
+                                           { 4.75f, 10.f } };
+    pb_point2D expected_room1_points[] = { { 5.25f, 0.f },
+                                           { 10.f, 0.f },
+                                           { 10.f, 4.75f },
+                                           { 5.25f, 4.75f } };
+    pb_point2D expected_room2_points[] = { { 5.25f, 10.f },
+                                           { 5.25f, 5.25f },
+                                           { 10.f, 5.25f },
+                                           { 10.f, 10.f } };
+
+    size_t expected_room_point_counts[] = { sizeof(expected_room0_points) / sizeof(pb_point2D),
+        sizeof(expected_room1_points) / sizeof(pb_point2D),
+        sizeof(expected_room2_points) / sizeof(pb_point2D)};
+    pb_point2D* expected_room_points[] = { &expected_room0_points[0],
+        &expected_room1_points[0],
+        &expected_room2_points[0]};
+
+    for (i = 0; i < sizeof(expected_room_points) / sizeof(pb_point2D*); ++i) {
+        pb_room* room = f.rooms + i;
+        pb_point2D* points = (pb_point2D*)room->shape.points.items;
+        ck_assert_msg(room->shape.points.size == expected_room_point_counts[i], "room %d should have had %lu points, had %lu",
+            i, expected_room_point_counts[i], room->shape.points.size);
+        for (j = 0; j < expected_room_point_counts[i]; ++j) {
+            pb_point2D* real = points + j;
+            pb_point2D* expected = expected_room_points[i] + j;
+            ck_assert_msg(pb_float_approx_eq(real->x, expected->x, 5) && pb_float_approx_eq(real->y, expected->y, 5),
+                "room %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
+        }
+    }
+
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
