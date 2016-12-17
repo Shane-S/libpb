@@ -1925,7 +1925,6 @@ START_TEST(place_hallways_t_intersection_y_axis)
         }
     }
 
-
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
     }
@@ -2068,6 +2067,46 @@ START_TEST(place_hallways_t_intersection_x_axis)
                 "hallway %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
             ck_assert_msg(hallway_room_walls[j] == hallway_expected_walls[i][j], "hallway %d wall %d should have been %d, was %d",
                 i, j, hallway_expected_walls[i][j], hallway_room_walls[j]);
+        }
+    }
+
+    /* Check that rooms have the correct shapes and connections */
+    pb_point2D expected_room0_points[] = { { 0.f, 4.75f },
+                                           { 0.f, 0.f },
+                                           { 5.f, 0.f },
+                                           { 5.f, 4.75f } };
+    pb_point2D expected_room1_points[] = { { 0.f, 10.f },
+                                           { 0.f, 5.25f },
+                                           { 4.75f, 5.25f },
+                                           { 4.75f, 10.f } };
+    pb_point2D expected_room2_points[] = { { 5.f, 4.75f },
+                                           { 5.f, 0.f },
+                                           { 10.f, 0.f },
+                                           { 10.f, 4.75f } };
+    pb_point2D expected_room3_points[] = { { 5.25f, 10.f },
+                                           { 5.25f, 5.25f },
+                                           { 10.f, 5.25f },
+                                           { 10.f, 10.f } };
+
+    size_t expected_room_point_counts[] = { sizeof(expected_room0_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room1_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room2_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room3_points) / sizeof(pb_point2D) };
+    pb_point2D* expected_room_points[] = { &expected_room0_points[0],
+                                           &expected_room1_points[0],
+                                           &expected_room2_points[0],
+                                           &expected_room3_points[0] };
+
+    for (i = 0; i < sizeof(expected_room_points) / sizeof(pb_point2D*); ++i) {
+        pb_room* room = f.rooms + i;
+        pb_point2D* points = (pb_point2D*)room->shape.points.items;
+        ck_assert_msg(room->shape.points.size == expected_room_point_counts[i], "room %d should have had %lu points, had %lu",
+            i, expected_room_point_counts[i], room->shape.points.size);
+        for (j = 0; j < expected_room_point_counts[i]; ++j) {
+            pb_point2D* real = points + j;
+            pb_point2D* expected = expected_room_points[i] + j;
+            ck_assert_msg(pb_float_approx_eq(real->x, expected->x, 5) && pb_float_approx_eq(real->y, expected->y, 5),
+                "room %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
         }
     }
 
@@ -2223,6 +2262,46 @@ START_TEST(place_hallways_4_way_intersection)
                 "hallway %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
             ck_assert_msg(hallway_room_walls[j] == hallway_expected_walls[i][j], "hallway %d wall %d should have been %d, was %d",
                 i, j, hallway_expected_walls[i][j], hallway_room_walls[j]);
+        }
+    }
+
+    /* Check that rooms have the correct shapes and connections */
+    pb_point2D expected_room0_points[] = { { 0.f, 4.75f },
+                                           { 0.f, 0.f },
+                                           { 4.75f, 0.f },
+                                           { 4.75f, 4.75f } };
+    pb_point2D expected_room1_points[] = { { 0.f, 10.f },
+                                           { 0.f, 5.25f },
+                                           { 4.75f, 5.25f },
+                                           { 4.75f, 10.f } };
+    pb_point2D expected_room2_points[] = { { 5.25f, 0.f },
+                                           { 10.f, 0.f },
+                                           { 10.f, 4.75f },
+                                           { 5.25f, 4.75f } };
+    pb_point2D expected_room3_points[] = { { 5.25f, 10.f },
+                                           { 5.25f, 5.25f },
+                                           { 10.f, 5.25f },
+                                           { 10.f, 10.f } };
+
+    size_t expected_room_point_counts[] = { sizeof(expected_room0_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room1_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room2_points) / sizeof(pb_point2D),
+                                            sizeof(expected_room3_points) / sizeof(pb_point2D) };
+    pb_point2D* expected_room_points[] = { &expected_room0_points[0],
+                                           &expected_room1_points[0],
+                                           &expected_room2_points[0],
+                                           &expected_room3_points[0] };
+
+    for (i = 0; i < sizeof(expected_room_points) / sizeof(pb_point2D*); ++i) {
+        pb_room* room = f.rooms + i;
+        pb_point2D* points = (pb_point2D*)room->shape.points.items;
+        ck_assert_msg(room->shape.points.size == expected_room_point_counts[i], "room %d should have had %lu points, had %lu",
+            i, expected_room_point_counts[i], room->shape.points.size);
+        for (j = 0; j < expected_room_point_counts[i]; ++j) {
+            pb_point2D* real = points + j;
+            pb_point2D* expected = expected_room_points[i] + j;
+            ck_assert_msg(pb_float_approx_eq(real->x, expected->x, 5) && pb_float_approx_eq(real->y, expected->y, 5),
+                "room %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
         }
     }
 

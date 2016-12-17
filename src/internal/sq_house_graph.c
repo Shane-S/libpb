@@ -613,6 +613,8 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
  *                      number of overlap points possible.
  *
  * @return Whether the shapes overlapped.
+ *
+ * TODO: Move duplicate detection outside this function. Pretty sure it can be done more efficiently that way.
  */
 static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect, pb_shape2D* room_shape,
                            pb_point2D* ovlap0, pb_point2D* ovlap1) {
@@ -762,8 +764,8 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                  * insert them after us. E.g. if we're at point 2 and are going along the x axis, then we're at the end
                  * of wall 1 and need to insert the non-edge hallway rectangle point, then the intersect point, both at point
                  * 2 such that the order is intersect->non-edge->point 2. */
-                size_t insert_idx_add = (is_x * pb_float_approx_eq(rc0->x, rrect[(rc0_idx - 1) % 4].x, 5)) +
-                                        (!is_x * pb_float_approx_eq(rc0->y, rrect[(rc0_idx - 1) % 4].y, 5));
+                size_t insert_idx_add = (is_x * pb_float_approx_eq(rc0->x, rrect[rc0_idx == 0 ? 3 : rc0_idx - 1].x, 5)) +
+                                        (!is_x * pb_float_approx_eq(rc0->y, rrect[rc0_idx == 0 ? 3 : rc0_idx - 1].y, 5));
                 size_t insert_idx = (real_rc0_idx + insert_idx_add) % room_shape->points.size;
                 
                 int removed_intersect = 0;
@@ -915,37 +917,31 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
              *     |____________|  |________________________
              */
             int is_edge = 0;
-            int is_x;
-            pb_point2D* r_start;
-            
             for (i = 0; i < 3; ++i) {
-                if (pb_float_approx_eq(rrect[i].x, hc0->x, 5)) {
-                    is_x = 1;
+                if (pb_float_approx_eq(rrect[i].x, hc0->x, 5) || pb_float_approx_eq(rrect[i].y, hc0->y, 5)) {
                     is_edge = 1;
-                    r_start = &rrect[i];
-                    break;
-                } else if (pb_float_approx_eq(rrect[i].y, hc0->y, 5)) {
-                    is_x = 0;
-                    is_edge = 1;
-                    r_start = &rrect[i];
                     break;
                 }
             }
 
             if (is_edge) {
                 /* Second case */
+                int is_x = fabsf(rc0->x - rc1->x) > fabsf(rc0->y - rc1->y);
                 pb_point2D* real_rc0 = NULL;
                 pb_point2D* real_rc1 = NULL;
                 int real_rc0_idx;
                 int real_rc1_idx;
                 for (i = 0; i < room_shape->points.size; ++i) {
-                    if (pb_point_eq(r_start, room_points + i)) {
-                        size_t prev_idx = i == 0 ? room_shape->points.size : i - 1;
+                    if (pb_point_eq(rc0, room_points + i)) {
+                        size_t prev_idx = i == 0 ? room_shape->points.size - 1 : i - 1;
                         size_t next_idx = (i + 1) % room_shape->points.size;
-                        pb_point2D* prev = room_points + prev_idx;
 
-                        int is_prev = (is_x && pb_float_approx_eq(room_points[i].y, prev->y, 5)) ||
-                                      pb_float_approx_eq(room_points[i].x, prev->x, 5);
+                        pb_point2D* prev = room_points + prev_idx;
+                        
+                        int prev_is_x = fabsf(rc0->x - prev->x) > fabsf(rc0->y - prev->y);
+
+                        int is_prev = (is_x && prev_is_x) || (!is_x && !prev_is_x);
+
                         real_rc0_idx = i;
                         real_rc0 = room_points + i;
                         real_rc1_idx = is_prev ? prev_idx : next_idx;
@@ -973,32 +969,38 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                     second = real_rc0->y < real_rc1->y ? &real_rc1_adjusted : &real_rc0_adjusted;
                 }
 
+                int removed_rc0 = 0;
                 for (i = 0; i < room_shape->points.size; ++i) {
                     if (pb_point_eq(room_points + i, &real_rc0_adjusted)) {
-                        pb_vector_remove_at(&room_shape->points, i);
-                        real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
-                        real_rc1_idx = real_rc0_idx < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                        size_t delta_rc1_idx = (i < real_rc1_idx) + (real_rc0_idx < real_rc1_idx);
+                        real_rc1_idx -= delta_rc1_idx;
 
-                        real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
+                        real_rc0_idx -= i < real_rc0_idx;
+                        pb_vector_remove_at(&room_shape->points, i);                       
                         pb_vector_remove_at(&room_shape->points, real_rc0_idx);
 
-                        real_rc1_idx = real_rc1_idx % room_shape->points.size;
+                        removed_rc0 = 1;
                         break;
                     }
                 }
-                if (i == room_shape->points.size) {
+                if (!removed_rc0) {
                     room_points[real_rc0_idx] = real_rc0_adjusted;
                 }
 
+                int removed_rc1 = 0;
                 for (i = 0; i < room_shape->points.size; ++i) {
                     if (pb_point_eq(room_points + i, &real_rc1_adjusted)) {
+                        
+                        removed_rc1 = 1;
+                        real_rc1_idx -= i < real_rc1_idx;
+                        
                         pb_vector_remove_at(&room_shape->points, i);
-                        real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
                         pb_vector_remove_at(&room_shape->points, real_rc1_idx);
+                        
                         break;
                     }
                 }
-                if (i == room_shape->points.size) {
+                if (!removed_rc1) {
                     room_points[real_rc1_idx] = real_rc1_adjusted;
                 }
 
@@ -1141,11 +1143,25 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
             pb_point2D real_rc1_adjusted;
             size_t real_rc0_idx;
             size_t real_rc1_idx;
+
+            float xdiff = rc0->x - rc1->x;
+            float ydiff = rc0->y - rc1->y;
+            int is_x = fabsf(xdiff) > fabsf(ydiff);
+
             for (i = 0; i < room_shape->points.size; ++i) {
                 if (pb_point_eq(rc0, room_points + i)) {
+                    size_t prev_idx = i == 0 ? room_shape->points.size - 1 : i - 1;
+                    size_t next_idx = (i + 1) % room_shape->points.size;
+
+                    pb_point2D* prev = room_points + prev_idx;
+
+                    int prev_is_x = fabsf(rc0->x - prev->x) > fabsf(rc0->y - prev->y);
+
+                    int is_prev = (is_x && prev_is_x) || (!is_x && !prev_is_x);
+
                     real_rc0_idx = i;
-                    real_rc1_idx = (i + 1) % room_shape->points.size;
                     real_rc0 = room_points + i;
+                    real_rc1_idx = is_prev ? prev_idx : next_idx;
                     real_rc1 = room_points + real_rc1_idx;
                     break;
                 }
@@ -1163,9 +1179,6 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
              *          |_____________|  |
              *     ______________________|
              */
-            float xdiff = rc0->x - rc1->x;
-            float ydiff = rc0->y - rc1->y;
-            int is_x = fabsf(xdiff) > fabsf(ydiff);
             if (is_x) {
                 if (xdiff > 0) {
                     /* Room's top wall - use hallway bottom wall y-coord */
@@ -1191,13 +1204,14 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
             int removed_realrc0 = 0;
             for (i = 0; i < room_shape->points.size; ++i) {
                 if (pb_point_eq(room_points + i, &real_rc0_adjusted)) {
-                    pb_vector_remove_at(&room_shape->points, i);
-                    real_rc0_idx = i < real_rc0_idx ? real_rc0_idx - 1 : real_rc0_idx;
-                    pb_vector_remove_at(&room_shape->points, real_rc0_idx);
+                    
+                    real_rc1_idx -= (i < real_rc1_idx) + (real_rc0_idx < real_rc1_idx);
 
-                    real_rc1_idx--;
-                    real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
                     removed_realrc0 = 1;
+                    real_rc0_idx -= i < real_rc0_idx;
+                    
+                    pb_vector_remove_at(&room_shape->points, i);
+                    pb_vector_remove_at(&room_shape->points, real_rc0_idx);
                     break;
                 }
             }
@@ -1207,7 +1221,7 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
 
             for (i = 0; i < room_shape->points.size; ++i) {
                 if (pb_point_eq(room_points + i, &real_rc1_adjusted)) {
-                    real_rc1_idx = i < real_rc1_idx ? real_rc1_idx - 1 : real_rc1_idx;
+                    real_rc1_idx -= i < real_rc1_idx;
                     pb_vector_remove_at(&room_shape->points, i);
                     pb_vector_remove_at(&room_shape->points, real_rc1_idx);
                     break;
