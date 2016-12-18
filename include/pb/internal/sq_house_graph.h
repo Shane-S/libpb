@@ -15,7 +15,7 @@ typedef struct {
     pb_room* neighbour;
     pb_point2D overlap_start;
     pb_point2D overlap_end;
-    side wall;
+    int wall;
     int can_connect; /* Whether these rooms are allowed to connect as per the room specs */
     int has_door; /* True if can_connect and there's space for a door (house_spec.door_size) */
 } pb_sq_house_room_conn;
