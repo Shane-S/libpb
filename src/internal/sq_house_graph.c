@@ -1392,7 +1392,8 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
 
             if (num_found == 2) {
                 /* Both points are still in the shape, so no adjustment needed */
-                conn->wall = start_point_idx > end_point_idx ? end_point_idx : start_point_idx;
+                /* Dirty short-circuited or */
+                conn->wall = start_point_idx > end_point_idx || end_point_idx - start_point_idx > 1 ? end_point_idx : start_point_idx;
                 conn->has_door = is_x ? xdiff > h->door_size : ydiff > h->door_size;
 
                 hallway_conn->overlap_start = conn->overlap_start;

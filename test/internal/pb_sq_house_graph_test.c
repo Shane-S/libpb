@@ -2066,16 +2066,16 @@ START_TEST(place_hallways_2_corners_same_side)
 
     pb_sq_house_room_conn expected_room2_conns[] = {
         /* room,        neighbour    overlap_start,                 overlap_end,                   wall,  can_connect, has_door*/
-        { &f.rooms[1],  &f.rooms[4], { 5.25f, 10.f / 3.f + 0.25f }, { 10.f, 10.f / 3.f + 0.25f },  0,     1,           1 },
-        { &f.rooms[1],  &f.rooms[5], { 5.25f, 10.f / 3.f + 0.25f }, { 5.25f, 20.f / 3.f - 0.25f }, 3,     1,           1 },
-        { &f.rooms[1],  &f.rooms[6], { 5.25f, 20.f / 3.f - 0.25f }, { 10.f, 20.f / 3.f - 0.25f },  2,     1,           1 },
+        { &f.rooms[2],  &f.rooms[4], { 5.25f, 10.f / 3.f + 0.25f }, { 10.f, 10.f / 3.f + 0.25f },  0,     1,           1 },
+        { &f.rooms[2],  &f.rooms[5], { 5.25f, 10.f / 3.f + 0.25f }, { 5.25f, 20.f / 3.f - 0.25f }, 3,     1,           1 },
+        { &f.rooms[2],  &f.rooms[6], { 5.25f, 20.f / 3.f - 0.25f }, { 10.f, 20.f / 3.f - 0.25f },  2,     1,           1 },
     };
 
     pb_sq_house_room_conn expected_room3_conns[] = {
         /* room,       neighbour    overlap_start,                 overlap_end,                   wall,  can_connect, has_door*/
         { &f.rooms[3], &f.rooms[5], { 5.f, 20.f / 3.f + 0.25f },   { 5.25f, 20.f / 3.f + 0.25f }, 1,     1,           0 },
         { &f.rooms[3], &f.rooms[6], { 5.25f, 20.f / 3.f + 0.25f }, { 10.f, 20.f / 3.f + 0.25f },  1,     1,           1 },
-        { &f.rooms[1], &f.rooms[0], { 5.f, 20.f / 3.f + 0.25f },   { 5.f, 10.f },                 0,     1,           1 },
+        { &f.rooms[3], &f.rooms[0], { 5.f, 20.f / 3.f + 0.25f },   { 5.f, 10.f },                 0,     1,           1 },
     };
 
     pb_sq_house_room_conn expected_room4_conns[] = {
@@ -2337,6 +2337,81 @@ START_TEST(place_hallways_t_intersection_y_axis)
         }
     }
 
+    /* Check room connections */
+    pb_sq_house_room_conn expected_room0_conns[] = {
+            /* room,     neighbour    overlap_start,   overlap_end,    wall, can_connect, has_door*/
+            { f.rooms,   &f.rooms[4], { 4.75f, 0.f }, { 4.75f, 10.f }, 2,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room1_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,      wall, can_connect, has_door*/
+            { &f.rooms[1], &f.rooms[3], { 5.25f, 4.75f }, { 10.f, 4.75f },  2,    1,           1 },
+            { &f.rooms[1], &f.rooms[4], { 5.25f, 0.f },   { 5.25f, 4.75f }, 3,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room2_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,     wall, can_connect, has_door*/
+            { &f.rooms[2], &f.rooms[3], { 5.25f, 5.25f }, { 10.f, 5.25f }, 1,    1,           1 },
+            { &f.rooms[2], &f.rooms[4], { 5.25f, 5.25f }, { 5.25f, 10.f }, 0,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room3_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,     wall, can_connect, has_door*/
+            { &f.rooms[3], &f.rooms[1], { 5.25f, 4.75f }, { 10.f, 4.75f }, 1,    1,           1 },
+            { &f.rooms[3], &f.rooms[2], { 5.25f, 5.25f }, { 10.f, 5.25f }, 3,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room4_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,      wall, can_connect, has_door*/
+            { &f.rooms[4], &f.rooms[0], { 4.75f, 0.f },   { 4.75f, 10.f },  0,    1,           1 },
+            { &f.rooms[4], &f.rooms[1], { 5.25f, 0.f },   { 5.25f, 4.75f }, 2,    1,           1 },
+            { &f.rooms[4], &f.rooms[2], { 5.25f, 5.25f }, { 5.25f, 10.f },  4,    1,           1 },
+    };
+
+    size_t expected_room_conn_counts[] = {
+            sizeof(expected_room0_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room1_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room2_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room3_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room4_conns) / sizeof(pb_sq_house_room_conn),
+    };
+    pb_sq_house_room_conn* expected_room_conns[] = {
+            &expected_room0_conns,
+            &expected_room1_conns,
+            &expected_room2_conns,
+            &expected_room3_conns,
+            &expected_room4_conns,
+    };
+
+    for (i = 0; i < f.num_rooms; ++i) {
+        pb_vertex const* vert = pb_graph_get_vertex(floor_graph, f.rooms + i);
+        ck_assert_msg(vert->edges_size == expected_room_conn_counts[i],
+                      "room %lu had %lu edges, should have had %lu",
+                      i, vert->edges_size, expected_room_conn_counts[i]);
+
+        for (j = 0; j < expected_room_conn_counts[i]; ++j) {
+            pb_sq_house_room_conn const* expected = expected_room_conns[i] + j;
+            pb_sq_house_room_conn const* actual = (pb_sq_house_room_conn*)vert->edges[j]->data;
+
+            ck_assert_msg(actual->neighbour == expected->neighbour, "room %lu edge %lu had incorrect neighbour", i, j);
+            ck_assert_msg(pb_point_eq(&actual->overlap_start, &expected->overlap_start),
+                          "room %lu edge %lu: expected overlap start (%.2f, %.2f), was (%.2f, %.2f)",
+                          i, j, expected->overlap_start.x, expected->overlap_start.y, actual->overlap_start.x, actual->overlap_start.y);
+            ck_assert_msg(pb_point_eq(&actual->overlap_end, &expected->overlap_end),
+                          "room %lu edge %lu: expected overlap end (%.2f, %.2f), was (%.2f, %.2f)",
+                          i, j, expected->overlap_end.x, expected->overlap_end.y, actual->overlap_end.x, actual->overlap_end.y);
+            ck_assert_msg(actual->can_connect == expected->can_connect,
+                          "room %lu edge %lu: expected can_connect == %lu, was %lu",
+                          i, j, expected->can_connect, actual->can_connect);
+            ck_assert_msg(actual->has_door == expected->has_door,
+                          "room %lu edge %lu: expected has_door %d, was %d",
+                          i, j, expected->has_door, actual->has_door);
+            ck_assert_msg(actual->wall == expected->wall,
+                          "room %lu edge %lu: expected wall %d, was %d",
+                          i, j, expected->wall, actual->wall);
+        }
+    }
+
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
     }
@@ -2387,7 +2462,7 @@ START_TEST(place_hallways_t_intersection_x_axis)
 
     size_t i, j;
 
-    char* adj[] = { "Room" };
+    char* adj[] = { "Small Room" };
     pb_sq_house_room_spec specs[2];
     specs[0].adjacent = &adj[0];
     specs[0].area = 25.f;
@@ -2522,6 +2597,91 @@ START_TEST(place_hallways_t_intersection_x_axis)
             pb_point2D* expected = expected_room_points[i] + j;
             ck_assert_msg(pb_float_approx_eq(real->x, expected->x, 5) && pb_float_approx_eq(real->y, expected->y, 5),
                 "room %d point %d should have been (%.2f, %.2f), was (%.2f, %.2f)", i, j, expected->x, expected->y, real->x, real->y);
+        }
+    }
+
+    /* Check room connections */
+    pb_sq_house_room_conn expected_room0_conns[] = {
+            /* room,     neighbour    overlap_start,  overlap_end,    wall, can_connect, has_door*/
+            { f.rooms,   &f.rooms[4], { 0.f, 4.75f }, { 5.f, 4.75f }, 3,    1,           1 },
+            { f.rooms,   &f.rooms[2], { 5.f, 0.f },   { 5.f, 4.75f }, 2,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room1_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,      wall, can_connect, has_door*/
+            { &f.rooms[1], &f.rooms[4], { 0.f, 5.25f },   { 4.75f, 5.25f }, 1,    1,           1 },
+            { &f.rooms[1], &f.rooms[5], { 4.75f, 5.25f }, { 4.75f, 10.f },  2,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room2_conns[] = {
+            /* room,        neighbour    overlap_start,  overlap_end,     wall,  can_connect, has_door*/
+            { &f.rooms[2],  &f.rooms[4], { 5.f, 4.75f }, { 10.f, 4.75f }, 3,     1,           1 },
+            { &f.rooms[2],  &f.rooms[0], { 5.f, 0.f },   { 5.f, 4.75f },  0,     1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room3_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,     wall,  can_connect, has_door*/
+            { &f.rooms[3], &f.rooms[4], { 5.25f, 5.25f }, { 10.f, 5.25f }, 1,     1,           1 },
+            { &f.rooms[3], &f.rooms[5], { 5.25f, 5.25f }, { 5.25f, 10.f }, 0,     1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room4_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,      wall, can_connect, has_door*/
+            { &f.rooms[4], &f.rooms[0], { 0.f, 4.75f },   { 5.f, 4.75f },   1,    1,           1 },
+            { &f.rooms[4], &f.rooms[1], { 0.f, 5.25f },   { 4.75f, 5.25f }, 5,    1,           1 },
+            { &f.rooms[4], &f.rooms[2], { 5.f, 4.75f },   { 10.f, 4.75f },  1,    1,           1 },
+            { &f.rooms[4], &f.rooms[3], { 5.25f, 5.25f }, { 10.f, 5.25f },  3,    1,           1 },
+    };
+
+    pb_sq_house_room_conn expected_room5_conns[] = {
+            /* room,       neighbour    overlap_start,    overlap_end,     wall, can_connect, has_door*/
+            { &f.rooms[5], &f.rooms[1], { 4.75f, 5.25f }, { 4.75f, 10.f }, 0,    1,           1 },
+            { &f.rooms[5], &f.rooms[3], { 5.25f, 5.25f }, { 5.25f, 10.f }, 2,    1,           1 },
+    };
+
+    size_t expected_room_conn_counts[] = {
+            sizeof(expected_room0_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room1_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room2_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room3_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room4_conns) / sizeof(pb_sq_house_room_conn),
+            sizeof(expected_room5_conns) / sizeof(pb_sq_house_room_conn),
+    };
+    pb_sq_house_room_conn* expected_room_conns[] = {
+            &expected_room0_conns,
+            &expected_room1_conns,
+            &expected_room2_conns,
+            &expected_room3_conns,
+            &expected_room4_conns,
+            &expected_room5_conns,
+    };
+
+    for (i = 0; i < f.num_rooms; ++i) {
+        pb_vertex const* vert = pb_graph_get_vertex(floor_graph, f.rooms + i);
+        ck_assert_msg(vert->edges_size == expected_room_conn_counts[i],
+                      "room %lu had %lu edges, should have had %lu",
+                      i, vert->edges_size, expected_room_conn_counts[i]);
+
+        for (j = 0; j < expected_room_conn_counts[i]; ++j) {
+            pb_sq_house_room_conn const* expected = expected_room_conns[i] + j;
+            pb_sq_house_room_conn const* actual = (pb_sq_house_room_conn*)vert->edges[j]->data;
+
+            ck_assert_msg(actual->neighbour == expected->neighbour, "room %lu edge %lu had incorrect neighbour", i, j);
+            ck_assert_msg(pb_point_eq(&actual->overlap_start, &expected->overlap_start),
+                          "room %lu edge %lu: expected overlap start (%.2f, %.2f), was (%.2f, %.2f)",
+                          i, j, expected->overlap_start.x, expected->overlap_start.y, actual->overlap_start.x, actual->overlap_start.y);
+            ck_assert_msg(pb_point_eq(&actual->overlap_end, &expected->overlap_end),
+                          "room %lu edge %lu: expected overlap end (%.2f, %.2f), was (%.2f, %.2f)",
+                          i, j, expected->overlap_end.x, expected->overlap_end.y, actual->overlap_end.x, actual->overlap_end.y);
+            ck_assert_msg(actual->can_connect == expected->can_connect,
+                          "room %lu edge %lu: expected can_connect == %d, was %d",
+                          i, j, expected->can_connect, actual->can_connect);
+            ck_assert_msg(actual->has_door == expected->has_door,
+                          "room %lu edge %lu: expected has_door %d, was %d",
+                          i, j, expected->has_door, actual->has_door);
+            ck_assert_msg(actual->wall == expected->wall,
+                          "room %lu edge %lu: expected wall %d, was %d",
+                          i, j, expected->wall, actual->wall);
         }
     }
 
