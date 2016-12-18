@@ -23,13 +23,13 @@ typedef struct {
 /**
  * Determines which wall (if any) is shared by room1 and room2.
  *
- * @param room1 The first room to check for a shared wall.
- * @param room2 The second room to check for a shared wall.
+ * @param room1 The first room's rectangle to check for a shared wall.
+ * @param room2 The second room's rectangle to check for a shared wall.
  *
  * @return The appropriate value from the side enum if there is a shared wall,
  *         -1 if there are no shared walls between the rooms.
  */
-int pb_sq_house_get_shared_wall(pb_room* room1, pb_room* room2);
+int pb_sq_house_get_shared_wall(pb_rect* room1, pb_rect* room2);
 
 /**
  * Gets the overlap between the shared walls in room1 and room2.

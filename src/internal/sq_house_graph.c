@@ -546,7 +546,7 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
         if (params.closest) {
             float x_diff = params.start->x - params.goal->x;
             float y_diff = params.start->y - params.goal->y;
-            pb_point2D const* start_points = (pb_shape2D*)params.start_room->shape.points.items;
+            pb_point2D const* start_points = (pb_point2D*)params.start_room->shape.points.items;
 
             /* Figure out which point is the start point */
             for (i = 0; i < params.start_room->shape.points.size; ++i) {
@@ -1259,8 +1259,12 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                 room_points[real_rc1_idx] = real_rc1_adjusted;
             }
 
-            *ovlap0 = real_rc0_adjusted;
-            *ovlap1 = real_rc1_adjusted;
+            pb_point2D const* first = is_x ? (xdiff < 0 ? &real_rc0_adjusted : &real_rc1_adjusted)
+                                           : (ydiff < 0 ? &real_rc0_adjusted : &real_rc1_adjusted);
+            pb_point2D const* second = first == &real_rc0_adjusted ? &real_rc1_adjusted : &real_rc0_adjusted;
+
+            *ovlap0 = *first;
+            *ovlap1 = *second;
             return 1;
         }
     }
@@ -1269,8 +1273,8 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
 static void vert_remove_edges(void const* key, pb_vertex* vert, void* param) {
     pb_graph* g = (pb_graph*)param;
     size_t i;
-    for (i = 0; i < vert->edges_size; ++i) {
-        void* other_key = vert->edges[i]->to->data;
+    while(vert->edges_size) {
+        void* other_key = vert->edges[0]->to->data;
         pb_graph_remove_edge(g, key, other_key);
     }
 }
@@ -1293,6 +1297,10 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
     
     /* Remove and re-add all vertices since the floor's rooms array may have been assigned a new pointer */
     for (i = 0; i < floor_graph->vertices->cap; ++i) {
+        if (floor_graph->vertices->states[i] == FULL) {
+            pb_vertex_free(floor_graph->vertices->entries[i].val);
+        }
+
         floor_graph->vertices->states[i] = EMPTY;
     }
     floor_graph->vertices->size = 0;
@@ -1420,7 +1428,7 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                         }
                     }
                 }
-                hallway_conn->wall = hallway_wall;
+                hallway_conn->wall = (int)hallway_wall;
             } else if (num_found == 1) {
                 /* Only one of the points was still present in the shape, which happens in various situations.
                  * Determine whether the hallway wall specified in the original overlap still overlaps at all with
@@ -1583,6 +1591,11 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                     hallway_conn->overlap_start = conn->overlap_start;
                     hallway_conn->overlap_end = conn->overlap_end;
 
+                    float delta = is_x ? conn->overlap_end.x - conn->overlap_start.x
+                                       : conn->overlap_end.y - conn->overlap_start.y;
+                    conn->has_door = delta > h->door_size;
+                    hallway_conn->has_door = conn->has_door;
+
                     size_t cur_hallway_point;
                     for (cur_hallway_point = 0; cur_hallway_point < hallway->shape.points.size; ++cur_hallway_point) {
                         pb_point2D const* wall_start = hallway_points + cur_hallway_point;
@@ -1595,9 +1608,12 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
 
                             float xmin = fminf(wall_start->x, wall_end->x);
                             float xmax = fmaxf(wall_start->x, wall_end->x);
-                            if (pb_float_approx_eq(conn->overlap_start.y, wall_start->y, 5) &&
-                                conn->overlap_start.x >= xmin && conn->overlap_start.x <= xmax) {
-                                break;
+                            if (pb_float_approx_eq(conn->overlap_start.y, wall_start->y, 5)) {
+                                float xstart = fmaxf(wall_start->x, conn->overlap_start.x);
+                                float xend = fminf(wall_end->x, conn->overlap_end.x);
+                                if (xend - xstart > 0) {
+                                    break;
+                                }
                             }
                         }
                         else {
@@ -1605,9 +1621,12 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
 
                             float ymin = fminf(wall_start->y, wall_end->y);
                             float ymax = fmaxf(wall_start->y, wall_end->y);
-                            if (pb_float_approx_eq(conn->overlap_start.x, wall_start->x, 5) &&
-                                conn->overlap_start.y >= ymin && conn->overlap_start.y <= ymax) {
-                                break;
+                            if (pb_float_approx_eq(conn->overlap_start.x, wall_start->x, 5)) {
+                                float ystart = fmaxf(wall_start->y, conn->overlap_start.y);
+                                float yend = fminf(wall_end->y, conn->overlap_end.y);
+                                if (yend - ystart > 0) {
+                                    break;
+                                }
                             }
                         }
                     }
@@ -1667,7 +1686,7 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
 
                                     hallway_conn->overlap_start = *possible_overlap_start;
                                     hallway_conn->overlap_end = *possible_overlap_end;
-                                    hallway_conn->wall = other == next ? cur_hallway_point : hpoint_prev_idx;
+                                    hallway_conn->wall = other == hpoint_next ? cur_hallway_point : hpoint_prev_idx;
                                     hallway_conn->has_door = conn->has_door;
                                 }
                             }
@@ -1709,29 +1728,6 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
 
             int shared_wall = pb_sq_house_get_shared_wall(&room_rect, &other_rect);
             if (shared_wall != -1) {
-                pb_sq_house_room_conn* conn = malloc(sizeof(pb_sq_house_room_conn));
-                conn->room = f->rooms + i;
-                conn->neighbour = f->rooms + j;
-                if (!conn) {
-                    /* So close... */
-                    return -1;
-                }
-                if (pb_graph_add_edge(floor_graph, f->rooms + i, f->rooms + j, 0.f, conn) == -1) {
-                    free(conn);
-                    return -1;
-                }
-
-                pb_sq_house_room_spec* spec;
-                pb_hashmap_get(room_specs, f->rooms[i].name, &spec);
-
-                size_t cur_name;
-                for (cur_name = 0; cur_name < spec->num_adjacent; ++cur_name) {
-                    if (strcmp(f->rooms[j].name, spec->adjacent[cur_name]) == 0) {
-                        break;
-                    }
-                }
-                conn->can_connect = cur_name != spec->num_adjacent;
-
                 int is_x = shared_wall == 1 || shared_wall == 3;
                 float to_match;
                 switch (shared_wall) {
@@ -1748,80 +1744,125 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                     to_match = other_rect.bottom_left.y;
                     break;
                 }
-                
-                /* Find the actual points in both rooms that correspond to the given wall */
-                pb_point2D const* room_point0;
-                pb_point2D const* room_point1;
-                size_t room_wall;
 
-                pb_point2D const* other_point0;
-                pb_point2D const* other_point1;
+                size_t cur_point = 0;
+                int found_overlap = 0;
+                /* Continue checking walls until we either find the overlap or run out of walls */
+                while (cur_point < f->rooms[i].shape.points.size && !found_overlap) {
+                    /* Find the actual points in both rooms that correspond to the given wall */
+                    pb_point2D const* room_point0;
+                    pb_point2D const* room_point1;
+                    size_t room_wall;
 
-                size_t cur_point;
-                for (cur_point = 0; cur_point < f->rooms[i].shape.points.size; ++cur_point) {
-                    pb_point2D const* room_points = (pb_point2D*)f->rooms[i].shape.points.items;
-                    pb_point2D const* cur = room_points + cur_point;
-                    pb_point2D const* next = room_points + ((cur_point + 1) % f->rooms[i].shape.points.size);
+                    pb_point2D const* other_point0;
+                    pb_point2D const* other_point1;
 
-                    int wall_is_x = fabsf(cur->x - next->x) > fabsf(cur->y - next->y);
-                    if (wall_is_x == is_x && pb_float_approx_eq(is_x ? cur->y : cur->x, to_match, 5)) {
-                        room_point0 = cur;
-                        room_point1 = next;
-                        room_wall = cur_point;
-                        break;
+
+                    for (; cur_point < f->rooms[i].shape.points.size; ++cur_point) {
+                        pb_point2D const* room_points = (pb_point2D*)f->rooms[i].shape.points.items;
+                        pb_point2D const* cur = room_points + cur_point;
+                        pb_point2D const* next = room_points + ((cur_point + 1) % f->rooms[i].shape.points.size);
+
+                        int wall_is_x = fabsf(cur->x - next->x) > fabsf(cur->y - next->y);
+                        if (wall_is_x == is_x && pb_float_approx_eq(is_x ? cur->y : cur->x, to_match, 5)) {
+                            room_point0 = cur;
+                            room_point1 = next;
+                            room_wall = cur_point;
+                            break;
+                        }
                     }
-                }
 
-                for (cur_point = 0; cur_point < f->rooms[j].shape.points.size; ++cur_point) {
-                    pb_point2D const* other_points = (pb_point2D*)f->rooms[j].shape.points.items;
-                    pb_point2D const* cur = other_points + cur_point;
-                    pb_point2D const* next = other_points + ((cur_point + 1) % f->rooms[j].shape.points.size);
+                    size_t other_point = 0;
+                    while (other_point < f->rooms[j].shape.points.size && !found_overlap) {
+                        for (; other_point < f->rooms[j].shape.points.size; ++other_point) {
+                            pb_point2D const* other_points = (pb_point2D*)f->rooms[j].shape.points.items;
+                            pb_point2D const* cur = other_points + other_point;
+                            pb_point2D const* next = other_points + ((other_point + 1) % f->rooms[j].shape.points.size);
 
-                    int wall_is_x = fabsf(cur->x - next->x) > fabsf(cur->y - next->y);
-                    if (wall_is_x == is_x && pb_float_approx_eq(is_x ? cur->y : cur->x, to_match, 5)) {
-                        other_point0 = cur;
-                        other_point1 = next;
-                        break;
+                            int wall_is_x = fabsf(cur->x - next->x) > fabsf(cur->y - next->y);
+                            if (wall_is_x == is_x && pb_float_approx_eq(is_x ? cur->y : cur->x, to_match, 5)) {
+                                other_point0 = cur;
+                                other_point1 = next;
+                                break;
+                            }
+                        }
+
+                        /* Swap the points so that they're in the correct order */
+                        pb_point2D const* temp = room_point0;
+                        room_point0 = is_x ? (room_point0->x < room_point1->x ? room_point0 : room_point1)
+                                           : (room_point0->y < room_point1->y ? room_point0 : room_point1);
+                        room_point1 = room_point0 == room_point1 ? temp : room_point1;
+
+                        temp = other_point0;
+                        other_point0 = is_x ? (other_point0->x < other_point1->x ? other_point0 : other_point1)
+                                            : (other_point0->y < other_point1->y ? other_point0 : other_point1);
+                        other_point1 = other_point0 == other_point1 ? temp : other_point1;
+
+                        /* Check if they actually do overlap */
+                        start = is_x ? (room_point0->x > other_point0->x ? *room_point0 : *other_point0)
+                                     : (room_point0->y > other_point0->y ? *room_point0 : *other_point0);
+                        end = is_x ? (room_point1->x < other_point1->x ? *room_point1 : *other_point1)
+                                   : (room_point1->y < other_point1->y ? *room_point1 : *other_point1);
+
+                        float delta = is_x ? end.x - start.x : end.y - start.y;
+
+                        if (delta > 0) {
+                            pb_sq_house_room_conn* conn = malloc(sizeof(pb_sq_house_room_conn));
+                            conn->room = f->rooms + i;
+                            conn->neighbour = f->rooms + j;
+                            if (!conn) {
+                                /* So close... */
+                                return -1;
+                            }
+                            if (pb_graph_add_edge(floor_graph, f->rooms + i, f->rooms + j, 0.f, conn) == -1) {
+                                free(conn);
+                                return -1;
+                            }
+
+                            pb_sq_house_room_spec* spec;
+                            pb_hashmap_get(room_specs, f->rooms[i].name, &spec);
+
+                            size_t cur_name;
+                            for (cur_name = 0; cur_name < spec->num_adjacent; ++cur_name) {
+                                if (strcmp(f->rooms[j].name, spec->adjacent[cur_name]) == 0) {
+                                    break;
+                                }
+                            }
+                            conn->can_connect = cur_name != spec->num_adjacent;
+
+                            conn->overlap_start = start;
+                            conn->overlap_end = end;
+                            conn->wall = (int)room_wall;
+                            conn->has_door = is_x ? end.x - start.x > h->door_size : end.y - start.y > h->door_size;
+
+                            /* If the other room already has an edge to this room, check whether can_connect matches
+                            * and set both to 1 (adjusting has_door for the other room as well) if not */
+                            pb_edge const* other_to_room = pb_graph_get_edge(floor_graph, f->rooms + j, f->rooms + i);
+                            if (other_to_room) {
+                                pb_sq_house_room_conn* other_room_conn = (pb_sq_house_room_conn*)other_to_room->data;
+                                if (other_room_conn->can_connect && !conn->can_connect) {
+                                    conn->can_connect = 1;
+                                    conn->has_door = other_room_conn->has_door;
+                                }
+                                else if (!other_room_conn->can_connect && conn->can_connect) {
+                                    other_room_conn->can_connect = 1;
+                                    other_room_conn->has_door = conn->has_door;
+                                }
+                            }
+                            found_overlap = 1;
+                        } else {
+                            other_point++;
+                        }
                     }
-                }
 
-                /* Swap the points so that they're in the correct order */
-                pb_point2D const* temp = room_point0;
-                room_point0 = is_x ? (room_point0->x < room_point1->x ? room_point0 : room_point1)
-                                   : (room_point0->y < room_point1->y ? room_point0 : room_point1);
-                room_point1 = room_point0 == room_point1 ? temp : room_point1;
-
-                temp = other_point0;
-                other_point0 = is_x ? (other_point0->x < other_point1->x ? other_point0 : other_point1)
-                                    : (other_point0->y < other_point1->y ? other_point0 : other_point1);
-                other_point1 = other_point0 == other_point1 ? temp : other_point1;
-
-                start = is_x ? (room_point0->x > other_point0->x ? *room_point0 : *other_point0)
-                             : (room_point0->y > other_point0->y ? *room_point0 : *other_point0);
-                end = is_x ? (room_point1->x < other_point1->x ? *room_point1 : *other_point1)
-                           : (room_point1->y < other_point1->y ? *room_point1 : *other_point1);
-
-                conn->overlap_start = start;
-                conn->overlap_end = end;
-                conn->wall = room_wall;
-                conn->has_door = is_x ? end.x - start.x > h->door_size : end.y - start.y > h->door_size;
-
-                /* If the other room already has an edge to this room, check whether can_connect matches 
-                 * and set both to 1 (adjusting has_door for the other room as well) if not */
-                pb_edge* other_to_room = pb_graph_get_edge(floor_graph, f->rooms + j, f->rooms + i);
-                if (other_to_room) {
-                    pb_sq_house_room_conn* other_room_conn = (pb_sq_house_room_conn*)other_to_room->data;
-                    if (other_room_conn->can_connect && !conn->can_connect) {
-                        conn->can_connect = 1;
-                        conn->has_door = other_room_conn->has_door;
-                    } else if (!other_room_conn->can_connect && conn->can_connect) {
-                        other_room_conn->can_connect = 1;
-                        other_room_conn->has_door = conn->has_door;
+                    if (!found_overlap) {
+                        cur_point++; /* we broke out of the loop, so this didn't get incremented */
                     }
                 }
             }
         }
     }
+    return 0;
 }
 
 static void vert_copy(void const* key, pb_vertex* vert, void* param) {
