@@ -4,6 +4,7 @@
 #include <pb/internal/sq_house_layout.h>
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/util/geom/rect_utils.h>
+#include <pb/floor_plan.h>
 
 START_TEST(choose_rooms_single_room)
 {
@@ -18,6 +19,7 @@ START_TEST(choose_rooms_single_room)
     specs[0].name = "Closet";
     specs[0].adjacent = &adjacent[0];
     specs[0].num_adjacent = 2;
+    specs[0].priority = 0;
 
     pb_hashmap_put(rooms, (void*)"Closet", (void*)&specs[0]);
     spec.num_rooms = 1;
@@ -33,7 +35,7 @@ END_TEST
 
 START_TEST(choose_rooms_multiple_rooms)
 {
-    pb_sq_house_room_spec specs[2];
+    pb_sq_house_room_spec specs[2] = {0};
     pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
 
@@ -50,11 +52,13 @@ START_TEST(choose_rooms_multiple_rooms)
     specs[0].name = "Closet";
     specs[0].adjacent = &adjacent[0];
     specs[0].num_adjacent = 3;
+    specs[0].priority = 0;
 
     specs[1].max_instances = 6;
     specs[1].name = "Bathroom";
     specs[1].adjacent = &adjacent[0];
     specs[1].num_adjacent = 3;
+    specs[1].priority = 1;
 
     pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
     pb_hashmap_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
@@ -101,8 +105,15 @@ START_TEST(choose_rooms_house_too_big)
     
     specs[0].max_instances = 6;
     specs[0].name = "Closet";
+    specs[0].priority = 0;
+    specs[0].adjacent = NULL;
+    specs[0].num_adjacent = 0;
+
     specs[1].max_instances = 6;
     specs[1].name = "Bathroom";
+    specs[1].priority = 1;
+    specs[1].adjacent = NULL;
+    specs[1].num_adjacent = 0;
 
     pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
     pb_hashmap_put(rooms, (void*)specs[1].name, (void*)&specs[1]);
@@ -118,7 +129,7 @@ END_TEST
 
 START_TEST(choose_rooms_no_outside)
 {
-    pb_sq_house_room_spec specs[1];
+    pb_sq_house_room_spec specs[1] = {0};
     pb_hashmap* rooms = pb_hashmap_create(pb_str_hash, pb_str_eq);
     pb_sq_house_house_spec spec;
     char** result;
@@ -129,6 +140,7 @@ START_TEST(choose_rooms_no_outside)
     specs[0].name = "Closet";
     specs[0].adjacent = &adjacent[0];
     specs[0].num_adjacent = 2;
+    specs[0].priority = 0;
 
     pb_hashmap_put(rooms, (void*)specs[0].name, (void*)&specs[0]);
     spec.num_rooms = 6;
@@ -171,9 +183,14 @@ START_TEST(layout_stairs_single_floor)
     ck_assert_msg(result[0].bottom_left.x == 0.f && result[0].bottom_left.y == 0.f && result[0].w == 10 && result[0].h == 25,
                   "Result should have had bottom left {0.f, 0.f}, width of 10.f and height of 25.f, but instead had bottom left {%f, %f}, width %f, and height %f",
                   result[0].bottom_left.x, result[0].bottom_left.y, result[0].w, result[0].h);
+
+    size_t i;
+    for (i = 0; i < house.num_floors; ++i) {
+        free(house.floors[i].rooms);
+    }
+    free(house.floors);
     free(result);
     pb_hashmap_free(room_specs);
-    free(house.floors);
 }
 END_TEST
 
@@ -182,8 +199,7 @@ START_TEST(layout_stairs_three_floors)
     /*
      *  Given a house specification with {w = 30, h = 30, num_rooms = 3, stair_width = 7} and room specifications containing one room {max_instances = 3, area = 690}
      *  When I invoke pb_sq_house_layout_stairs
-     *  Then the result should be 3 rectangl
-#include <pb//util/pb_hash_utils.h>es with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
+     *  Then the result should be 3 rectangles with areas 690, 480, 690 and house with 3 floors containing 2, 3 and 2 rooms
      */
     pb_sq_house_house_spec h_spec;
     pb_sq_house_room_spec living_room;
@@ -228,9 +244,21 @@ START_TEST(layout_stairs_three_floors)
         ck_assert_msg(assert_close_enough(area, expected_areas[i], 5), "Area for rectangle %i should have been about %.3f, was %.3f", i, expected_areas[i], area);
         ck_assert_msg(house.floors[i].num_rooms == expected_num_rooms[i], "%ith floor should have had %lu rooms, had %lu rooms", i, expected_num_rooms[i], house.floors[i].num_rooms);
     }
+
+    for (i = 0; i < house.num_floors; ++i) {
+        size_t j = 0;
+        pb_floor* f = house.floors + i;
+        pb_room* r = &f->rooms[0];
+        for (; j < f->num_rooms && r->shape.points.items; ++j) {
+            r = f->rooms + j;
+            pb_shape2D_free(&r->shape);
+            pb_vector_free(&r->walls);
+        }
+        free(house.floors[i].rooms);
+    }
+    free(house.floors);
     pb_hashmap_free(room_specs);
     free(result);
-    free(house.floors);
 }
 END_TEST
 
@@ -274,12 +302,16 @@ START_TEST(layout_stairs_big_stairs)
     free(result);
     pb_hashmap_free(room_specs);
 
-    for(i = 0; i < house.num_floors; ++i) {
-        for(j = 0; j < house.floors[i].num_rooms; ++j) {
-
+    for (i = 0; i < house.num_floors; ++i) {
+        j = 0;
+        pb_floor* f = house.floors + i;
+        for (; j < f->num_rooms && house.floors[i].rooms[j].shape.points.items; ++j) {
+            pb_room* r = f->rooms + j;
+            pb_shape2D_free(&r->shape);
+            pb_vector_free(&r->walls);
         }
+        free(house.floors[i].rooms);
     }
-
     free(house.floors);
 }
 END_TEST

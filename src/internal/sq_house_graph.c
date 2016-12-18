@@ -371,8 +371,8 @@ typedef struct {
     int closest;
 
     /* Output */
-    pb_point2D* start;
-    pb_point2D* goal;
+    pb_point2D const* start;
+    pb_point2D const* goal;
     pb_room* start_room;
     float dist;
 } pb_hallway_room_selection_params;
@@ -559,7 +559,7 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
             if (fabsf(x_diff) > fabsf(y_diff)) {
                 params.start = start_points + (3 - i); /* Maps 1<->2, 0<->3*/
             } else {
-                params.start = i == 0 || i == 1 ? 1 - i : (4 % i) + 2; /* Maps 0<->1, 2<->3 */
+                params.start = start_points + (i == 0 || i == 1 ? 1 - i : (4 % i) + 2); /* Maps 0<->1, 2<->3 */
             }
         }
 
@@ -600,9 +600,14 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
             /* Add the last point to the list of points and add the constructed hallway to the hallway list */
             if (pb_vector_push_back(hallways, &hallway) == -1 ||
                 pb_vector_push_back(&hallway_points, verts[astar_points->size - 1]->data) == -1) {
+                pb_vector_free(astar_points);
+                free(astar_points);
                 pb_vector_free(&hallway);
                 goto err_return;
             }
+
+            pb_vector_free(astar_points);
+            free(astar_points);
         }
         params.closest = 1;
         params.dist = INFINITY;
@@ -810,7 +815,7 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                     }
                 }
 
-                int result;
+                int result = 0;
                 if (!removed_non_edge) {
                     if (removed_intersect) {
                         /* The non-edge point is still guaranteed to to be in the shape, so insert just that */
@@ -1834,7 +1839,8 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                             conn->overlap_start = start;
                             conn->overlap_end = end;
                             conn->wall = (int)room_wall;
-                            conn->has_door = is_x ? end.x - start.x > h->door_size : end.y - start.y > h->door_size;
+                            conn->has_door = (is_x ? end.x - start.x > h->door_size : end.y - start.y > h->door_size) &&
+                                            conn->can_connect;
 
                             /* If the other room already has an edge to this room, check whether can_connect matches
                             * and set both to 1 (adjusting has_door for the other room as well) if not */

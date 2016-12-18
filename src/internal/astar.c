@@ -12,6 +12,7 @@ struct pb_astar_node {
     float h_cost; /* Estimated cost from this vertex to the goal */
 };
 
+/* TODO: Fix memory leak (node's aren't freed) */
 int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic heuristic, pb_vector** path) {
     pb_vector* result;
     pb_heap* frontier;
@@ -80,7 +81,7 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
             
             /* Add the node to the visited map if it hasn't been visited already; otherwise, update its cost if appropriate */
             pb_astar_node* neighbour_node;
-            if (pb_hashmap_get(visited, edge->to, &neighbour_node) == -1) {
+            if (pb_hashmap_get(visited, edge->to, (void**)&neighbour_node) == -1) {
                 neighbour_node = malloc(sizeof(pb_astar_node));
                 if (!neighbour_node) {
                     goto err_return;
@@ -112,29 +113,35 @@ int pb_astar(pb_vertex const* start, pb_vertex const* goal, pb_astar_heuristic h
         }
     }
 
-    if (!found_path) {
-        return -1;
-    }
-
-    /* Push all the elements onto the list */
-    while (node) {
-        if (pb_vector_push_back(result, &node->vert) == -1) {
+    if (found_path) {
+        /* Push all the elements onto the list */
+        int err = 0;
+        while (node) {
+            if (!err) {
+                err = pb_vector_push_back(result, &node->vert) == -1;
+            }
+            node = node->parent;
+        }
+        if (err) {
             goto err_return;
         }
-        node = node->parent;
-    }
 
-    /* Reverse the list to give the correct path from start to goal */
-    {
-        pb_vertex* temp;
-        pb_vector_reverse_no_alloc(result, &temp);
+        /* Reverse the list to give the correct path from start to goal */
+        {
+            pb_vertex* temp;
+            pb_vector_reverse_no_alloc(result, &temp);
+        }
+        *path = result;
+    } else {
+        pb_vector_free(result);
+        free(result);
     }
 
     pb_hashmap_for_each(visited, pb_hashmap_free_entry_data, 0);
     pb_hashmap_free(visited);
     pb_heap_free(frontier);
-    *path = result;
-    return 0;
+
+    return found_path ? 0 : -1;
 
 err_return:
     pb_hashmap_for_each(visited, pb_hashmap_free_entry_data, 0);

@@ -88,6 +88,7 @@ START_TEST(astar_simple)
 
     pb_graph_free(graph);
     pb_vector_free(path);
+    free(path);
 }
 END_TEST
 

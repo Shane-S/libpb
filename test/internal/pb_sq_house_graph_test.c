@@ -627,6 +627,7 @@ START_TEST(internal_graph_simple)
                       "edge %u should have had connection %u or %u", i, conn_idx, conn_idx + 1);
     }
 
+    pb_graph_free(floor_graph);
     pb_graph_free(result);
 }
 END_TEST
@@ -736,6 +737,7 @@ START_TEST(internal_graph_multiple_overlap)
                       "edge %u should have had connection %u or %u", i, conn_idx, conn_idx + 1);
     }
 
+    pb_graph_free(floor_graph);
     pb_graph_free(result);
 }
 END_TEST
@@ -821,6 +823,7 @@ START_TEST(get_hallways_room0_disconnected_simple)
     pb_hashmap_free(disconnected);
     pb_vector_free(hallway);
     pb_vector_free(result);
+    free(result);
 
 }
 END_TEST
@@ -906,6 +909,7 @@ START_TEST(get_hallways_room0_disconnected_one_wall_overlaps)
     pb_hashmap_free(disconnected);
     pb_vector_free(hallway);
     pb_vector_free(result);
+    free(result);
 }
 END_TEST
 
@@ -985,6 +989,7 @@ START_TEST(get_hallways_room0_disconnected_one_wall_small)
     pb_hashmap_free(disconnected);
     pb_vector_free(hallway);
     pb_vector_free(result);
+    free(result);
 }
 END_TEST
 
@@ -1069,6 +1074,7 @@ START_TEST(get_hallways_single_disconnected)
     pb_hashmap_free(disconnected);
     pb_vector_free(hallway);
     pb_vector_free(result);
+    free(result);
 }
 END_TEST
 
@@ -1251,6 +1257,7 @@ START_TEST(place_hallways_simple)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -1520,6 +1527,7 @@ START_TEST(place_hallways_corner)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -1836,6 +1844,7 @@ START_TEST(place_hallways_2_corners_opposite_sides)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -2148,6 +2157,7 @@ START_TEST(place_hallways_2_corners_same_side)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -2414,6 +2424,7 @@ START_TEST(place_hallways_t_intersection_y_axis)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -2688,6 +2699,7 @@ START_TEST(place_hallways_t_intersection_x_axis)
     /* Check that room shapes were correctly adjusted */
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
@@ -2978,6 +2990,7 @@ START_TEST(place_hallways_4_way_intersection)
 
     for (i = 0; i < f.num_rooms; ++i) {
         pb_shape2D_free(&f.rooms[i].shape);
+        pb_vector_free(&f.rooms[i].walls);
     }
     for (i = 0; i < hallways.size; ++i) {
         pb_vector* hallway = ((pb_vector*)hallways.items) + i;
