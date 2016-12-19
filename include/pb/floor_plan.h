@@ -10,6 +10,13 @@
 extern "C" {
 #endif
 
+/* TODO: Find a better name for this... */
+typedef struct {
+    pb_point2D start;
+    pb_point2D end;
+    size_t wall;
+} pb_wall_structure;
+
 /**
  * Represents a room in a building.
  */
@@ -17,13 +24,16 @@ typedef struct {
     /* The polygon occupied by the room. */
     pb_shape2D shape;
 
-    /* Specifies which sides of the shape have walls (non-zero for a given index means there is a wall) */
+    /* A vector of ints that specifies which sides of the shape have walls
+     * (1 for a given index means there is a wall, 0 means there isn't). */
     pb_vector walls;
 
-    pb_point2D* doors;
+    /* The doors in this room. */
+    pb_wall_structure* doors;
     size_t num_doors;
 
-    pb_point2D* windows;
+    /* The windows in this room. */
+    pb_wall_structure* windows;
     size_t num_windows;
 
     int has_floor;
@@ -45,10 +55,10 @@ typedef struct {
      * given floor. */
     pb_shape2D shape;
 
-    pb_point2D* doors;
+    pb_wall_structure* doors;
     size_t num_doors;
 
-    pb_point2D* windows;
+    pb_wall_structure* windows;
     size_t num_windows;
 
     /* Data supplied by the algorithm that created the building plan. */

@@ -119,4 +119,28 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
 int pb_sq_house_place_hallways(pb_floor* floor, pb_sq_house_house_spec* hspec, pb_hashmap* room_specs,
                                pb_graph* floor_graph, pb_graph* internal_graph, pb_vector* hallways);
 
+/**
+ * Places doors on each wall that has them. Also places a door leading outside if on the first floor.
+ *
+ * @param f              The floor to process.
+ * @param hspec          The house specification, which stores door sizes.
+ * @param floor_graph    The graph representing connections between rooms.
+ * @param is_first_floor Whether this is the first floor.
+ * @return 0 on success, -1 on failure (out of memory).
+ */
+int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor);
+
+/**
+ * Places windows on each exterior wall on the floor, except for the bottom wall of the first room on the first floor
+ * because I didn't want to write the logic that would avoid accidentally placing a window on top of a door. I might get
+ * to that someday.
+ *
+ * @param f              The floor to which to add windows.
+ * @param hspec          The house specification storing the window size.
+ * @param floor_graph    The graph holding the connections between rooms.
+ * @param is_first_floor Whether we're placing windows on the first floor.
+ * @return 0 on success, -1 on failure (out of memory).
+ */
+int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor);
+
 #endif /* PB_SQ_HOUSE_GRAPH_H */

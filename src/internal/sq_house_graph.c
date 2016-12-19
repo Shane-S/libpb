@@ -10,6 +10,7 @@
 #include <pb/util/hashmap/hash_utils.h>
 #include <pb/util/float_utils.h>
 #include <pb/util/geom/rect_utils.h>
+#include <pb/floor_plan.h>
 
 int pb_sq_house_get_shared_wall(pb_rect* room1_rect, pb_rect* room2_rect) {
     int shares_top = 0;
@@ -2541,4 +2542,145 @@ err_return:
         pb_hashmap_free(segments_disjoint_set);
     }
     return -1;
+}
+
+static void add_vertex_doors(void const* vert_id, pb_vertex* vert, void* params) {
+    pb_room* room = (pb_room*)vert->data;
+    size_t i;
+    size_t num_doors = 0;
+    pb_pair* params_pair = (pb_pair*)params;
+    int* err = (int*)params_pair->first;
+    pb_sq_house_house_spec* hspec = (pb_sq_house_house_spec*)params_pair->second;
+
+
+    for (i = 0; i < vert->edges_size; ++i) {
+        pb_sq_house_room_conn* conn = (pb_sq_house_room_conn*)vert->edges[i]->data;
+        num_doors += conn->has_door;
+    }
+
+    /* Technically this should always be true, but it sometimes won't be in the current implementation.
+     * If it's not, just mark the room as having no doors and don't bother setting its pointer. */
+    if (num_doors) {
+        pb_wall_structure* doors = malloc(sizeof(pb_wall_structure) * num_doors);
+        if (!doors) {
+            *err = 1;
+            return;
+        }
+
+        size_t cur_door = 0;
+        for (i = 0; i < vert->edges_size; ++i) {
+            pb_sq_house_room_conn* conn = (pb_sq_house_room_conn*) vert->edges[i]->data;
+
+            if (conn->has_door) {
+                float xdiff = conn->overlap_end.x - conn->overlap_start.x;
+                float ydiff = conn->overlap_end.y - conn->overlap_start.y;
+                int is_x = xdiff > ydiff;
+
+                pb_point2D centre = {conn->overlap_start.x + xdiff / 2, conn->overlap_start.y + ydiff / 2};
+
+                doors[cur_door].start.x = centre.x;
+                doors[cur_door].start.y = centre.y;
+                doors[cur_door].end.x = centre.x;
+                doors[cur_door].end.y = centre.y;
+
+                if (is_x) {
+                    doors[cur_door].start.x -= hspec->door_size / 2;
+                    doors[cur_door].end.x += hspec->door_size / 2;
+                } else {
+                    doors[cur_door].start.y -= hspec->door_size / 2;
+                    doors[cur_door].end.y += hspec->door_size / 2;
+                }
+
+                doors[cur_door].wall = (size_t)conn->wall;
+                ++cur_door;
+            }
+        }
+
+        room->doors = doors;
+        room->num_doors = num_doors;
+    } else {
+        room->num_doors = 0;
+    }
+}
+
+int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor) {
+    int err;
+    pb_pair params = {&err, hspec};
+
+    /* Just in case we have to clean them up later */
+    /* TODO: Initialise everything in one place so that cleanup becomes easier */
+    size_t i;
+    for (i = 0; i < f->num_rooms; ++i) {
+        f->rooms[i].doors = NULL;
+    }
+
+    pb_graph_for_each_vertex(floor_graph, add_vertex_doors, &params);
+
+    /* Add a door to the bottom wall in the first room on the first floor so that we can get outside */
+    if (is_first_floor) {
+        pb_wall_structure* floor_doors = malloc(sizeof(pb_wall_structure));
+        if (!floor_doors) {
+            f->doors = NULL;
+            f->num_doors = 0;
+            return -1;
+        }
+
+        pb_wall_structure* room0_doors = realloc(f->rooms[0].doors, sizeof(pb_wall_structure) * (f->rooms[0].num_doors + 1));
+        if (!room0_doors) {
+            return -1;
+        }
+        f->rooms[0].doors = room0_doors;
+
+        f->doors = floor_doors;
+        ++f->rooms[0].num_doors;
+
+        pb_point2D const* room0_points = (pb_point2D*)f->rooms[0].shape.points.items;
+        pb_point2D origin = {0.f, 0.f};
+        pb_point2D next;
+        for (i = 0; i < f->rooms[0].shape.points.size; ++i) {
+            if (pb_point_eq(room0_points + i, &origin)) {
+                next = room0_points[(i + 1) % f->rooms[0].shape.points.size];
+                break;
+            }
+        }
+
+        pb_point2D centre = {0.f + next.x / 2, 0.f};
+        size_t idx = f->rooms[0].num_doors - 1;
+        f->rooms[0].doors[idx].start.x = centre.x - hspec->door_size / 2;
+        f->rooms[0].doors[idx].start.y = 0.f;
+        f->rooms[0].doors[idx].end.x = centre.x + hspec->door_size / 2;
+        f->rooms[0].doors[idx].end.y = 0.f;
+        f->rooms[0].doors[idx].wall = i;
+
+        f->doors[0].start = f->rooms[0].doors[idx].start;
+        f->doors[0].end = f->rooms[0].doors[idx].end;
+        f->doors[0].wall = 1;
+        f->num_doors = 1;
+
+    } else {
+        f->num_doors = 0;
+        f->doors = NULL;
+    }
+
+    return err ? -1 : 0;
+}
+
+int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor) {
+    pb_vertex const* start = pb_graph_get_vertex(floor_graph, f->rooms);
+    pb_vertex const* cur = start;
+
+    pb_rect floor_rect;
+    pb_shape2D_to_pb_rect(&f->shape, &floor_rect);
+
+    side origin_direction = SQ_HOUSE_NONE;
+    do {
+        /* Place all windows possible in this room */
+        /* Figure out where to go next. If we came from RIGHT, go LEFT until there is no LEFT. Then go UP until there
+         * is no UP. Then go RIGHT until there is no RIGHT. Then go DOWN until there is no DOWN. Then go LEFT until we
+         * get back to the start. */
+        size_t i;
+
+    } while (cur != start);
+
+    return 0;
 }

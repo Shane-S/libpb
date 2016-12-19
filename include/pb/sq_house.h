@@ -17,6 +17,7 @@
 /* Sides of a rectangle. Each value can also be used to refer to a side in a pb_shape2D converted from a
  * pb_rect; SQ_HOUSE_LEFT (0) is the side from point 0 to 1, SQ_HOUSE_BOTTOM is the side from point 1 to 2, etc. */
 typedef enum side {
+    SQ_HOUSE_NONE = -1,
     SQ_HOUSE_LEFT = 0,
     SQ_HOUSE_BOTTOM = 1,
     SQ_HOUSE_RIGHT = 2,
