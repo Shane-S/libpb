@@ -2181,7 +2181,7 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
     err = 0;
     for (i = 0; i < hallway_segments.size; ++i) {
         pb_vector* segment = ((pb_vector*)hallway_segments.items) + i;
-        pb_vertex const** points = (pb_vertex**)segment->items;
+        pb_vertex const** points = (pb_vertex const**)segment->items;
 
         pb_point2D const* first = (pb_point2D*)points[0]->data;
         pb_point2D const* last = (pb_point2D*)points[segment->size - 1]->data;
@@ -2666,21 +2666,128 @@ int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph
 }
 
 int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor) {
-    pb_vertex const* start = pb_graph_get_vertex(floor_graph, f->rooms);
-    pb_vertex const* cur = start;
-
     pb_rect floor_rect;
+    pb_point2D top_right;
+    pb_point2D bottom_left;
     pb_shape2D_to_pb_rect(&f->shape, &floor_rect);
+    top_right.x = floor_rect.bottom_left.x + floor_rect.w;
+    top_right.y = floor_rect.bottom_left.y + floor_rect.h;
+    bottom_left = floor_rect.bottom_left;
 
-    side origin_direction = SQ_HOUSE_NONE;
-    do {
+    size_t i;
+    for (i = 0; i < f->num_rooms; ++i) {
+        f->rooms[i].windows = NULL;
+        f->rooms[i].num_windows = 0;
+    }
+
+    f->windows = NULL;
+    f->num_windows = 0;
+
+    for (i = 0; i < f->num_rooms; ++i) {
         /* Place all windows possible in this room */
-        /* Figure out where to go next. If we came from RIGHT, go LEFT until there is no LEFT. Then go UP until there
-         * is no UP. Then go RIGHT until there is no RIGHT. Then go DOWN until there is no DOWN. Then go LEFT until we
-         * get back to the start. */
-        size_t i;
+        pb_room *room = f->rooms + i;
+        pb_point2D const *points = (pb_point2D *) room->shape.points.items;
 
-    } while (cur != start);
+        size_t num_windows = 0;
+        size_t cur_point;
+        for (cur_point = 0; cur_point < room->shape.points.size; ++cur_point) {
+            pb_point2D const *p = points + cur_point;
+            pb_point2D const *next = points + ((cur_point + 1) % room->shape.points.size);
+            float xdiff = next->x - p->x;
+            float ydiff = next->y - p->y;
 
+            pb_point2D centre = {p->x + xdiff / 2, p->y + ydiff / 2};
+
+            int is_on_edge = pb_float_approx_eq(centre.x, bottom_left.x, 5) ||
+                             pb_float_approx_eq(centre.x, top_right.x, 5) ||
+                             pb_float_approx_eq(centre.y, bottom_left.y, 5) ||
+                             pb_float_approx_eq(centre.y, top_right.y, 5);
+
+            if (is_on_edge) {
+                float abs_xdiff = fabsf(xdiff);
+                float abs_ydiff = fabsf(ydiff);
+
+                int is_x = abs_xdiff > abs_ydiff;
+
+                /* Only add the window if it fits */
+                if ((is_x ? abs_xdiff : abs_ydiff) > hspec->window_size) {
+                    num_windows += !(is_first_floor && i == 0 && pb_point_eq(p, &bottom_left));
+                }
+            }
+        }
+
+        if (num_windows) {
+            pb_wall_structure *windows = malloc(sizeof(pb_wall_structure) * num_windows);
+            if (!windows) {
+                return -1;
+            }
+
+            pb_wall_structure *floor_windows = realloc(f->windows,
+                                                       sizeof(pb_wall_structure) * (f->num_windows + num_windows));
+            if (!floor_windows) {
+                free(windows);
+                return -1;
+            }
+            f->windows = floor_windows;
+
+            room->num_windows = num_windows;
+            room->windows = windows;
+
+            /* Go over the points again, and this time, actually add the windows */
+            size_t cur_window = 0;
+            for (cur_point = 0; cur_point < room->shape.points.size; ++cur_point) {
+                pb_point2D const *p = points + cur_point;
+                pb_point2D const *next = points + ((cur_point + 1) % room->shape.points.size);
+                float xdiff = next->x - p->x;
+                float ydiff = next->y - p->y;
+                pb_point2D centre = {p->x + xdiff / 2, p->y + ydiff / 2};
+
+                int is_top = pb_float_approx_eq(centre.y, top_right.y, 5);
+                int is_bottom = pb_float_approx_eq(centre.y, bottom_left.y, 5);
+                int is_left = pb_float_approx_eq(centre.x, bottom_left.x, 5);
+                int is_right = pb_float_approx_eq(centre.x, top_right.x, 5);
+
+                int is_on_edge = is_top || is_bottom || is_left || is_right;
+                if (is_on_edge && !(is_first_floor && i == 0 && pb_point_eq(p, &bottom_left))) {
+                    float abs_xdiff = fabsf(xdiff);
+                    float abs_ydiff = fabsf(ydiff);
+                    int is_x = abs_xdiff > abs_ydiff;
+
+                    /* Window fits */
+                    if ((is_x ? abs_xdiff : abs_ydiff) > hspec->window_size) {
+                        pb_point2D window_start_delta = {is_x ? hspec->window_size / -2 : 0.f,
+                                                         is_x ? 0.f : hspec->window_size / -2};
+                        pb_point2D window_end_delta = {is_x ? hspec->window_size / 2 : 0.f,
+                                                       is_x ? 0.f : hspec->window_size / 2};
+
+                        room->windows[cur_window].start.x = centre.x + window_start_delta.x;
+                        room->windows[cur_window].start.y = centre.y + window_start_delta.y;
+                        room->windows[cur_window].end.x = centre.x + window_end_delta.x;
+                        room->windows[cur_window].end.y = centre.y + window_end_delta.y;
+                        room->windows[cur_window].wall = cur_point;
+
+                        size_t floor_wall;
+                        if (is_top) {
+                            floor_wall = is_left ? 0 : 3;
+                        } else if (is_bottom) {
+                            floor_wall = is_right ? 2 : 1;
+                        } else if (is_left) {
+                            /* We already know it's not top or bottom */
+                            floor_wall = 0;
+                        } else {
+                            floor_wall = 2;
+                        }
+
+                        f->windows[f->num_windows + cur_window].start = room->windows[cur_window].start;
+                        f->windows[f->num_windows + cur_window].end = room->windows[cur_window].end;
+                        f->windows[f->num_windows + cur_window].wall = floor_wall;
+
+                        ++cur_window;
+                    }
+                }
+            }
+            f->num_windows += num_windows;
+        }
+    }
     return 0;
 }

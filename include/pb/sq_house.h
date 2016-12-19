@@ -50,10 +50,12 @@ typedef struct {
      * to fit the hallway on a given floor. */
     float hallway_width;
 
-    /* The width or height of a door in the plan. Note that this may be adjusted to fit smaller walls (a custom door
-     * extruder in the extrusion algorithm can decide whether the placed door is too small and include/not include it
-     * accordingly). */
+    /* The width or height of a door in the plan. Note that in the current implementation, if doors are too big, they
+     * won't be placed in the plan at all, which could render some rooms accessible. */
     float door_size;
+
+    /* The width or height of a window in the plan. */
+    float window_size;
 } pb_sq_house_house_spec;
 
 PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec, pb_hashmap* room_specs);

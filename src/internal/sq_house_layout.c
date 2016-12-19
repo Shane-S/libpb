@@ -350,7 +350,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
 
             /* Determine which rooms can fit on the floor given the newly placed stairs */
             current_floor_area = current_floor_rect.w * current_floor_rect.h;
-            for (current_room; current_room > 0; --current_room) {
+            for (; current_room > 0; --current_room) {
                 if (areas[current_room - 1] <= current_floor_area)
                     break;
             }
