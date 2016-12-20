@@ -3452,8 +3452,7 @@ START_TEST(place_windows_simple)
     f.num_rooms = 2;
     pb_rect_to_pb_shape2D(&floor_rect, &f.shape);
 
-    pb_graph* floor_graph = pb_sq_house_generate_floor_graph(&house_spec, room_spec_map, &f);
-    pb_sq_house_place_windows(&f, &house_spec, floor_graph, 0);
+    pb_sq_house_place_windows(&f, &house_spec, 0);
 
     pb_wall_structure expected_room0_windows[] = {
             {{0.f, 2.25f}, {0.f, 2.75f}, 0},
@@ -3524,8 +3523,6 @@ START_TEST(place_windows_simple)
         free(rooms[i].windows);
     }
 
-    pb_graph_for_each_edge(floor_graph, pb_graph_free_edge_data, NULL);
-    pb_graph_free(floor_graph);
     free(f.windows);
     pb_shape2D_free(&f.shape);
     pb_hashmap_free(room_spec_map);
@@ -3584,8 +3581,7 @@ START_TEST(place_windows_one_room_floor0)
         f.num_rooms = 1;
         pb_rect_to_pb_shape2D(&floor_rect, &f.shape);
 
-        pb_graph* floor_graph = pb_sq_house_generate_floor_graph(&house_spec, room_spec_map, &f);
-        pb_sq_house_place_windows(&f, &house_spec, floor_graph, 1);
+        pb_sq_house_place_windows(&f, &house_spec, 1);
 
         pb_wall_structure expected_room0_windows[] = {
                 {{0.f, 2.25f}, {0.f, 2.75f}, 0},
@@ -3646,8 +3642,6 @@ START_TEST(place_windows_one_room_floor0)
             free(rooms[i].windows);
         }
 
-        pb_graph_for_each_edge(floor_graph, pb_graph_free_edge_data, NULL);
-        pb_graph_free(floor_graph);
         free(f.windows);
         pb_shape2D_free(&f.shape);
         pb_hashmap_free(room_spec_map);
@@ -3711,8 +3705,7 @@ START_TEST(place_windows_multi_room_floor0)
     f.num_rooms = 2;
     pb_rect_to_pb_shape2D(&floor_rect, &f.shape);
 
-    pb_graph* floor_graph = pb_sq_house_generate_floor_graph(&house_spec, room_spec_map, &f);
-    pb_sq_house_place_windows(&f, &house_spec, floor_graph, 1);
+    pb_sq_house_place_windows(&f, &house_spec, 1);
 
     pb_wall_structure expected_room0_windows[] = {
             {{0.f, 2.25f}, {0.f, 2.75f}, 0},
@@ -3781,8 +3774,6 @@ START_TEST(place_windows_multi_room_floor0)
         free(rooms[i].windows);
     }
 
-    pb_graph_for_each_edge(floor_graph, pb_graph_free_edge_data, NULL);
-    pb_graph_free(floor_graph);
     free(f.windows);
     pb_shape2D_free(&f.shape);
     pb_hashmap_free(room_spec_map);
@@ -3860,8 +3851,7 @@ START_TEST(place_windows_centre_room)
     f.num_rooms = num_rooms;
     pb_rect_to_pb_shape2D(&floor_rect, &f.shape);
 
-    pb_graph* floor_graph = pb_sq_house_generate_floor_graph(&house_spec, room_spec_map, &f);
-    pb_sq_house_place_windows(&f, &house_spec, floor_graph, 0);
+    pb_sq_house_place_windows(&f, &house_spec, 0);
 
     pb_wall_structure expected_room0_windows[] = {
             {{0.f, 4.75f},  {0.f, 5.25f}, 0},
@@ -3944,8 +3934,6 @@ START_TEST(place_windows_centre_room)
         free(rooms[i].windows);
     }
 
-    pb_graph_for_each_edge(floor_graph, pb_graph_free_edge_data, NULL);
-    pb_graph_free(floor_graph);
     free(f.windows);
     pb_shape2D_free(&f.shape);
     pb_hashmap_free(room_spec_map);

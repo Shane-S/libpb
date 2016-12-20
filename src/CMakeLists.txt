@@ -11,8 +11,11 @@ set(HEADERS ${PB_API_INCLUDE_DIR}/pb/sq_house.h
             ${PB_API_INCLUDE_DIR}/pb/exports.h)
 
 set(SOURCES extrusion.c
-            sq_house.c)
+            sq_house.c floor_plan.c)
             
-add_library(pb SHARED ${SOURCES} ${HEADERS})
+add_library(pb STATIC ${SOURCES} ${HEADERS})
+if (${CMAKE_HOST_UNIX})
+    target_compile_options(pb PRIVATE -fPIC)
+endif()
 target_link_libraries(pb pb_internal)
 target_link_libraries(pb pb_util)

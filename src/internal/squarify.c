@@ -173,7 +173,13 @@ static void pb_squarify_internal(pb_rect *rect,
     }
 }
 
-void pb_squarify(pb_rect* rect, float* areas, size_t num_areas, pb_rect* children, pb_rect** last_row_start, size_t* last_row_size, int* rect_has_children) {
+void pb_squarify(pb_rect* rect,
+                 float* areas,
+                 size_t num_areas,
+                 pb_rect* children,
+                 pb_rect** last_row_start,
+                 size_t* last_row_size,
+                 int* rect_has_children) {
 
     int is_height = rect->h < rect->w;
     float min_dim = is_height ? rect->h : rect->w;

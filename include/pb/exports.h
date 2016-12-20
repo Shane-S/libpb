@@ -1,7 +1,7 @@
 #ifndef PB_EXPORTS_H
 #define PB_EXPORTS_H
 
-/* Stolen from SDL2 (and modified to actually detect _WIN32). Defines exports and calling convention for functions in the library. */
+/* Stolen from SDL2 (and modified to check for _WIN32). Defines exports and calling convention for functions in the library. */
 #ifndef PB_DECLSPEC
 # if defined(_WIN32) || defined(__WINRT__)
 #   ifdef __BORLANDC__

@@ -11,6 +11,7 @@
 #include <pb/util/float_utils.h>
 #include <pb/util/geom/rect_utils.h>
 #include <pb/floor_plan.h>
+#include <stdio.h>
 
 int pb_sq_house_get_shared_wall(pb_rect* room1_rect, pb_rect* room2_rect) {
     int shares_top = 0;
@@ -134,7 +135,10 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
         pb_sq_house_room_spec* spec;
         pb_rect roomi_rect;
         pb_shape2D_to_pb_rect(&floor->rooms[i].shape, &roomi_rect);
-        pb_hashmap_get(room_specs, floor->rooms[i].name, (void**)&spec);
+
+        /* Stairs and hallways have no associated room spec; they can connect to any adjacent rooms */
+        int roomi_has_spec = pb_hashmap_get(room_specs, floor->rooms[i].name, (void**)&spec) != -1;
+
 
         for (j = 0; j < floor->num_rooms; ++j) {
             if (i == j) continue;
@@ -159,22 +163,36 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
                 conn->overlap_start = start;
                 conn->overlap_end = end;
                 conn->can_connect = 0;
+                conn->has_door = 0;
                 conn->wall = shared_wall;
 
-                /* Check whether the room spec for room i allows a connection to room j */
-                for (adj = 0; adj < spec->num_adjacent; ++adj) {
-                    if (strcmp(floor->rooms[j].name, spec->adjacent[adj]) == 0) {
-                        conn->can_connect = 1;
+                if (!roomi_has_spec) {
+                    conn->can_connect = 1;
 
-                        /* Check whether there's enough wall surface area to actually fit a door here */
-                        float delta;
-                        if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
-                            delta = conn->overlap_end.y - conn->overlap_start.y;
-                        } else {
-                            delta = conn->overlap_end.x - conn->overlap_start.x;
+                    /* Check whether there's enough wall surface area to actually fit a door here */
+                    float delta;
+                    if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+                        delta = conn->overlap_end.y - conn->overlap_start.y;
+                    } else {
+                        delta = conn->overlap_end.x - conn->overlap_start.x;
+                    }
+                    conn->has_door = delta >= house_spec->door_size;
+                } else {
+                    /* Check whether the room spec for room i allows a connection to room j */
+                    for (adj = 0; adj < spec->num_adjacent; ++adj) {
+                        if (strcmp(floor->rooms[j].name, spec->adjacent[adj]) == 0) {
+                            conn->can_connect = 1;
+
+                            /* Check whether there's enough wall surface area to actually fit a door here */
+                            float delta;
+                            if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+                                delta = conn->overlap_end.y - conn->overlap_start.y;
+                            } else {
+                                delta = conn->overlap_end.x - conn->overlap_start.x;
+                            }
+                            conn->has_door = delta >= house_spec->door_size;
+                            break;
                         }
-                        conn->has_door = delta >= house_spec->door_size;
-                        break;
                     }
                 }
 
@@ -196,7 +214,7 @@ err_return:
 }
 
 /**
- * Checks if the room stored in a given vertex doesn't have any valid connections to neigbouring
+ * Checks if the room stored in a given vertex doesn't have any valid connections to neighbouring
  * rooms (i.e., if every edge has a can_connect value of 0); if so, adds the vert_id to the list
  * of disconnected rooms.
  *
@@ -570,8 +588,9 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
         start = pb_graph_get_vertex(internal_graph, params.start);
         goal = pb_graph_get_vertex(internal_graph, params.goal);
         if (pb_astar(start, goal, euclid_squared, &astar_points) == -1) {
-            /* Couldn't find a path */
+            /* Couldn't find a path - set min and max so that the next one has a chance at beating it */
             pb_vector_free(&hallway);
+            params.dist = params.closest ? INFINITY : -INFINITY;
             continue;
         }
 
@@ -780,7 +799,7 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                 size_t real_rc0_idx;
                 for (i = 0; i < room_shape->points.size; ++i) {
                     if (pb_point_eq(rc0, room_points + i)) {
-                        real_rc0_idx = i;
+                        real_rc0_idx = (size_t)i;
                         break;
                     }
                 }
@@ -870,30 +889,34 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                 pb_point2D intersect1 = cmpdiff > 0 ? hrect[0 + is_x] : hrect[1 + is_x];
 
                 pb_point2D* rect_point;
-                size_t rect_point_idx;
+                size_t rect_point_idx = (size_t)-1;
 
                 if (is_x) {
-                    intersect0.y += hallway_rect->h / 2;
-                    intersect1.y += hallway_rect->h / 2;
+                    float intersect_y = hallway_rect->bottom_left.y < room_rect->bottom_left.y
+                                        ? room_rect->bottom_left.y : room_rect->bottom_left.y + room_rect->h;
+                    intersect0.y = intersect_y;
+                    intersect1.y = intersect_y;
                 } else {
-                    intersect0.x += hallway_rect->w / 2;
-                    intersect1.x += hallway_rect->w / 2;
+                    float intersect_x = hallway_rect->bottom_left.x < room_rect->bottom_left.x
+                                        ? room_rect->bottom_left.x : room_rect->bottom_left.x + room_rect->w;
+                    intersect0.x = intersect_x;
+                    intersect1.x = intersect_x;
                 }
 
-                size_t intersect0_idx = -1;
-                size_t intersect1_idx = -1;
+                size_t intersect0_idx = (size_t)-1;
+                size_t intersect1_idx = (size_t)-1;
                 for (i = 0; i < room_shape->points.size; ++i) {
                     if (is_x ? pb_float_approx_eq(intersect0.y, room_points[i].y, 5)
                              : pb_float_approx_eq(intersect0.x, room_points[i].x, 5)) {
                         rect_point = room_points + i;
-                        rect_point_idx = i;
+                        rect_point_idx = (size_t)i;
                         break;
                     }
 
                     if (pb_point_eq(room_points + i, &intersect0)) {
-                        intersect0_idx = i;
+                        intersect0_idx = (size_t)i;
                     } else if (pb_point_eq(room_points + i, &intersect1)) {
-                        intersect1_idx = i;
+                        intersect1_idx = (size_t)i;
                     }
                 }
 
@@ -906,6 +929,19 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
                     intersect1_idx = intersect0_idx < intersect1_idx ? intersect1_idx - 1 : intersect1_idx;
                     rect_point_idx = rect_point_idx < intersect1_idx ? rect_point_idx - 1 : rect_point_idx;
                     pb_vector_remove_at(&room_shape->points, intersect1_idx);
+                }
+
+                if (rect_point_idx == (size_t)-1) {
+                    printf("Insert idx wasn't initialised\n");
+                    printf("intersect 0: (%f, %f)\n", intersect0.x, intersect0.y);
+                    printf("intersect 1: (%f, %f)\n", intersect1.x, intersect1.y);
+                    printf("room rect: (%f, %f), w: %f, h: %f\n", room_rect->bottom_left.x, room_rect->bottom_left.y,
+                           room_rect->w, room_rect->h);
+                    printf("hallway rect: (%f, %f), w: %f, h: %f\n", hallway_rect->bottom_left.x, hallway_rect->bottom_left.y,
+                           hallway_rect->w, hallway_rect->h);
+                    for (i = 0; i < room_shape->points.size; ++i) {
+                        printf("room point %d: (%f, %f)\n", i, room_points[i].x, room_points[i].y);
+                    }
                 }
 
                 size_t insert_idx = (rect_point_idx + 1) % room_shape->points.size;
@@ -1827,15 +1863,18 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                             }
 
                             pb_sq_house_room_spec* spec;
-                            pb_hashmap_get(room_specs, f->rooms[i].name, &spec);
+                            int has_spec = pb_hashmap_get(room_specs, f->rooms[i].name, &spec) != -1;
 
                             size_t cur_name;
-                            for (cur_name = 0; cur_name < spec->num_adjacent; ++cur_name) {
-                                if (strcmp(f->rooms[j].name, spec->adjacent[cur_name]) == 0) {
-                                    break;
+                            if (has_spec) {
+                                for (cur_name = 0; cur_name < spec->num_adjacent; ++cur_name) {
+                                    if (strcmp(f->rooms[j].name, spec->adjacent[cur_name]) == 0) {
+                                        break;
+                                    }
                                 }
                             }
-                            conn->can_connect = cur_name != spec->num_adjacent;
+
+                            conn->can_connect = !has_spec || cur_name != spec->num_adjacent;
 
                             conn->overlap_start = start;
                             conn->overlap_end = end;
@@ -1844,7 +1883,7 @@ static int reconstruct_floor_graph(pb_graph* floor_graph, pb_floor const* f, siz
                                             conn->can_connect;
 
                             /* If the other room already has an edge to this room, check whether can_connect matches
-                            * and set both to 1 (adjusting has_door for the other room as well) if not */
+                             * and set both to 1 (adjusting has_door for the other room as well) if not */
                             pb_edge const* other_to_room = pb_graph_get_edge(floor_graph, f->rooms + j, f->rooms + i);
                             if (other_to_room) {
                                 pb_sq_house_room_conn* other_room_conn = (pb_sq_house_room_conn*)other_to_room->data;
@@ -2604,7 +2643,7 @@ static void add_vertex_doors(void const* vert_id, pb_vertex* vert, void* params)
 }
 
 int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor) {
-    int err;
+    int err = 0;
     pb_pair params = {&err, hspec};
 
     /* Just in case we have to clean them up later */
@@ -2612,9 +2651,13 @@ int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph
     size_t i;
     for (i = 0; i < f->num_rooms; ++i) {
         f->rooms[i].doors = NULL;
+        f->rooms[i].num_doors = 0;
     }
 
-    pb_graph_for_each_vertex(floor_graph, add_vertex_doors, &params);
+    /* If there's no floor graph, then there's a single room on a single floor */
+    if (floor_graph) {
+        pb_graph_for_each_vertex(floor_graph, add_vertex_doors, &params);
+    }
 
     /* Add a door to the bottom wall in the first room on the first floor so that we can get outside */
     if (is_first_floor) {
@@ -2665,7 +2708,7 @@ int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph
     return err ? -1 : 0;
 }
 
-int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor) {
+int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, int is_first_floor) {
     pb_rect floor_rect;
     pb_point2D top_right;
     pb_point2D bottom_left;

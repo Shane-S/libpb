@@ -29,15 +29,18 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
 /**
  * Lays out the specified number of rooms on the given floor using pb_squarify.
  *
- * @param rooms      The list of rooms to be laid out in the house. This pointer should start at the first room to be laid out on this floor.
- * @param room_specs The map of room names to room specifications.
- * @param floor      The floor on which the rooms will be placed.
- * @param floor_rect The rectangle of available space on the floor.
+ * @param rooms             The list of rooms to be laid out in the house. This pointer should start at the first room
+ *                          to be laid out on this floor.
+ * @param room_specs        The map of room names to room specifications.
+ * @param floor             The floor on which the rooms will be placed.
+ * @param floor_rect        The rectangle of available space on the floor.
+ * @param should_swap_room0 Whether to swap room 0 with room 1. Should be true if a house has > 1 floors.
  *
- * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all shapes allocated on the this floor will have been freed;
+ * @return 0 on success, -1 on failure (out of memory). Note that on returning -1, all shapes allocated on this floor will have been freed;
  *         the caller must clean up all preceding floors.
  */
-int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect);
+int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms,
+                             pb_rect* floor_rect, int should_swap_room0);
 
 /**
  * Fills in any remaining space after pb_squarify has run.

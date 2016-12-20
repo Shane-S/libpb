@@ -7,14 +7,14 @@
 
 int main(void)
 {
-    SRunner *sr = srunner_create(make_pb_extrusion_suite());
+    SRunner *sr = srunner_create(make_pb_generation_suite());
 	int nf;
 
 #ifdef _WIN32
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);
 #endif
 	srunner_set_tap(sr, "public_test_results.tap"); /* Write the test results to a TAP (Test Anything Protocol) file for test harness analysis */
-
+    srunner_set_fork_status(sr, CK_NOFORK);
     srunner_run_all(sr, CK_ENV);
     nf = srunner_ntests_failed(sr);
     srunner_free(sr);

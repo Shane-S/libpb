@@ -203,7 +203,7 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
     /* The width (or height depending on orientation of stairs) for any stair rooms. */
     float stair_width;
     float max_house_dim;
-    side last_stair_loc = 0;
+    side last_stair_loc = SQ_HOUSE_BOTTOM;
 
     areas = malloc(sizeof(float) * h_spec->num_rooms);
     if (!areas) {
@@ -238,6 +238,12 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
         pb_hashmap_get(room_specs, (void*)rooms[num_rooms_added], (void**)&spec);
         areas[0] = spec->area;
 
+        /* Hopefully I don't do this somewhere else... */
+        pb_rect containing_floor_rect = {{0.f, 0.f}, h_spec->width, h_spec->height};
+        if (pb_rect_to_pb_shape2D(&containing_floor_rect, &house->floors[house->num_floors - 1].shape) == -1) {
+            goto err_return;
+        }
+
         /* Add rooms to this floor until we have either added all rooms in the house or exceeded this floor's area */
         for (current_room; current_room + num_rooms_added < h_spec->num_rooms; ++current_room) {
             pb_hashmap_get(room_specs, (void*)rooms[current_room + num_rooms_added], (void**)&spec);
@@ -250,14 +256,18 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
         /* If we've added all remaining rooms in the house, update the current floor and break out of the loop; 
          * otherwise, add a set of stairs, create a new floor, and continue */
         if (current_room + num_rooms_added == h_spec->num_rooms) {
-            size_t total_rooms_on_floor = house->floors[current_floor].num_rooms + current_room; /* house->floors[current_floor].num_rooms is the number of stairs */
+            /* house->floors[current_floor].num_rooms is the number of stairs */
+            size_t total_rooms_on_floor = house->floors[current_floor].num_rooms + current_room;
             pb_room* new_rooms = realloc(house->floors[current_floor].rooms, sizeof(pb_room) * total_rooms_on_floor);
             
             if (!new_rooms)
                 goto err_return;
 
+            /* Only setting this to NULL because I free everything in the test... */
             house->floors[current_floor].rooms = new_rooms;
             house->floors[current_floor].num_rooms += current_room;
+            house->floors[current_floor].rooms[house->floors[current_floor].num_rooms - 1].shape.points.items = NULL;
+
 
             floor_rects[current_floor] = current_floor_rect;
             break;
@@ -409,13 +419,14 @@ err_return:
             pb_vector_free(&house->floors[house->num_floors - 1].rooms[i].walls);
         }
         free(house->floors[house->num_floors - 1].rooms);
+        pb_shape2D_free(&house->floors[house->num_floors - 1].shape);
         house->num_floors--;
     }
-    free(house->floors);
     return NULL;
 }
 
-int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms, pb_rect* floor_rect) {
+int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floor* floor, size_t num_rooms,
+                             pb_rect* floor_rect, int should_swap_room0) {
     float* areas = NULL;
     float total_area = 0.f;
 
@@ -443,6 +454,10 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
     if (!areas) {
         goto err_return;
     }
+    rects = malloc(sizeof(pb_rect) * num_rooms);
+    if (!rects) {
+        goto err_return;
+    }
 
     for (i = 0; i < num_rooms; ++i) {
         pb_sq_house_room_spec* spec;
@@ -455,7 +470,11 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
 
     /* The total area of the rooms does't add up to the floor rectangle; expand the last rooms */
     if (total_area < floor_rect_area) {
-        pb_sq_house_fill_remaining_floor(floor_rect, rect_has_children, last_row_start, last_row_size);
+        if (last_row_size == 1) {
+            *last_row_start = *floor_rect;
+        } else {
+            pb_sq_house_fill_remaining_floor(floor_rect, rect_has_children, last_row_start, last_row_size);
+        }
     }
 
     /* num_rooms is the number of rooms from the room specification list; floor->num_rooms is that number
@@ -481,6 +500,14 @@ int pb_sq_house_layout_floor(char const** rooms, pb_hashmap* room_specs, pb_floo
         
         floor->rooms[i].has_ceiling = 1;
         floor->rooms[i].has_floor = 1;
+    }
+
+    /* The first room on the first floor must be the access point to outside; switch rooms 1 and 0. */
+    if (should_swap_room0) {
+        pb_room tmp;
+        memcpy(&tmp, &floor->rooms[0], sizeof(pb_room));
+        memcpy(&floor->rooms[0], &floor->rooms[1], sizeof(pb_room));
+        memcpy(&floor->rooms[1], &tmp, sizeof(pb_room));
     }
 
     free(areas);

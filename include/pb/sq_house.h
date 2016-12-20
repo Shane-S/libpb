@@ -60,6 +60,11 @@ typedef struct {
 
 PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec, pb_hashmap* room_specs);
 
+/* Hooks for freeing building data. Currently, these do nothing since the algorithm allocates no metadata. */
+PB_DECLSPEC void PB_CALL pb_sq_house_free_room(pb_room const* room);
+PB_DECLSPEC void PB_CALL pb_sq_house_free_floor(pb_floor const* f);
+PB_DECLSPEC void PB_CALL pb_sq_house_free_building(pb_building const* building);
+
 #ifdef __cplusplus
 }
 #endif

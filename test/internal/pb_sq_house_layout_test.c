@@ -418,7 +418,7 @@ START_TEST(layout_floor_single_room)
     
     lr.area = 90.f;
     pb_hashmap_put(map, (void*)&rooms[0], (void*)&lr);
-    pb_sq_house_layout_floor(&rooms[0], map, &f, 1, &floor_rect);
+    pb_sq_house_layout_floor(&rooms[0], map, &f, 1, &floor_rect, 0);
 
     pb_shape2D_to_pb_rect(&f.rooms[0].shape, &result);
     ck_assert_msg(assert_close_enough(result.w, floor_rect.w, 5), "Result's width should have been about %.3f, was %.3f", floor_rect.w, result.w);

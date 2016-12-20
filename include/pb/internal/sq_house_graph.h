@@ -72,10 +72,11 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
  *
  * @param floor_graph The floor connectivity graph.
  * @param floor       The floor being processed.
- * @return A pb_hashmap containing the list of disconnected rooms. The vert_id for the room is the key,
- *         and the room pointer (which is also the vert_id, but whatever) is the value. Note that the
- *         first room on the floor (the room connecting to outside on the first floor and the first set
- *         of stairs on every other floor) will never be in this list. Returns NULL on failure.
+ * @return A (possibly empty) pb_hashmap containing the list of disconnected rooms. The vert_id for the
+ *         room is the key, and the room pointer (which is also the vert_id, but whatever) is the value.
+ *         Note that the first room on the floor (the room connecting to outside on the first floor and
+ *         the first set of stairs on every other floor) will not be in this list unless it's the only
+ *         disconnected room. Returns NULL on failure.
  */
 pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor* floor);
 
@@ -137,10 +138,9 @@ int pb_sq_house_place_doors(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph
  *
  * @param f              The floor to which to add windows.
  * @param hspec          The house specification storing the window size.
- * @param floor_graph    The graph holding the connections between rooms.
  * @param is_first_floor Whether we're placing windows on the first floor.
  * @return 0 on success, -1 on failure (out of memory).
  */
-int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, pb_graph* floor_graph, int is_first_floor);
+int pb_sq_house_place_windows(pb_floor* f, pb_sq_house_house_spec* hspec, int is_first_floor);
 
 #endif /* PB_SQ_HOUSE_GRAPH_H */
