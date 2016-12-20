@@ -55,9 +55,12 @@ PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec,
      * are pretty hacky. */
     size_t cur_floor;
     size_t room_sum = 0;
-    int added_doors = 0; /* Whether we've added doors to the current floor */
-    int added_windows = 0; /* Whether we've added windows to the current floor. */
+    int added_doors;/* Whether we've added doors to the current floor */
+    int added_windows; /* Whether we've added windows to the current floor. */
     for (cur_floor = 0; cur_floor < b->num_floors; ++cur_floor) {
+        added_doors = 0;
+        added_windows = 0;
+
         size_t num_stairs = b->num_floors > 1 ? (cur_floor > 0 && cur_floor < b->num_floors - 1 ? 2 : 1): 0;
         size_t actual_num_rooms = b->floors[cur_floor].num_rooms - num_stairs;
 

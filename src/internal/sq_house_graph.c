@@ -469,11 +469,16 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
 
         int max_w = (points[2].x - points[1].x) > (points[0].y - points[1].y);
 
-        /* Determine which walls are internal by checking whether one of their points lies along the house's exterior */
-        int internal[4] = {points[0].x != 0.f,
-                           points[1].y != 0.f,
-                           !pb_float_approx_eq(points[2].x, fpoints[2].x, 5),
-                           !pb_float_approx_eq(points[0].y, fpoints[0].y, 5)};
+        /* Determine which walls are internal by checking whether their centre points lie along the exterior */
+        pb_point2D wall0_centre = {points[0].x, points[0].y + (points[1].y - points[0].y) / 2.f};
+        pb_point2D wall1_centre = {points[1].x + (points[2].x - points[1].x) / 2.f, points[1].y};;
+        pb_point2D wall2_centre = {points[2].x, points[2].y + (points[3].y - points[2].y) / 2.f};
+        pb_point2D wall3_centre = {points[3].x + (points[0].x - points[3].x) / 2.f, points[3].y};
+
+        int internal[4] = {wall0_centre.x != 0.f,
+                           wall1_centre.y != 0.f,
+                           !pb_float_approx_eq(wall2_centre.x, fpoints[2].x, 5),
+                           !pb_float_approx_eq(wall3_centre.y, fpoints[0].y, 5)};
 
         int wall;
         int direction_is_x;
@@ -995,6 +1000,23 @@ static int intrude_hallway(pb_rect const* room_rect, pb_rect const* hallway_rect
             }
 
             if (is_edge) {
+                if (!rc1) {
+                    /* OK, so there was a third case...
+                     * Hallway overlaps an edge, but does NOT actually intrude the shape.
+                     * Fortunately, we can just return here since it doesn't matter.
+                     *
+                     * Talk about edge cases though, god damn...
+                     *  ____________
+                     * |            |
+                     * |            |
+                     * |            |
+                     * |            |
+                     * |____________|
+                     * |   |
+                     * |   |
+                     * */
+                    return 0;
+                }
                 /* Second case */
                 int is_x = fabsf(rc0->x - rc1->x) > fabsf(rc0->y - rc1->y);
                 pb_point2D* real_rc0 = NULL;
@@ -2518,7 +2540,7 @@ int pb_sq_house_place_hallways(pb_floor* f, pb_sq_house_house_spec* hspec, pb_ha
                     if (top_corner_side == 0) {
                         walls[0] = 0;
                         pb_point2D to_add = { room_rect.bottom_left.x, room_end.y - hallway_size };
-                        if (pb_vector_insert_at(&next->shape.points, &to_add, num_walls - 1) == -1) {
+                        if (pb_vector_push_back(&next->shape.points, &to_add) == -1) {
                             err = 1;
                             break;
                         }

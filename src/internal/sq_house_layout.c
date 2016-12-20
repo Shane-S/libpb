@@ -305,7 +305,8 @@ pb_rect* pb_sq_house_layout_stairs(char const** rooms, pb_hashmap* room_specs, p
             side new_stair_loc;
             do {
                 new_stair_loc = (side)(rand() % 4);
-            } while (new_stair_loc == last_stair_loc);
+            } while (new_stair_loc == last_stair_loc ||
+                    (current_floor == 0 && (new_stair_loc == SQ_HOUSE_LEFT || new_stair_loc == SQ_HOUSE_BOTTOM)));
 
 
             /* Resize/move the current floor's rectangle according to the stair placement and do the same to the next floor's */
