@@ -165,36 +165,45 @@ pb_graph* pb_sq_house_generate_floor_graph(pb_sq_house_house_spec* house_spec, p
                 conn->can_connect = 0;
                 conn->has_door = 0;
                 conn->wall = shared_wall;
+                conn->can_connect = 1;
 
-                if (!roomi_has_spec) {
-                    conn->can_connect = 1;
-
-                    /* Check whether there's enough wall surface area to actually fit a door here */
-                    float delta;
-                    if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
-                        delta = conn->overlap_end.y - conn->overlap_start.y;
-                    } else {
-                        delta = conn->overlap_end.x - conn->overlap_start.x;
-                    }
-                    conn->has_door = delta >= house_spec->door_size;
+                float delta;
+                if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+                    delta = conn->overlap_end.y - conn->overlap_start.y;
                 } else {
-                    /* Check whether the room spec for room i allows a connection to room j */
-                    for (adj = 0; adj < spec->num_adjacent; ++adj) {
-                        if (strcmp(floor->rooms[j].name, spec->adjacent[adj]) == 0) {
-                            conn->can_connect = 1;
-
-                            /* Check whether there's enough wall surface area to actually fit a door here */
-                            float delta;
-                            if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
-                                delta = conn->overlap_end.y - conn->overlap_start.y;
-                            } else {
-                                delta = conn->overlap_end.x - conn->overlap_start.x;
-                            }
-                            conn->has_door = delta >= house_spec->door_size;
-                            break;
-                        }
-                    }
+                    delta = conn->overlap_end.x - conn->overlap_start.x;
                 }
+                conn->has_door = delta > house_spec->door_size;
+
+//                if (!roomi_has_spec) {
+//                    conn->can_connect = 1;
+//
+//                    /* Check whether there's enough wall surface area to actually fit a door here */
+//                    float delta;
+//                    if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+//                        delta = conn->overlap_end.y - conn->overlap_start.y;
+//                    } else {
+//                        delta = conn->overlap_end.x - conn->overlap_start.x;
+//                    }
+//                    conn->has_door = delta >= house_spec->door_size;
+//                } else {
+//                    /* Check whether the room spec for room i allows a connection to room j */
+//                    for (adj = 0; adj < spec->num_adjacent; ++adj) {
+//                        if (strcmp(floor->rooms[j].name, spec->adjacent[adj]) == 0) {
+//                            conn->can_connect = 1;
+//
+//                            /* Check whether there's enough wall surface area to actually fit a door here */
+//                            float delta;
+//                            if (pb_float_approx_eq(conn->overlap_start.x, conn->overlap_end.x, 5)) {
+//                                delta = conn->overlap_end.y - conn->overlap_start.y;
+//                            } else {
+//                                delta = conn->overlap_end.x - conn->overlap_start.x;
+//                            }
+//                            conn->has_door = delta >= house_spec->door_size;
+//                            break;
+//                        }
+//                    }
+//                }
 
                 if (pb_graph_add_edge(g, floor->rooms + i, floor->rooms + j, 0.f, conn) == -1) {
                     free(conn);
@@ -278,21 +287,26 @@ pb_hashmap* pb_sq_house_find_disconnected_rooms(pb_graph* floor_graph, pb_floor*
     outer_params.first = floor_graph;
     outer_params.second = &inner_params;
 
-    pb_graph_for_each_vertex(floor_graph, process_disconnected_room, &outer_params);
+    // Disable disconnected rooms for now - hallway placement is pretty broken
+    return disconnected;
 
-    if (error_occurred) {
-        pb_hashmap_free(disconnected);
-        return NULL;
-    } else {
-        /* Make sure that the first room isn't in the disconnected list if there's at least one other
-         * disconnected room. If there isn't, then we want to connect it, but if there is, then it
-         * will automatically be connected to a hallway since the other room will connect to it. */
-        pb_room* first;
-        if (pb_hashmap_get(disconnected, &floor->rooms[0], (void**)&first) == 0 && disconnected->size > 1) {
-            pb_hashmap_remove(disconnected, &floor->rooms[0]);
-        }
-        return disconnected;
-    }
+//
+//
+//    pb_graph_for_each_vertex(floor_graph, process_disconnected_room, &outer_params);
+//
+//    if (error_occurred) {
+//        pb_hashmap_free(disconnected);
+//        return NULL;
+//    } else {
+//        /* Make sure that the first room isn't in the disconnected list if there's at least one other
+//         * disconnected room. If there isn't, then we want to connect it, but if there is, then it
+//         * will automatically be connected to a hallway since the other room will connect to it. */
+//        pb_room* first;
+//        if (pb_hashmap_get(disconnected, &floor->rooms[0], (void**)&first) == 0 && disconnected->size > 1) {
+//            pb_hashmap_remove(disconnected, &floor->rooms[0]);
+//        }
+//        return disconnected;
+//    }
 }
 
 uint32_t pb_point_hash(void const* point) {

@@ -5,6 +5,7 @@
 #include <time.h>
 #include <pb/util/hashmap/hash_utils.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #else
 #endif
@@ -136,7 +137,7 @@ START_TEST(sq_house_performance_test)
     hspec.width = 15.f;
     hspec.height = 10.f;
 
-    size_t const iters = 6;
+    size_t const iters = 1000;
     float ms_sum = 0.f;
     for (i = 0; i < iters; ++i) {
 #ifndef _WIN32
@@ -158,9 +159,11 @@ START_TEST(sq_house_performance_test)
 #endif
 
         pb_building_free(b, pb_sq_house_free_building, pb_sq_house_free_floor, pb_sq_house_free_room);
+        free(b);
     }
     float avg_ms = ms_sum / iters;
     printf("Average number of milliseconds: %.4f\n", avg_ms);
+    pb_hashmap_free(room_specs);
 }
 END_TEST
 
