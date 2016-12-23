@@ -7,7 +7,7 @@
 
 int main(void)
 {
-    SRunner *sr = srunner_create(make_pb_generation_suite());
+    SRunner *sr = srunner_create(make_pb_extrusion_suite());
 	int nf;
 
 #ifdef _WIN32

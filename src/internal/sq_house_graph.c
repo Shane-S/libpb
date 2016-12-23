@@ -664,6 +664,7 @@ pb_vector* pb_sq_house_get_hallways(pb_floor* f, pb_graph* floor_graph, pb_graph
         pb_vector_free(&hallway_points);
         pb_vector_free(hallways);
         free(hallways);
+        return NULL;
     }
 }
 

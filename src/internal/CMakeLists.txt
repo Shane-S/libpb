@@ -11,9 +11,4 @@ set(SOURCES squarify.c
             sq_house_layout.c
             sq_house_graph.c)
 
-add_library(pb_internal STATIC ${SOURCES} ${HEADERS})
-target_link_libraries(pb_internal pb_util )
-
-if(UNIX)
-    target_link_libraries(pb_internal -lm)
-endif(UNIX)
+add_library(pb_internal OBJECT ${SOURCES} ${HEADERS})

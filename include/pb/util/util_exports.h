@@ -28,6 +28,10 @@
 # endif
 #endif
 
+#else
+  #define PB_UTIL_DECLSPEC
+#endif /*BUILD_SHARED*/
+
 /* Use the C calling convention */
 #ifndef PB_UTIL_CALL
 #if (defined(_WIN32) || defined(_WINRT) && !defined(__GNUC__))
@@ -36,12 +40,5 @@
 #define PB_UTIL_CALL
 #endif
 #endif /* PBCALL */
-
-#else
-
-#define PB_UTIL_DECLSPEC
-#define PB_UTIL_CALL __cdecl
-
-#endif /*BUILD_SHARED*/
 
 #endif /* PB_UTIL_EXPORTS_H */

@@ -1,6 +1,7 @@
 #include "../test_util.h"
 #include <pb/util/geom/types.h>
 #include <pb/util/geom/rect_utils.h>
+#include <pb/util/geom/shape_utils.h>
 
 START_TEST(rect_to_shape)
 {

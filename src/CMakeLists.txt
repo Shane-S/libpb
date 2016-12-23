@@ -11,11 +11,19 @@ set(HEADERS ${PB_API_INCLUDE_DIR}/pb/sq_house.h
             ${PB_API_INCLUDE_DIR}/pb/exports.h)
 
 set(SOURCES extrusion.c
-            sq_house.c floor_plan.c)
+            sq_house.c floor_plan.c ../include/pb/simple_extruder.h simple_extruder.c)
             
-add_library(pb STATIC ${SOURCES} ${HEADERS})
-if (${CMAKE_HOST_UNIX})
+add_library(pb ${SOURCES} ${HEADERS}
+            $<TARGET_OBJECTS:pb_internal>)
+
+if (UNIX)
     target_compile_options(pb PRIVATE -fPIC)
+    target_link_libraries(pb -lm)
 endif()
-target_link_libraries(pb pb_internal)
+
 target_link_libraries(pb pb_util)
+
+install(TARGETS pb
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)

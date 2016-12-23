@@ -8,13 +8,19 @@ set(SOURCES pb_squarify_test.c
 set(HEADERS pb_internal_test.h 
             ../test_util.h)
 
-add_executable(pb_internal_test ${SOURCES} ${HEADERS})
+add_executable(pb_internal_test ${SOURCES} ${HEADERS}
+               $<TARGET_OBJECTS:pb_internal>)
+target_link_libraries(pb_internal_test pb_util)
+
+if (UNIX)
+    target_link_libraries(pb_internal_test -lm)
+endif()
 
 if( CHECK_FOUND )
     if( CHECK_CMAKE_TARGET_FOUND )
-        target_link_libraries(pb_internal_test pb_internal check)
+        target_link_libraries(pb_internal_test check)
     else( CHECK_CMAKE_TARGET_FOUND)
-        target_link_libraries(pb_internal_test pb_internal ${CHECK_LIBRARIES})
+        target_link_libraries(pb_internal_test ${CHECK_LIBRARIES})
         target_include_directories(pb_internal_test PRIVATE ${CHECK_INCLUDE_DIR})
     endif()
 endif()

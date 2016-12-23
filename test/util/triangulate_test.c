@@ -3,6 +3,7 @@
 #include <pb/util/geom/triangulate.h>
 #include <pb/util/vector/vector.h>
 #include <pb/extrusion.h>
+#include <pb/util/geom/shape_utils.h>
 
 START_TEST(triangulate_get_num_tris)
 {

@@ -137,7 +137,7 @@ START_TEST(sq_house_performance_test)
     hspec.width = 15.f;
     hspec.height = 10.f;
 
-    size_t const iters = 1000;
+    size_t const iters = 10000;
     float ms_sum = 0.f;
     for (i = 0; i < iters; ++i) {
 #ifndef _WIN32

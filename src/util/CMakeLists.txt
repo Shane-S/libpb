@@ -14,7 +14,7 @@ set(HEADERS ${PB_API_INCLUDE_DIR}/pb/util/float_utils.h
             ${PB_API_INCLUDE_DIR}/pb/util/hashmap/MurmurHash3.h
             ${PB_API_INCLUDE_DIR}/pb/util/heap/heap.h
             ${PB_API_INCLUDE_DIR}/pb/util/pair/pair.h
-            ${PB_API_INCLUDE_DIR}/pb/util/vector/vector.h)
+            ${PB_API_INCLUDE_DIR}/pb/util/vector/vector.h ../../include/pb/util/geom/line_utils.h ../../include/pb/util/geom/shape_utils.h)
 
 set(SOURCES hashmap/hashmap.c
             hashmap/hash_utils.c
@@ -24,7 +24,7 @@ set(SOURCES hashmap/hashmap.c
             vector/vector.c
             geom/rect_utils.c
             geom/triangulate.c
-            float_utils.c)
+            float_utils.c ../../include/pb/util/geom/line_utils.h geom/line_utils.c ../../include/pb/util/geom/shape_utils.h geom/shape_utils.c)
             
 add_library(pb_util ${SOURCES} ${HEADERS})
 target_compile_definitions(pb_util PRIVATE "BUILD_SHARED=0")
@@ -32,3 +32,8 @@ target_compile_definitions(pb_util PRIVATE "BUILD_SHARED=0")
 if(UNIX)
     target_link_libraries(pb_util -lm)
 endif(UNIX)
+
+install(TARGETS pb_util
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        ARCHIVE DESTINATION lib)
