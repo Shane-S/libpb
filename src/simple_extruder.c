@@ -222,7 +222,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     /* Bottom left corner */
     window->tris[0].nx = normal->x;
     window->tris[0].ny = 0.f;
-    window->tris[0].nz = normal->y;
+    window->tris[0].nz = -normal->y;
     window->tris[0].x = wall_structure_len.x / 2.f * wall_end_to_start.x;
     window->tris[0].y = -actual_window_height / 2.f;
     window->tris[0].z = wall_structure_len.y / 2.f * wall_end_to_start.y;
@@ -237,7 +237,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     /* Top right corner */
     window->tris[1].nx = normal->x;
     window->tris[1].ny = 0.f;
-    window->tris[1].nz = normal->y;
+    window->tris[1].nz = -normal->y;
     window->tris[1].x = wall_structure_len.x / 2.f * wall_start_to_end.x;
     window->tris[1].y = actual_window_height / 2.f;
     window->tris[1].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
@@ -252,7 +252,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     /* Top left corner */
     window->tris[2].nx = normal->x;
     window->tris[2].ny = 0.f;
-    window->tris[2].nz = normal->y;
+    window->tris[2].nz = -normal->y;
     window->tris[2].x = wall_structure_len.x / 2.f * wall_end_to_start.x;
     window->tris[2].y = actual_window_height / 2.f;
     window->tris[2].z = wall_structure_len.y / 2.f * wall_end_to_start.y;
@@ -265,7 +265,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     /* Bottom right corner */
     window->tris[4].nx = normal->x;
     window->tris[4].ny = 0.f;
-    window->tris[4].nz = normal->y;
+    window->tris[4].nz = -normal->y;
     window->tris[4].x = wall_structure_len.x / 2.f * wall_start_to_end.x;
     window->tris[4].y = -actual_window_height / 2.f;
     window->tris[4].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
