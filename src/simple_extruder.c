@@ -210,9 +210,13 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     wall_start_to_end.x = -wall_end_to_start.x;
     wall_start_to_end.y = -wall_end_to_start.y;
 
-    float actual_door_height = fminf(floor_height * 0.95f, struct_height); /* Leave some space at the top */
+    float actual_window_height = fminf(floor_height * 0.75f, struct_height); /* Leave some space at the top and bottom */
+    float window_wall_height = (floor_height - actual_window_height) / 2.f;
+    float window_top_v = window_wall_height / floor_height;
+    float window_bottom_v = 1 - window_top_v;
+
     window->pos.x = wall_structure_centre.x - bottom_floor_centre->x;
-    window->pos.y = start_height + (actual_door_height / 2.f);
+    window->pos.y = start_height + (actual_window_height / 2.f);
     window->pos.z = wall_structure_centre.y - bottom_floor_centre->y;
 
     /* Bottom left corner */
@@ -220,12 +224,12 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     window->tris[0].ny = 0.f;
     window->tris[0].nz = normal->y;
     window->tris[0].x = wall_structure_len.x / 2.f * wall_end_to_start.x;
-    window->tris[0].y = -actual_door_height / 2.f;
+    window->tris[0].y = -actual_window_height / 2.f;
     window->tris[0].z = wall_structure_len.y / 2.f * wall_end_to_start.y;
-    window->tris[0].v = 1.f;
+    window->tris[0].v = window_bottom_v;
 
     /* Now that we've figured out where the *actual* start of the wall is, calculate its u coordinate */
-    pb_point2D s = {window->tris[0].x, -window->tris[0].z};
+    pb_point2D s = {wall_structure_centre.x + window->tris[0].x, wall_structure_centre.y - window->tris[0].z};
     pb_point2D start_t = pb_line2D_get_t(wall, &s);
     float start_u = start_t.x == INFINITY ? start_t.y : start_t.x;
     window->tris[0].u = start_u;
@@ -235,12 +239,12 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     window->tris[1].ny = 0.f;
     window->tris[1].nz = normal->y;
     window->tris[1].x = wall_structure_len.x / 2.f * wall_start_to_end.x;
-    window->tris[1].y = actual_door_height / 2.f;
+    window->tris[1].y = actual_window_height / 2.f;
     window->tris[1].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
-    window->tris[1].v = floor_height / actual_door_height;
+    window->tris[1].v = window_top_v;
 
     /* Same for the end */
-    pb_point2D e = {window->tris[1].x, -window->tris[1].z};
+    pb_point2D e = {wall_structure_centre.x + window->tris[1].x, wall_structure_centre.y - window->tris[1].z};
     pb_point2D end_t = pb_line2D_get_t(wall, &e);
     float end_u = end_t.x == INFINITY ? end_t.y : end_t.x;
     window->tris[1].u = end_u;
@@ -250,10 +254,10 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     window->tris[2].ny = 0.f;
     window->tris[2].nz = normal->y;
     window->tris[2].x = wall_structure_len.x / 2.f * wall_end_to_start.x;
-    window->tris[2].y = actual_door_height / 2.f;
+    window->tris[2].y = actual_window_height / 2.f;
     window->tris[2].z = wall_structure_len.y / 2.f * wall_end_to_start.y;
-    window->tris[2].u = end_u;
-    window->tris[2].v = floor_height / actual_door_height;
+    window->tris[2].u = start_u;
+    window->tris[2].v = window_top_v;
 
     /* Bottom left corner again */
     window->tris[3] = window->tris[0];
@@ -263,37 +267,60 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     window->tris[4].ny = 0.f;
     window->tris[4].nz = normal->y;
     window->tris[4].x = wall_structure_len.x / 2.f * wall_start_to_end.x;
-    window->tris[4].y = -actual_door_height / 2.f;
+    window->tris[4].y = -actual_window_height / 2.f;
     window->tris[4].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
     window->tris[4].u = end_u;
-    window->tris[4].v = floor_height / actual_door_height;
+    window->tris[4].v = window_bottom_v;
 
     /* Top right corner again */
     window->tris[5] = window->tris[1];
 
-    float window_bottom_wall_height = floor_height - actual_door_height;
-    window->pos = window->pos;
-    window->pos.y += window_bottom_wall_height;
+    window_walls[0].pos = window->pos;
+    window_walls[0].pos.y -= window_wall_height;
 
-    window->tris[0] = window->tris[0];
-    window->tris[0].y = -window_bottom_wall_height / 2.f;
-    window->tris[0].v = floor_height / window_bottom_wall_height;
+    window_walls[0].tris[0] = window->tris[0];
+    window_walls[0].tris[0].y = -window_wall_height / 2.f;
+    window_walls[0].tris[0].v = 1.f;
 
-    window->tris[1] = window->tris[1];
-    window->tris[1].y = window_bottom_wall_height / 2.f;
-    window->tris[1].v = 0.f;
+    window_walls[0].tris[1] = window->tris[1];
+    window_walls[0].tris[1].y = window_wall_height / 2.f;
+    window_walls[0].tris[1].v = window_bottom_v;
 
-    window->tris[2] = window->tris[2];
-    window->tris[2].y = window_bottom_wall_height / 2.f;
-    window->tris[2].v = 0.f;
+    window_walls[0].tris[2] = window->tris[2];
+    window_walls[0].tris[2].y = window_wall_height / 2.f;
+    window_walls[0].tris[2].v = window_bottom_v;
 
-    window->tris[3] = window->tris[0];
+    window_walls[0].tris[3] = window_walls[0].tris[0];
 
-    window->tris[4] = window->tris[4];
-    window->tris[4].y = -window_bottom_wall_height / 2.f;
-    window->tris[4].v = floor_height / window_bottom_wall_height;
+    window_walls[0].tris[4] = window->tris[4];
+    window_walls[0].tris[4].y = -window_wall_height / 2.f;
+    window_walls[0].tris[4].v = 1.f;
 
-    window->tris[5] = window->tris[1];
+    window_walls[0].tris[5] = window_walls[0].tris[1];
+
+
+    window_walls[1].pos = window->pos;
+    window_walls[1].pos.y += window_wall_height;
+
+    window_walls[1].tris[0] = window->tris[0];
+    window_walls[1].tris[0].y = -window_wall_height / 2.f;
+    window_walls[1].tris[0].v = window_top_v;
+
+    window_walls[1].tris[1] = window->tris[1];
+    window_walls[1].tris[1].y = window_wall_height / 2.f;
+    window_walls[1].tris[1].v = 0.f;
+
+    window_walls[1].tris[2] = window->tris[2];
+    window_walls[1].tris[2].y = window_wall_height / 2.f;
+    window_walls[1].tris[2].v = 0.f;
+
+    window_walls[1].tris[3] = window_walls[1].tris[0];
+
+    window_walls[1].tris[4] = window->tris[4];
+    window_walls[1].tris[4].y = -window_wall_height / 2.f;
+    window_walls[1].tris[4].v = window_top_v;
+
+    window_walls[1].tris[5] = window_walls[1].tris[1];
 
     *walls_out = window_walls;
     *structures_out = window;

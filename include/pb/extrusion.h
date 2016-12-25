@@ -105,9 +105,9 @@ typedef struct {
  * Extrudes a wall with the given doors and windows.
  *
  * @param wall                  The wall to extrude.
- * @param doors                 The doors in this wall as a list of point pairs. Note that this will be sorted by this function.
+ * @param doors                 The doors in this wall as a list of lines. Note that this will be sorted by this function.
  * @param num_doors             The number od doors in the doors list.
- * @param windows               The windows in this wall as a list of point pairs. Note that this will be sorted by this function.
+ * @param windows               The windows in this wall as a list of lines. Note that this will be sorted by this function.
  * @param num_windows           The number of windows contained in the windows list.
  * @param bottom_floor_centre   The centre point of the bottom floor.
  * @param normal                This parent wall's normal vector.
@@ -130,8 +130,8 @@ typedef struct {
  *         input lists will be in a valid but unspecified state.
  */
 PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
-                                        pb_point2D const* doors, size_t num_doors,
-                                        pb_point2D const* windows, size_t num_windows,
+                                        pb_wall_structure const* doors, size_t num_doors,
+                                        pb_wall_structure const* windows, size_t num_windows,
                                         pb_point2D const* bottom_floor_centre,
                                         pb_point2D const* normal,
                                         float start_height,
