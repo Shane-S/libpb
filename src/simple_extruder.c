@@ -58,6 +58,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
     wall_start_to_end.y = -wall_end_to_start.y;
 
     float actual_door_height = fminf(floor_height * 0.95f, struct_height); /* Leave some space at the top */
+    float door_top_v = 1.f - (actual_door_height / floor_height);
     door->pos.x = wall_structure_centre.x - bottom_floor_centre->x;
     door->pos.y = start_height + (actual_door_height / 2.f);
     door->pos.z = -(wall_structure_centre.y - bottom_floor_centre->y);
@@ -84,7 +85,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
     door->tris[1].x = wall_structure_len.x / 2.f * wall_start_to_end.x;
     door->tris[1].y = actual_door_height / 2.f;
     door->tris[1].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
-    door->tris[1].v = floor_height / actual_door_height;
+    door->tris[1].v = door_top_v;
 
     /* Same for the end */
     pb_point2D e = {wall_structure_centre.x + door->tris[1].x, wall_structure_centre.y - door->tris[1].z};
@@ -99,8 +100,8 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
     door->tris[2].x = wall_structure_len.x / 2.f * wall_end_to_start.x;
     door->tris[2].y = actual_door_height / 2.f;
     door->tris[2].z = wall_structure_len.y / 2.f * wall_end_to_start.y;
-    door->tris[2].u = end_u;
-    door->tris[2].v = floor_height / actual_door_height;
+    door->tris[2].u = start_u;
+    door->tris[2].v = door_top_v;
 
     /* Bottom left corner again */
     door->tris[3] = door->tris[0];
@@ -113,7 +114,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
     door->tris[4].y = -actual_door_height / 2.f;
     door->tris[4].z = wall_structure_len.y / 2.f * wall_start_to_end.y;
     door->tris[4].u = end_u;
-    door->tris[4].v = floor_height / actual_door_height;
+    door->tris[4].v = 1.f;
 
     /* Top right corner again */
     door->tris[5] = door->tris[1];
@@ -124,7 +125,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
 
     door_wall->tris[0] = door->tris[0];
     door_wall->tris[0].y = -door_wall_height / 2.f;
-    door_wall->tris[0].v = floor_height / actual_door_height;
+    door_wall->tris[0].v = door_top_v;
 
     door_wall->tris[1] = door->tris[1];
     door_wall->tris[1].y = door_wall_height / 2.f;
@@ -138,7 +139,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
 
     door_wall->tris[4] = door->tris[4];
     door_wall->tris[4].y = -door_wall_height / 2.f;
-    door_wall->tris[4].v = floor_height / actual_door_height;
+    door_wall->tris[4].v = door_top_v;
 
     door_wall->tris[5] = door_wall->tris[1];
 

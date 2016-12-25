@@ -162,10 +162,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
         size_t cur_door_walls;
         size_t cur_door_shapes;
 
-        window_extruder->count(wall, &door, normal, bottom_floor_centre,
-                               floor_height, window_height, start_height,
-                               door_extruder_param,
-                               &cur_door_walls, &cur_door_shapes);
+        door_extruder->count(wall, &door, normal, bottom_floor_centre,
+                             floor_height, window_height, start_height,
+                             door_extruder_param,
+                             &cur_door_walls, &cur_door_shapes);
 
         door_list_size += cur_door_shapes;
         wall_list_size += cur_door_walls;
