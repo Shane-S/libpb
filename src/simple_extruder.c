@@ -121,7 +121,7 @@ int pb_simple_door_extruder_func(pb_line2D const* wall, pb_line2D const* wall_st
 
     float door_wall_height = floor_height - actual_door_height;
     door_wall->pos = door->pos;
-    door_wall->pos.y += actual_door_height;
+    door_wall->pos.y = start_height + floor_height - (door_wall_height / 2.f);
 
     door_wall->tris[0] = door->tris[0];
     door_wall->tris[0].y = -door_wall_height / 2.f;
@@ -217,8 +217,8 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     float window_bottom_v = 1 - window_top_v;
 
     window->pos.x = wall_structure_centre.x - bottom_floor_centre->x;
-    window->pos.y = start_height + (actual_window_height / 2.f);
-    window->pos.z = wall_structure_centre.y - bottom_floor_centre->y;
+    window->pos.y = start_height + (floor_height / 2.f);
+    window->pos.z = bottom_floor_centre->y - wall_structure_centre.y;
 
     /* Bottom left corner */
     window->tris[0].nx = normal->x;
@@ -277,7 +277,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
     window->tris[5] = window->tris[1];
 
     window_walls[0].pos = window->pos;
-    window_walls[0].pos.y -= window_wall_height;
+    window_walls[0].pos.y = start_height + (window_wall_height / 2.f);
 
     window_walls[0].tris[0] = window->tris[0];
     window_walls[0].tris[0].y = -window_wall_height / 2.f;
@@ -301,7 +301,7 @@ int pb_simple_window_extruder_func(pb_line2D const* wall, pb_line2D const* wall_
 
 
     window_walls[1].pos = window->pos;
-    window_walls[1].pos.y += window_wall_height;
+    window_walls[1].pos.y = start_height + floor_height - (window_wall_height / 2.f);
 
     window_walls[1].tris[0] = window->tris[0];
     window_walls[1].tris[0].y = -window_wall_height / 2.f;
