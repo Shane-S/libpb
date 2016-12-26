@@ -297,13 +297,14 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
              * operators, but I don't really feel like it right now */
             if (is_door) {
                 door_extruder->count(wall, &structure, normal, bottom_floor_centre,
-                                     floor_height, window_height, start_height,
+                                     floor_height, door_height, start_height,
                                      door_extruder_param,
                                      &structure_wall_count, &structure_shape_count);
 
                 if (door_extruder->extrude(wall, &structure, normal, bottom_floor_centre,
                                            floor_height, door_height, start_height,
-                                           door_extruder_param, &structure_walls, &structure_shapes) == -1) {
+                                           door_extruder_param,
+                                           &structure_walls, &structure_shapes) == -1) {
                     goto err_return;
                 }
 
@@ -315,12 +316,13 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
             } else {
                 window_extruder->count(wall, &structure, normal, bottom_floor_centre,
                                        floor_height, window_height, start_height,
-                                       door_extruder_param,
+                                       window_extruder_param,
                                        &structure_wall_count, &structure_shape_count);
 
                 if (window_extruder->extrude(wall, &structure, normal, bottom_floor_centre,
-                                             floor_height, door_height, start_height,
-                                             window_extruder_param, &structure_walls, &structure_shapes) == -1) {
+                                             floor_height, window_height, start_height,
+                                             window_extruder_param,
+                                             &structure_walls, &structure_shapes) == -1) {
                     goto err_return;
                 }
 
@@ -374,7 +376,7 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
             cur_wall_count += door_wall_count;
             cur_door++;
 
-            wall_start = end_is_start ? doors[cur_door].start : doors[cur_door].end;
+            wall_start = end_is_start ? doors[cur_door - 1].start : doors[cur_door - 1].end;
 
         } else {
             wall_end = end_is_start ? windows[cur_window].end : windows[cur_window].start;
