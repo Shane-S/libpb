@@ -1,9 +1,7 @@
 #include "../test_util.h"
-#include <check.h>
 #include <pb/floor_plan.h>
 #include <pb/extrusion.h>
 #include <pb/simple_extruder.h>
-#include <pb/util/geom/types.h>
 #include <pb/util/geom/shape_utils.h>
 #include <pb/util/geom/line_utils.h>
 
@@ -2460,97 +2458,98 @@ START_TEST(extrude_wall_interior_windows_xaxis)
     };
     size_t num_windows_in = sizeof(windows_in) / sizeof(pb_wall_structure);
 
+
+    /* Expected outputs */
     pb_vert3D expected_wall0_points[] = {
-            /* x     y    z    nx   ny    nz   u           v  */
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f},
-            { 1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        0.f},
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        1.f},
-            {-1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f},
+           /* x      y    z    nx   ny   nz   u           v  */
+            {-0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        1.f},
+            { 0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 0.f},
+            {-0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        0.f},
+            {-0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        1.f},
+            { 0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 1.f},
+            { 0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 0.f},
     };
     pb_shape3D expected_wall0_shape = {&expected_wall0_points[0],
                                        sizeof(expected_wall0_points) / sizeof(pb_vert3D),
-                                       {4.f, 5.f, -2.f}};
+                                       {-4.5f, 5.f, -2.f}};
 
     pb_vert3D expected_wall1_points[] = {
-            /* x     y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f      },
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
-            { 1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f      },
-            {-1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f      },
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
+           /* x      y       z    nx   ny   nz   u           v  */
+            {-1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 1.f      },
+            { 1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 5.f / 8.f},
+            {-1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 5.f / 8.f},
+            {-1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 1.f      },
+            { 1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 1.f      },
+            { 1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 5.f / 8.f},
     };
     pb_shape3D expected_wall1_shape = {&expected_wall1_points[0],
                                        sizeof(expected_wall1_points) / sizeof(pb_vert3D),
-                                       {2.f, 4.375f, -2.f}};
+                                       {-2.5f, 4.375f, -2.f}};
 
     pb_vert3D expected_wall2_points[] = {
-            /* x     y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f      },
-            { 1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f      },
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            {-1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f      },
+           /* x     y        z    nx   ny   nz   u           v  */
+            {-1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 3.f / 8.f},
+            { 1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 0.f      },
+            {-1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 0.f      },
+            {-1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 3.f / 8.f},
+            { 1.5f, -0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 3.f / 8.f},
+            { 1.5f,  0.375f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 0.f      },
     };
     pb_shape3D expected_wall2_shape = {&expected_wall2_points[0],
                                        sizeof(expected_wall2_points) / sizeof(pb_vert3D),
-                                       {2.f, 5.625f, -2.f}};
+                                       {-2.5f, 5.625f, -2.f}};
 
     pb_vert3D expected_wall3_points[] = {
-            /* x     y    z    nx   ny    nz   u           v  */
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 0.f},
-            { 1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f},
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f},
-            {-1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 0.f},
+           /* x     y    z    nx   ny   nz   u           v  */
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f},
+            {-1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 0.f},
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 1.f},
+            { 1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f},
     };
     pb_shape3D expected_wall3_shape = {&expected_wall3_points[0],
                                        sizeof(expected_wall3_points) / sizeof(pb_vert3D),
                                        {0.f, 5.f, -2.f}};
 
     pb_vert3D expected_wall4_points[] = {
-            /* x      y       z    nx   ny    nz   u           v  */
-            { 1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 1.f      },
-            {-1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 5.f / 8.f},
-            { 1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 5.f / 8.f},
-            { 1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 1.f      },
-            {-1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 1.f      },
-            {-1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 5.f / 8.f},
+           /* x     y       z    nx   ny   nz   u           v  */
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f      },
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
+            {-1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f      },
+            { 1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f      },
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
     };
     pb_shape3D expected_wall4_shape = {&expected_wall4_points[0],
                                        sizeof(expected_wall4_points) / sizeof(pb_vert3D),
-                                       {-2.5f, 4.375f, -2.f}};
+                                       {2.f, 4.375f, -2.f}};
 
     pb_vert3D expected_wall5_points[] = {
-            /* x     y        z    nx   ny    nz   u           v  */
-            { 1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 3.f / 8.f},
-            {-1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 0.f      },
-            { 1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 0.f      },
-            { 1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 3.f / 8.f},
-            {-1.5f, -0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 3.f / 8.f},
-            {-1.5f,  0.375f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 0.f      },
+           /* x     y       z    nx   ny   nz   u           v  */
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f      },
+            {-1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f      },
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            { 1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f      },
     };
     pb_shape3D expected_wall5_shape = {&expected_wall5_points[0],
                                        sizeof(expected_wall5_points) / sizeof(pb_vert3D),
-                                       {-2.5f, 5.625f, -2.f}};
+                                       {2.f, 5.625f, -2.f}};
 
-    /* Expected outputs */
     pb_vert3D expected_wall6_points[] = {
-            /* x       y    z    nx   ny    nz   u          v  */
-            { 0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 1.f},
-            {-0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        0.f},
-            { 0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 0.f},
-            { 0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 1.f},
-            {-0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        1.f},
-            {-0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        0.f},
+           /* x     y    z    nx   ny   nz   u           v  */
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        0.f},
+            {-1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f},
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f},
+            { 1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        0.f},
     };
     pb_shape3D expected_wall6_shape = {&expected_wall6_points[0],
                                        sizeof(expected_wall6_points) / sizeof(pb_vert3D),
-                                       {-4.5f, 5.f, -2.f}};
+                                       {4.f, 5.f, -2.f}};
 
     size_t expected_wall_point_counts[] = {
             sizeof(expected_wall0_points) / sizeof(pb_vert3D),
@@ -2577,30 +2576,30 @@ START_TEST(extrude_wall_interior_windows_xaxis)
     size_t expected_num_doors = 0;
 
     pb_vert3D expected_window0_points[] = {
-            /* x   y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            {-1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
-            { 1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            { 1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            {-1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
-            {-1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
+           /* x      y      z    nx   ny    nz   u           v  */
+            {-1.5f, -0.25f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 5.f / 8.f},
+            { 1.5f,  0.25f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 3.f / 8.f},
+            {-1.5f,  0.25f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 3.f / 8.f},
+            {-1.5f, -0.25f, 0.f, 0.f, 0.f, 1.f, 1.f / 10.f, 5.f / 8.f},
+            { 1.5f, -0.25f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 5.f / 8.f},
+            { 1.5f,  0.25f, 0.f, 0.f, 0.f, 1.f, 4.f / 10.f, 3.f / 8.f},
     };
     pb_shape3D expected_window0_shape = {&expected_window0_points[0],
                                          sizeof(expected_window0_points) / sizeof(pb_vert3D),
-                                         {2.f, 5.f, -2.f}};
+                                         {-2.5f, 5.f, -2.f}};
 
     pb_vert3D expected_window1_points[] = {
             /* x     y      z    nx   ny    nz   u           v  */
-            { 1.5f, -0.25f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 5.f / 8.f},
-            {-1.5f,  0.25f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 3.f / 8.f},
-            { 1.5f,  0.25f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 3.f / 8.f},
-            { 1.5f, -0.25f, 0.f, 0.f, 0.f, -1.f, 6.f / 10.f, 5.f / 8.f},
-            {-1.5f, -0.25f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 5.f / 8.f},
-            {-1.5f,  0.25f, 0.f, 0.f, 0.f, -1.f, 9.f / 10.f, 3.f / 8.f},
+            {-1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            { 1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
+            {-1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            {-1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            { 1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
+            { 1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
     };
     pb_shape3D expected_window1_shape = {&expected_window1_points[0],
                                          sizeof(expected_window1_points) / sizeof(pb_vert3D),
-                                         {-2.5f, 5.f, -2.f}};
+                                         {2.f, 5.f, -2.f}};
 
     size_t expected_window_point_counts[] = {
             sizeof(expected_window0_points) / sizeof(pb_vert3D),
@@ -2620,9 +2619,9 @@ START_TEST(extrude_wall_interior_windows_xaxis)
     pb_shape3D* windows;
     size_t num_windows;
 
-    pb_point2D normal = pb_line2D_get_normal(&wall_flipped);
+    pb_point2D normal = pb_line2D_get_normal(&wall);
 
-    pb_extrude_wall(&wall,
+    pb_extrude_wall(&wall_flipped,
                     &doors_in[0], num_doors_in,
                     &windows_in[0], num_windows_in,
                     &bottom_floor_centre,
@@ -2791,82 +2790,82 @@ START_TEST(extrude_wall_interior_windows_doors_yaxis)
 
     /* Expected outputs */
     pb_vert3D expected_wall0_points[] = {
-            /* x     y     z     nx   ny   nz   u           v  */
-            {0.f, -1.f, -2.f, -1.f, 0.f, 0.f, 0.f,        1.f},
-            {0.f,  1.f,  2.f, -1.f, 0.f, 0.f, 4.f / 12.f, 0.f},
-            {0.f,  1.f, -2.f, -1.f, 0.f, 0.f, 0.f,        0.f},
-            {0.f, -1.f, -2.f, -1.f, 0.f, 0.f, 0.f,        1.f},
-            {0.f, -1.f,  2.f, -1.f, 0.f, 0.f, 4.f / 12.f, 1.f},
-            {0.f,  1.f,  2.f, -1.f, 0.f, 0.f, 4.f / 12.f, 0.f},
+          /* x     y     z     nx   ny   nz   u           v  */
+            {0.f, -1.f,  0.5f, 1.f, 0.f, 0.f, 0.f,        1.f},
+            {0.f,  1.f, -0.5f, 1.f, 0.f, 0.f, 1.f / 12.f, 0.f},
+            {0.f,  1.f,  0.5f, 1.f, 0.f, 0.f, 0.f,        0.f},
+            {0.f, -1.f,  0.5f, 1.f, 0.f, 0.f, 0.f,        1.f},
+            {0.f, -1.f, -0.5f, 1.f, 0.f, 0.f, 1.f / 12.f, 1.f},
+            {0.f,  1.f, -0.5f, 1.f, 0.f, 0.f, 1.f / 12.f, 0.f},
     };
     pb_shape3D expected_wall0_shape = {&expected_wall0_points[0],
                                        sizeof(expected_wall0_points) / sizeof(pb_vert3D),
-                                       {-3.f, 5.f, -4.f}};
+                                       {-3.f, 5.f, 5.5f}};
 
     pb_vert3D expected_wall1_points[] = {
-            /* x     y     z      nx   ny   nz   u            v  */
-            {0.f, -0.35f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  7.f / 20.f},
-            {0.f,  0.35f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  0.f       },
-            {0.f,  0.35f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  0.f       },
-            {0.f, -0.35f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  7.f / 20.f},
-            {0.f, -0.35f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  7.f / 20.f},
-            {0.f,  0.35f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  0.f       },
+            /* x     y        z    nx   ny   nz   u           v  */
+            {0.f, -0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 1.f      },
+            {0.f,  0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 5.f / 8.f},
+            {0.f,  0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 5.f / 8.f},
+            {0.f, -0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 1.f      },
+            {0.f, -0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 1.f      },
+            {0.f,  0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 5.f / 8.f},
     };
     pb_shape3D expected_wall1_shape = {&expected_wall1_points[0],
                                        sizeof(expected_wall1_points) / sizeof(pb_vert3D),
-                                       {-3.f, 5.65f, -0.5f}};
+                                       {-3.f, 4.375f, 4.f}};
 
     pb_vert3D expected_wall2_points[] = {
-            /* x   y     z     nx   ny   nz   u           v  */
-            {0.f, -1.f, -1.f, -1.f, 0.f, 0.f, 7.f / 12.f, 1.f},
-            {0.f,  1.f,  1.f, -1.f, 0.f, 0.f, 9.f / 12.f, 0.f},
-            {0.f,  1.f, -1.f, -1.f, 0.f, 0.f, 7.f / 12.f, 0.f},
-            {0.f, -1.f, -1.f, -1.f, 0.f, 0.f, 7.f / 12.f, 1.f},
-            {0.f, -1.f,  1.f, -1.f, 0.f, 0.f, 9.f / 12.f, 1.f},
-            {0.f,  1.f,  1.f, -1.f, 0.f, 0.f, 9.f / 12.f, 0.f},
+            /* x     y        z    nx   ny   nz   u           v  */
+            {0.f, -0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 3.f / 8.f},
+            {0.f,  0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 0.f      },
+            {0.f,  0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 0.f      },
+            {0.f, -0.375f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 3.f / 8.f},
+            {0.f, -0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 3.f / 8.f},
+            {0.f,  0.375f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 0.f      },
     };
     pb_shape3D expected_wall2_shape = {&expected_wall2_points[0],
                                        sizeof(expected_wall2_points) / sizeof(pb_vert3D),
-                                       {-3.f, 5.f, 2.f}};
+                                       {-3.f, 5.625f, 4.f}};
 
     pb_vert3D expected_wall3_points[] = {
-            /* x   y        z     nx   ny   nz   u           v  */
-            {0.f, -0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  1.f      },
-            {0.f,  0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 5.f / 8.f},
-            {0.f,  0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  5.f / 8.f},
-            {0.f, -0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  1.f      },
-            {0.f, -0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 1.f      },
-            {0.f,  0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 5.f / 8.f},
+          /* x     y     z    nx   ny   nz   u           v  */
+            {0.f, -1.f,  1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 1.f},
+            {0.f,  1.f, -1.f, 1.f, 0.f, 0.f, 5.f / 12.f, 0.f},
+            {0.f,  1.f,  1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 0.f},
+            {0.f, -1.f,  1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 1.f},
+            {0.f, -1.f, -1.f, 1.f, 0.f, 0.f, 5.f / 12.f, 1.f},
+            {0.f,  1.f, -1.f, 1.f, 0.f, 0.f, 5.f / 12.f, 0.f},
     };
     pb_shape3D expected_wall3_shape = {&expected_wall3_points[0],
                                        sizeof(expected_wall3_points) / sizeof(pb_vert3D),
-                                       {-3.f, 4.375f, 4.f}};
+                                       {-3.f, 5.f, 2.f}};
 
     pb_vert3D expected_wall4_points[] = {
-            /* x   y        z     nx   ny   nz   u            v  */
-            {0.f, -0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  3.f / 8.f},
-            {0.f,  0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 0.f      },
-            {0.f,  0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  0.f      },
-            {0.f, -0.375f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  3.f / 8.f},
-            {0.f, -0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 3.f / 8.f},
-            {0.f,  0.375f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 0.f      },
+            /* x     y     z      nx   ny   nz   u            v  */
+            {0.f, -0.35f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  7.f / 20.f},
+            {0.f,  0.35f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  0.f       },
+            {0.f,  0.35f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  0.f       },
+            {0.f, -0.35f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  7.f / 20.f},
+            {0.f, -0.35f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  7.f / 20.f},
+            {0.f,  0.35f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  0.f       },
     };
     pb_shape3D expected_wall4_shape = {&expected_wall4_points[0],
                                        sizeof(expected_wall4_points) / sizeof(pb_vert3D),
-                                       {-3.f, 5.625f, 4.f}};
+                                       {-3.f, 5.65f, -0.5f}};
 
     pb_vert3D expected_wall5_points[] = {
-            /* x    y    z      nx   ny   nz   u            v  */
-            {0.f, -1.f, -0.5f, -1.f, 0.f, 0.f, 11.f / 12.f, 1.f},
-            {0.f,  1.f,  0.5f, -1.f, 0.f, 0.f, 1.f,         0.f},
-            {0.f,  1.f, -0.5f, -1.f, 0.f, 0.f, 11.f / 12.f, 0.f},
-            {0.f, -1.f, -0.5f, -1.f, 0.f, 0.f, 11.f / 12.f, 1.f},
-            {0.f, -1.f,  0.5f, -1.f, 0.f, 0.f, 1.f,         1.f},
-            {0.f,  1.f,  0.5f, -1.f, 0.f, 0.f, 1.f,         0.f},
+          /* x     y     z    nx   ny   nz   u           v  */
+            {0.f, -1.f,  2.f, 1.f, 0.f, 0.f, 8.f / 12.f, 1.f},
+            {0.f,  1.f, -2.f, 1.f, 0.f, 0.f, 1.f,        0.f},
+            {0.f,  1.f,  2.f, 1.f, 0.f, 0.f, 8.f / 12.f, 0.f},
+            {0.f, -1.f,  2.f, 1.f, 0.f, 0.f, 8.f / 12.f, 1.f},
+            {0.f, -1.f, -2.f, 1.f, 0.f, 0.f, 1.f,        1.f},
+            {0.f,  1.f, -2.f, 1.f, 0.f, 0.f, 1.f,        0.f},
     };
     pb_shape3D expected_wall5_shape = {&expected_wall5_points[0],
                                        sizeof(expected_wall5_points) / sizeof(pb_vert3D),
-                                       {-3.f, 5.f, 5.5f}};
+                                       {-3.f, 5.f, -4.f}};
 
     size_t expected_wall_point_counts[] = {
             sizeof(expected_wall0_points) / sizeof(pb_vert3D),
@@ -2886,12 +2885,12 @@ START_TEST(extrude_wall_interior_windows_doors_yaxis)
 
     pb_vert3D expected_door0_points[] = {
             /* x     y     z      nx   ny   nz   u            v  */
-            {0.f, -0.65f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  1.f       },
-            {0.f,  0.65f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  7.f / 20.f},
-            {0.f,  0.65f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  7.f / 20.f},
-            {0.f, -0.65f, -1.5f, -1.f, 0.f, 0.f, 4.f / 12.f,  1.f        },
-            {0.f, -0.65f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  1.f        },
-            {0.f,  0.65f,  1.5f, -1.f, 0.f, 0.f, 7.f / 12.f,  7.f / 20.f},
+            {0.f, -0.65f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  1.f       },
+            {0.f,  0.65f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  7.f / 20.f},
+            {0.f,  0.65f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  7.f / 20.f},
+            {0.f, -0.65f,  1.5f, 1.f, 0.f, 0.f, 5.f / 12.f,  1.f       },
+            {0.f, -0.65f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  1.f       },
+            {0.f,  0.65f, -1.5f, 1.f, 0.f, 0.f, 8.f / 12.f,  7.f / 20.f},
     };
     pb_shape3D expected_door0_shape = {&expected_door0_points[0],
                                        sizeof(expected_door0_points) / sizeof(pb_vert3D),
@@ -2903,13 +2902,13 @@ START_TEST(extrude_wall_interior_windows_doors_yaxis)
     size_t expected_num_doors = sizeof(expected_doors) / sizeof(pb_shape3D*);
 
     pb_vert3D expected_window0_points[] = {
-            /* x   y       z     nx   ny   nz   u            v  */
-            {0.f, -0.25f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  5.f / 8.f},
-            {0.f,  0.25f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 3.f / 8.f},
-            {0.f,  0.25f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  3.f / 8.f},
-            {0.f, -0.25f, -1.f, -1.f, 0.f, 0.f, 9.f / 12.f,  5.f / 8.f},
-            {0.f, -0.25f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 5.f / 8.f},
-            {0.f,  0.25f,  1.f, -1.f, 0.f, 0.f, 11.f / 12.f, 3.f / 8.f},
+          /* x     y       z     nx   ny   nz   u           v  */
+            {0.f, -0.25f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 5.f / 8.f},
+            {0.f,  0.25f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 3.f / 8.f},
+            {0.f,  0.25f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 3.f / 8.f},
+            {0.f, -0.25f,  1.f, 1.f, 0.f, 0.f, 1.f / 12.f, 5.f / 8.f},
+            {0.f, -0.25f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 5.f / 8.f},
+            {0.f,  0.25f, -1.f, 1.f, 0.f, 0.f, 3.f / 12.f, 3.f / 8.f},
     };
     pb_shape3D expected_window0_shape = {&expected_window0_points[0],
                                          sizeof(expected_window0_points) / sizeof(pb_vert3D),
@@ -2931,9 +2930,9 @@ START_TEST(extrude_wall_interior_windows_doors_yaxis)
     pb_shape3D* windows;
     size_t num_windows;
 
-    pb_point2D normal = pb_line2D_get_normal(&wall_flipped);
+    pb_point2D normal = pb_line2D_get_normal(&wall);
 
-    pb_extrude_wall(&wall,
+    pb_extrude_wall(&wall_flipped,
                     &doors_in[0], num_doors_in,
                     &windows_in[0], num_windows_in,
                     &bottom_floor_centre,
@@ -3101,82 +3100,82 @@ START_TEST(extrude_wall_interior_windows_doors_xaxis)
     size_t num_windows_in = sizeof(windows_in) / sizeof(pb_wall_structure);
 
     pb_vert3D expected_wall0_points[] = {
-            /* x     y    z    nx   ny    nz   u           v  */
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f},
-            { 1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        0.f},
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 0.f,        1.f},
-            {-1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f},
+           /* x     y    z    nx   ny   nz   u           v  */
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 0.f},
+            {-1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        0.f},
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 0.f,        1.f},
+            { 1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 0.f},
     };
     pb_shape3D expected_wall0_shape = {&expected_wall0_points[0],
                                        sizeof(expected_wall0_points) / sizeof(pb_vert3D),
-                                       {4.f, 5.f, -2.f}};
+                                       {-4.f, 5.f, -2.f}};
 
     pb_vert3D expected_wall1_points[] = {
-            /* x     y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f      },
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
-            { 1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 1.f      },
-            {-1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f      },
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
+           /* x      y      z    nx   ny   nz   u           v  */
+            {-1.5f, -0.35f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 7.f / 20.f},
+            { 1.5f,  0.35f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 0.f       },
+            {-1.5f,  0.35f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 0.f       },
+            {-1.5f, -0.35f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 7.f / 20.f},
+            { 1.5f, -0.35f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 7.f / 20.f},
+            { 1.5f,  0.35f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 0.f       },
     };
     pb_shape3D expected_wall1_shape = {&expected_wall1_points[0],
                                        sizeof(expected_wall1_points) / sizeof(pb_vert3D),
-                                       {2.f, 4.375f, -2.f}};
+                                       {-1.5f, 5.65f, -2.f}};
 
     pb_vert3D expected_wall2_points[] = {
-            /* x     y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f      },
-            { 1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 0.f      },
-            { 1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            {-1.f, -0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
-            {-1.f,  0.375f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f      },
+           /* x      y    z    nx   ny   nz   u           v  */
+            {-0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 1.f},
+            { 0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f},
+            {-0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 0.f},
+            {-0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 1.f},
+            { 0.5f, -1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f},
+            { 0.5f,  1.f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f},
     };
     pb_shape3D expected_wall2_shape = {&expected_wall2_points[0],
                                        sizeof(expected_wall2_points) / sizeof(pb_vert3D),
-                                       {2.f, 5.625f, -2.f}};
+                                       {0.5f, 5.f, -2.f}};
 
     pb_vert3D expected_wall3_points[] = {
-            /* x      y    z    nx   ny    nz   u           v  */
-            { 0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f},
-            {-0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 0.f},
-            { 0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 0.f},
-            { 0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 1.f},
-            {-0.5f, -1.f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 1.f},
-            {-0.5f,  1.f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 0.f},
+           /* x     y       z    nx   ny   nz   u           v  */
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f      },
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
+            {-1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 1.f      },
+            { 1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f      },
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
     };
     pb_shape3D expected_wall3_shape = {&expected_wall3_points[0],
                                        sizeof(expected_wall3_points) / sizeof(pb_vert3D),
-                                       {0.5f, 5.f, -2.f}};
+                                       {2.f, 4.375f, -2.f}};
 
     pb_vert3D expected_wall4_points[] = {
-            /* x      y     z    nx   ny    nz   u           v  */
-            { 1.5f, -0.35f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 7.f / 20.f},
-            {-1.5f,  0.35f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 0.f       },
-            { 1.5f,  0.35f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 0.f       },
-            { 1.5f, -0.35f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 7.f / 20.f},
-            {-1.5f, -0.35f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 7.f / 20.f},
-            {-1.5f,  0.35f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 0.f       },
+           /* x     y       z    nx   ny   nz   u           v  */
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f      },
+            {-1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 0.f      },
+            {-1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            { 1.f, -0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
+            { 1.f,  0.375f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f      },
     };
     pb_shape3D expected_wall4_shape = {&expected_wall4_points[0],
                                        sizeof(expected_wall4_points) / sizeof(pb_vert3D),
-                                       {-1.5f, 5.65f, -2.f}};
+                                       {2.f, 5.625f, -2.f}};
 
     pb_vert3D expected_wall5_points[] = {
-            /* x     y    z    nx   ny    nz   u           v  */
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        0.f},
-            { 1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 0.f},
-            { 1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 1.f},
-            {-1.f, -1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        1.f},
-            {-1.f,  1.f, 0.f, 0.f, 0.f, -1.f, 1.f,        0.f},
+           /* x     y    z    nx   ny   nz   u           v  */
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        0.f},
+            {-1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 0.f},
+            {-1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 1.f},
+            { 1.f, -1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        1.f},
+            { 1.f,  1.f, 0.f, 0.f, 0.f, 1.f, 1.f,        0.f},
     };
     pb_shape3D expected_wall5_shape = {&expected_wall5_points[0],
                                        sizeof(expected_wall5_points) / sizeof(pb_vert3D),
-                                       {-4.f, 5.f, -2.f}};
+                                       {4.f, 5.f, -2.f}};
 
     size_t expected_wall_point_counts[] = {
             sizeof(expected_wall0_points) / sizeof(pb_vert3D),
@@ -3195,13 +3194,13 @@ START_TEST(extrude_wall_interior_windows_doors_xaxis)
     size_t expected_num_walls = sizeof(expected_walls) / sizeof(pb_shape3D*);
 
     pb_vert3D expected_door0_points[] = {
-            /* x      y      z    nx   ny    nz   u           v  */
-            { 1.5f, -0.65f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 1.f       },
-            {-1.5f,  0.65f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 7.f / 20.f},
-            { 1.5f,  0.65f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 7.f / 20.f},
-            { 1.5f, -0.65f, 0.f, 0.f, 0.f, -1.f, 5.f / 10.f, 1.f       },
-            {-1.5f, -0.65f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 1.f       },
-            {-1.5f,  0.65f, 0.f, 0.f, 0.f, -1.f, 8.f / 10.f, 7.f / 20.f},
+           /* x      y      z    nx   ny   nz   u           v  */
+            {-1.5f, -0.65f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 1.f       },
+            { 1.5f,  0.65f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 7.f / 20.f},
+            {-1.5f,  0.65f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 7.f / 20.f},
+            {-1.5f, -0.65f, 0.f, 0.f, 0.f, 1.f, 2.f / 10.f, 1.f       },
+            { 1.5f, -0.65f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 1.f       },
+            { 1.5f,  0.65f, 0.f, 0.f, 0.f, 1.f, 5.f / 10.f, 7.f / 20.f},
     };
     pb_shape3D expected_door0 = {&expected_door0_points[0],
                                  sizeof(expected_door0_points) / sizeof(pb_vert3D),
@@ -3216,13 +3215,13 @@ START_TEST(extrude_wall_interior_windows_doors_xaxis)
     size_t expected_num_doors = sizeof(expected_doors) / sizeof(pb_shape3D*);
 
     pb_vert3D expected_window0_points[] = {
-            /* x   y       z    nx   ny    nz   u           v  */
-            { 1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            {-1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
-            { 1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 3.f / 8.f},
-            { 1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 2.f / 10.f, 5.f / 8.f},
-            {-1.f, -0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 5.f / 8.f},
-            {-1.f,  0.25f, 0.f, 0.f, 0.f, -1.f, 4.f / 10.f, 3.f / 8.f},
+           /* x     y      z    nx   ny   nz   u           v  */
+            {-1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            { 1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
+            {-1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 3.f / 8.f},
+            {-1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 6.f / 10.f, 5.f / 8.f},
+            { 1.f, -0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 5.f / 8.f},
+            { 1.f,  0.25f, 0.f, 0.f, 0.f, 1.f, 8.f / 10.f, 3.f / 8.f},
     };
     pb_shape3D expected_window0_shape = {&expected_window0_points[0],
                                          sizeof(expected_window0_points) / sizeof(pb_vert3D),
@@ -3244,9 +3243,9 @@ START_TEST(extrude_wall_interior_windows_doors_xaxis)
     pb_shape3D* windows;
     size_t num_windows;
 
-    pb_point2D normal = pb_line2D_get_normal(&wall_flipped);
+    pb_point2D normal = pb_line2D_get_normal(&wall);
 
-    pb_extrude_wall(&wall,
+    pb_extrude_wall(&wall_flipped,
                     &doors_in[0], num_doors_in,
                     &windows_in[0], num_windows_in,
                     &bottom_floor_centre,
@@ -3410,8 +3409,8 @@ Suite *make_pb_extrusion_suite(void)
     tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_simple_yaxis);
     tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_simple_xaxis);
     tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_windows_yaxis);
-//    tcase_add_test(tc_extrude_exterior_wall, extrude_wall_exterior_windows_xaxis);
-//    tcase_add_test(tc_extrude_exterior_wall, extrude_wall_exterior_windows_doors_yaxis);
-//    tcase_add_test(tc_extrude_exterior_wall, extrude_wall_exterior_windows_doors_xaxis);
+    tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_windows_xaxis);
+    tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_windows_doors_yaxis);
+    tcase_add_test(tc_extrude_interior_wall, extrude_wall_interior_windows_doors_xaxis);
     return s;
 }
