@@ -18,7 +18,7 @@
 typedef struct {
     pb_shape3D** walls;
     size_t* wall_counts;
-    size_t num_walls;
+    size_t num_wall_lists;
 
     pb_shape3D* windows;
     size_t num_windows;
@@ -49,7 +49,7 @@ typedef struct {
 
     pb_shape3D** walls;
     size_t* wall_counts;
-
+    size_t num_wall_lists;
 
     pb_shape3D* windows;
     size_t num_windows;
@@ -246,8 +246,11 @@ PB_DECLSPEC pb_extruded_floor** PB_CALL pb_extrude_building(pb_building* buildin
                                                             void* window_extruder_param);
 
 
-PB_DECLSPEC void PB_CALL pb_extruded_room_free(pb_extruded_room* f);
+PB_DECLSPEC void PB_CALL pb_extruded_room_free(pb_extruded_room* r);
 PB_DECLSPEC void PB_CALL pb_extruded_floor_free(pb_extruded_floor* f);
+
+/* Note: This function frees the list's contents AND the list itself. */
+PB_DECLSPEC void PB_CALL pb_extruded_building_free(pb_extruded_floor** b, size_t num_floors);
 
 #ifdef __cplusplus
 }

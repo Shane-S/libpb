@@ -1,4 +1,5 @@
 #include <pb/sq_house.h>
+#include <pb/simple_extruder.h>
 #include <check.h>
 
 #ifndef _WIN32
@@ -6,6 +7,8 @@
 #include <pb/util/hashmap/hash_utils.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <pb/extrusion.h>
+#include <pb/floor_plan.h>
 
 #else
 #endif
@@ -147,6 +150,10 @@ START_TEST(sq_house_performance_test)
         /* Query performance timer */
 #endif
         pb_building* b = pb_sq_house(&hspec, room_specs);
+        pb_extruded_floor** floors = pb_extrude_building(b,
+                                                         2.f, 1.5f, 0.5f,
+                                                         pb_simple_door_extruder, pb_simple_window_extruder,
+                                                         NULL, NULL);
 
 #ifndef _WIN32
         struct timespec end;
@@ -158,6 +165,7 @@ START_TEST(sq_house_performance_test)
         /* Query performance timer */
 #endif
 
+        pb_extruded_building_free(floors, b->num_floors);
         pb_building_free(b, pb_sq_house_free_building, pb_sq_house_free_floor, pb_sq_house_free_room);
         free(b);
     }
@@ -167,11 +175,11 @@ START_TEST(sq_house_performance_test)
 }
 END_TEST
 
-Suite *make_pb_generation_suite(void) {
+Suite *make_pb_perf_suite(void) {
     Suite *s;
     TCase *tc_sq_house_performance;
 
-    s = suite_create("Squarified House creation tests");
+    s = suite_create("Squarified House performance test");
 
     tc_sq_house_performance = tcase_create("Performance test");
     suite_add_tcase(s, tc_sq_house_performance);

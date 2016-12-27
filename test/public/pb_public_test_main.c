@@ -13,6 +13,7 @@ int main(void)
 #ifdef _WIN32
 	_CrtSetDbgFlag(_CRTDBG_CHECK_ALWAYS_DF);
 #endif
+    srunner_add_suite(sr, make_pb_perf_suite());
 	srunner_set_tap(sr, "public_test_results.tap"); /* Write the test results to a TAP (Test Anything Protocol) file for test harness analysis */
     srunner_set_fork_status(sr, CK_NOFORK);
     srunner_run_all(sr, CK_ENV);

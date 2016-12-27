@@ -138,7 +138,7 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
     /* The easy case */
     if (num_doors == 0 && num_windows == 0) {
         pb_shape3D* wall_out = pb_shape3D_create(2);
-        if (!wall) {
+        if (!wall_out) {
             return -1;
         }
 
@@ -656,7 +656,7 @@ PB_DECLSPEC pb_extruded_room* PB_CALL pb_extrude_room(pb_room const* room,
         if (walls[cur_wall]) {
             /* Find the list of doors and windows for this wall, if any */
             while(cur_door < room->num_doors && room->doors[cur_door].wall < cur_wall) ++cur_door;
-            while(cur_window < room->num_windows && room->windows[cur_window].wall < cur_wall) ++ cur_door;
+            while(cur_window < room->num_windows && room->windows[cur_window].wall < cur_wall) ++ cur_window;
 
             size_t door_list_end = cur_door;
             size_t window_list_end = cur_window;
@@ -682,8 +682,8 @@ PB_DECLSPEC pb_extruded_room* PB_CALL pb_extrude_room(pb_room const* room,
 
             pb_point2D normal = pb_line2D_get_normal(&wall_normal_line);
 
-            size_t num_doors = cur_door == room->num_doors ? 0 : door_list_end - cur_door + 1;
-            size_t num_windows = cur_window == room->num_windows ? 0 : window_list_end - cur_window + 1;
+            size_t num_doors = cur_door == room->num_doors ? 0 : door_list_end - cur_door ;
+            size_t num_windows = cur_window == room->num_windows ? 0 : window_list_end - cur_window;
 
             int wall_result = pb_extrude_wall(&wall_line,
                                               num_doors ? room->doors + cur_door : NULL, num_doors,
@@ -742,7 +742,7 @@ PB_DECLSPEC pb_extruded_room* PB_CALL pb_extrude_room(pb_room const* room,
 
     out->walls = walls_out;
     out->wall_counts = wall_counts;
-    out->num_walls = room->shape.points.size;
+    out->num_wall_lists = room->shape.points.size;
     out->doors = (pb_shape3D*)doors_out.items;
     out->num_doors = doors_out.size;
     out->windows = (pb_shape3D*)windows_out.items;
@@ -806,7 +806,7 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
     int doors_init_result = f->num_doors != 0 ? pb_vector_init(&doors_out, sizeof(pb_shape3D), f->num_doors) : 0;
     int windows_init_result = f->num_windows != 0 ? pb_vector_init(&windows_out, sizeof(pb_shape3D), f->num_windows) : 0;
 
-    out = malloc(sizeof(pb_extruded_room));
+    out = malloc(sizeof(pb_extruded_floor));
     rooms_out = malloc(sizeof(pb_extruded_room*) * f->num_rooms);
     walls_out = calloc(sizeof(pb_shape3D*), f->shape.points.size);
     wall_counts = malloc(sizeof(size_t) * f->shape.points.size);
@@ -843,7 +843,7 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
     for (cur_wall = 0; cur_wall < f->shape.points.size; ++cur_wall) {
         /* Find the list of doors and windows for this wall, if any */
         while(cur_door < f->num_doors && f->doors[cur_door].wall < cur_wall) ++cur_door;
-        while(cur_window < f->num_windows && f->windows[cur_window].wall < cur_wall) ++ cur_door;
+        while(cur_window < f->num_windows && f->windows[cur_window].wall < cur_wall) ++ cur_window;
 
         size_t door_list_end = cur_door;
         size_t window_list_end = cur_window;
@@ -869,8 +869,8 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
 
         pb_point2D normal = pb_line2D_get_normal(&wall_normal_line);
 
-        size_t num_doors = cur_door == f->num_doors ? 0 : door_list_end - cur_door + 1;
-        size_t num_windows = cur_window == f->num_windows ? 0 : window_list_end - cur_window + 1;
+        size_t num_doors = cur_door == f->num_doors ? 0 : door_list_end - cur_door;
+        size_t num_windows = cur_window == f->num_windows ? 0 : window_list_end - cur_window;
 
         int wall_result = pb_extrude_wall(&wall_line,
                                           num_doors ? f->doors + cur_door : NULL, num_doors,
@@ -929,6 +929,7 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
 
     out->walls = walls_out;
     out->wall_counts = wall_counts;
+    out->num_wall_lists = f->shape.points.size;
     out->doors = (pb_shape3D*)doors_out.items;
     out->num_doors = doors_out.size;
     out->windows = (pb_shape3D*)windows_out.items;
@@ -991,6 +992,8 @@ PB_DECLSPEC pb_extruded_floor** PB_CALL pb_extrude_building(pb_building* buildin
         bottom_centre.x += bottom_floor_points[i].x;
         bottom_centre.y += bottom_floor_points[i].y;
     }
+    bottom_centre.x /= building->floors[0].shape.points.size;
+    bottom_centre.y /= building->floors[0].shape.points.size;
 
     for (i = 0; i < building->num_floors; ++i) {
         float cur_height = i * floor_height; // Could actually allow people to specify this for things like basements
@@ -1016,11 +1019,15 @@ PB_DECLSPEC pb_extruded_floor** PB_CALL pb_extrude_building(pb_building* buildin
 }
 
 PB_DECLSPEC void PB_CALL pb_extruded_room_free(pb_extruded_room* r) {
-    size_t i;
-    for (i = 0; i < r->num_walls; ++i) {
-        pb_shape3D_free(r->walls[i]);
+    size_t i, j;
+    for (i = 0; i < r->num_wall_lists; ++i) {
+        for (j = 0; j < r->wall_counts[i]; ++j) {
+            pb_shape3D_free(r->walls[i] + j);
+        }
+        free(r->walls[i]);
     }
     free(r->walls);
+    free(r->wall_counts);
 
     for (i = 0; i < r->num_doors; ++i) {
         pb_shape3D_free(r->doors + i);
@@ -1044,12 +1051,21 @@ PB_DECLSPEC void PB_CALL pb_extruded_room_free(pb_extruded_room* r) {
 }
 
 PB_DECLSPEC void PB_CALL pb_extruded_floor_free(pb_extruded_floor* f) {
-    size_t i;
+    size_t i, j;
     for (i = 0; i < f->num_rooms; ++i) {
         pb_extruded_room_free(f->rooms[i]);
         free(f->rooms[i]);
     }
     free(f->rooms);
+
+    for (i = 0; i < f->num_wall_lists; ++i) {
+        for (j = 0; j < f->wall_counts[i]; ++j) {
+            pb_shape3D_free(f->walls[i] + j);
+        }
+        free(f->walls[i]);
+    }
+    free(f->walls);
+    free(f->wall_counts);
 
     for (i = 0; i < f->num_doors; ++i) {
         pb_shape3D_free(f->doors + i);
@@ -1062,4 +1078,11 @@ PB_DECLSPEC void PB_CALL pb_extruded_floor_free(pb_extruded_floor* f) {
     free(f->windows);
 }
 
-
+PB_DECLSPEC void PB_CALL pb_extruded_building_free(pb_extruded_floor** floor_list, size_t num_floors) {
+    size_t i;
+    for (i = 0; i < num_floors; ++i) {
+        pb_extruded_floor_free(floor_list[i]);
+        free(floor_list[i]);
+    }
+    free(floor_list);
+}
