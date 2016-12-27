@@ -3510,7 +3510,123 @@ END_TEST
 
 START_TEST(extrude_floor_ceiling_ceiling_only)
 {
+    size_t i, j;
 
+    /* Inputs */
+    pb_point2D room_shape[] = {
+            {5.f, 5.f},
+            {5.f, 0.f},
+            {7.5f, 0.f},
+            {7.5f, 2.5f},
+            {10.f, 2.5f},
+            {10.f, 5.f},
+    };
+    size_t num_shape_points = 6;
+    pb_point2D bottom_floor_centre = {10.f, 5.f};
+    float floor_height = 2.f;
+    float start_height = 4.f;
+    pb_room room;
+    room.shape.points.items = &room_shape[0];
+    room.shape.points.size = 6;
+    room.shape.points.cap = 8;
+    room.shape.points.item_size = sizeof(pb_point2D);
+    room.doors = NULL;
+    room.num_doors = 0;
+    room.windows = NULL;
+    room.num_windows = 0;
+    room.data = NULL;
+    room.name = "Room";
+    room.has_floor = 0;
+    room.has_ceiling = 1;
+    room.walls.items = NULL;
+
+    pb_vert3D expected_points[] = {
+            { 0.f,  0.f,  0.f,  0.f, -1.f, 0.f, 0.5f, 0.5f},
+            { 0.f,  0.f,  2.5f, 0.f, -1.f, 0.f, 0.5f, 1.f },
+            {-2.5f, 0.f,  2.5f, 0.f, -1.f, 0.f, 1.f,  1.f },
+
+            {-2.5f, 0.f,  2.5f, 0.f, -1.f, 0.f, 1.f,  1.f },
+            {-2.5f, 0.f, -2.5f, 0.f, -1.f, 0.f, 1.f,  0.f },
+            { 0.f,  0.f,  0.f,  0.f, -1.f, 0.f, 0.5f, 0.5f},
+
+            {-2.5f, 0.f, -2.5f, 0.f, -1.f, 0.f, 1.f,  0.f },
+            { 2.5f, 0.f,  0.f,  0.f, -1.f, 0.f, 0.f,  0.5f},
+            { 0.f,  0.f,  0.f,  0.f, -1.f, 0.f, 0.5f, 0.5f},
+
+            {-2.5f, 0.f, -2.5f, 0.f, -1.f, 0.f, 1.f,  0.f },
+            { 2.5f, 0.f, -2.5f, 0.f, -1.f, 0.f, 0.f,  0.f },
+            { 2.5f, 0.f,  0.f,  0.f, -1.f, 0.f, 0.f,  0.5f},
+    };
+
+    size_t expected_point_counts[] = {
+            sizeof(expected_points) / sizeof(pb_vert3D)
+    };
+
+    pb_shape3D expected_ceiling_shape ={&expected_points[0], expected_point_counts[0],
+                                      {-2.5f, 6.f, 2.5f}};
+    pb_shape3D* expected_ceiling_shapes[] = {
+            &expected_ceiling_shape,
+    };
+    size_t expected_num_ceiling_shapes = sizeof(expected_ceiling_shapes) / sizeof(pb_shape3D*);
+
+    pb_shape3D* floor_shapes_out;
+    size_t num_floor_shapes_out;
+
+    pb_shape3D* ceiling_shapes_out;
+    size_t num_ceiling_shapes_out;
+
+    pb_extrude_room_floor_ceiling(&room, &bottom_floor_centre, start_height, floor_height,
+                                  &floor_shapes_out, &num_floor_shapes_out,
+                                  &ceiling_shapes_out, &num_ceiling_shapes_out);
+
+    ck_assert_msg(num_ceiling_shapes_out == expected_num_ceiling_shapes, "Expected num_ceiling_shapes == %lu, was %lu",
+                  expected_num_ceiling_shapes, num_ceiling_shapes_out);
+    for (i = 0; i < expected_num_ceiling_shapes; ++i) {
+        ck_assert_msg(ceiling_shapes_out[i].num_tris == expected_point_counts[i] / 3,
+                      "ceiling shape %lu: expected num_tris == %lu, was %lu",
+                      i, expected_point_counts[i], ceiling_shapes_out[i].num_tris);
+
+        ck_assert_msg(assert_close_enough(ceiling_shapes_out[i].pos.x, expected_ceiling_shapes[i]->pos.x, 5) &&
+                      assert_close_enough(ceiling_shapes_out[i].pos.y, expected_ceiling_shapes[i]->pos.y, 5) &&
+                      assert_close_enough(ceiling_shapes_out[i].pos.z, expected_ceiling_shapes[i]->pos.z, 5),
+                      "ceiling shape %ld: expected pos (%.3f, %.3f, %.3f), was (%.3f, %.3f, %.3f)",
+                      i, expected_ceiling_shapes[i]->pos.x, expected_ceiling_shapes[i]->pos.y, expected_ceiling_shapes[i]->pos.z,
+                      ceiling_shapes_out[i].pos.x, ceiling_shapes_out[i].pos.y, ceiling_shapes_out[i].pos.z);
+
+        pb_vert3D* verts = ceiling_shapes_out[i].tris;
+        for (j = 0; j < ceiling_shapes_out[i].num_tris * 3; ++j) {
+            pb_vert3D* vert = verts + j;
+            pb_vert3D* expected_vert = expected_ceiling_shapes[i]->tris + j;
+
+            /* Back to using assert_close_enough because my other float comparison function chokes in some situations */
+            ck_assert_msg(assert_close_enough(vert->x, expected_vert->x, 5) &&
+                          assert_close_enough(vert->y, expected_vert->y, 5) &&
+                          assert_close_enough(vert->z, expected_vert->z, 5),
+                          "ceiling shape %lu vert %lu: expected position (%.3f, %.3f, %.3f), was (%.3f, %.3f, %.3f)",
+                          i, j, expected_vert->x, expected_vert->y, expected_vert->z, vert->x, vert->y, vert->z);
+
+            ck_assert_msg(assert_close_enough(vert->nx, expected_vert->nx, 5) &&
+                          assert_close_enough(vert->ny, expected_vert->ny, 5) &&
+                          assert_close_enough(vert->nz, expected_vert->nz, 5),
+                          "ceiling shape %lu vert %lu: expected normal (%.3f, %.3f, %.3f), was (%.3f, %.3f, %.3f)",
+                          i, j, expected_vert->nx, expected_vert->ny, expected_vert->nz, vert->nx, vert->ny, vert->nz);
+
+            ck_assert_msg(assert_close_enough(vert->u, expected_vert->u, 5) &&
+                          assert_close_enough(vert->v, expected_vert->v, 5),
+                          "ceiling shape %lu vert %lu: expected UVs (%.3f, %.3f), was (%.3f, %.3f)",
+                          i, j, expected_vert->u, expected_vert->v, vert->u, vert->v);
+        }
+    }
+
+    for (i = 0; i < num_floor_shapes_out; ++i) {
+        pb_shape3D_free(floor_shapes_out + i);
+    }
+    free(floor_shapes_out);
+
+    for(i = 0; i < num_ceiling_shapes_out; ++i) {
+        pb_shape3D_free(ceiling_shapes_out + i);
+    }
+    free(ceiling_shapes_out);
 }
 END_TEST
 
@@ -3545,5 +3661,6 @@ Suite *make_pb_extrusion_suite(void)
     tc_extrude_floor_ceiling = tcase_create("Floor and ceiling extrusion tests");
     suite_add_tcase(s, tc_extrude_floor_ceiling);
     tcase_add_test(tc_extrude_floor_ceiling, extrude_floor_ceiling_floor_only);
+    tcase_add_test(tc_extrude_floor_ceiling, extrude_floor_ceiling_ceiling_only);
     return s;
 }

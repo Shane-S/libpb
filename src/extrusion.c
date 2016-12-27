@@ -553,10 +553,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_room_floor_ceiling(pb_room const* room,
                 ceiling_shape->tris[ceil_idx].y = 0.f;
                 ceiling_shape->tris[ceil_idx].z = room_centre.y - room_points[idx].y;
                 ceiling_shape->tris[ceil_idx].nx = 0.f;
-                ceiling_shape->tris[ceil_idx].ny = 1.f;
+                ceiling_shape->tris[ceil_idx].ny = -1.f;
                 ceiling_shape->tris[ceil_idx].nz = 0.f;
-                floor_shape->tris[i].u = (room_points[idx].x - start.x) / dist.x;
-                floor_shape->tris[i].v = (room_points[idx].y - start.y) / dist.y;
+                ceiling_shape->tris[ceil_idx].u = (room_points[idx].x - start.x) / dist.x;
+                ceiling_shape->tris[ceil_idx].v = (room_points[idx].y - start.y) / dist.y;
             }
 
             ceiling_shape->pos.x = room_centre.x - bottom_floor_centre->x;
