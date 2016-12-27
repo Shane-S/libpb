@@ -374,6 +374,9 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
             memcpy(wall_list + cur_wall_count, door_walls, sizeof(pb_shape3D) * door_wall_count);
             memcpy(door_list + cur_door_shape_count, door_shapes, sizeof(pb_shape3D) * door_shape_count);
 
+            free(door_walls);
+            free(door_shapes);
+
             cur_door_shape_count += door_shape_count;
             cur_wall_count += door_wall_count;
             cur_door++;
@@ -413,6 +416,9 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
 
             memcpy(wall_list + cur_wall_count, window_walls, sizeof(pb_shape3D) * window_wall_count);
             memcpy(window_list + cur_window_shape_count, window_shapes, sizeof(pb_shape3D) * window_shape_count);
+
+            free(window_walls);
+            free(window_shapes);
 
             cur_window_shape_count += window_shape_count;
             cur_wall_count += window_wall_count;
@@ -569,6 +575,8 @@ PB_DECLSPEC int PB_CALL pb_extrude_room_floor_ceiling(pb_room const* room,
 
         *ceiling_shapes_out = ceiling_shape;
         *num_ceiling_shapes_out = (size_t)room->has_ceiling;
+
+        free(floor_indices);
 
     } else {
         *floor_shapes_out = NULL;
@@ -781,7 +789,185 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
                                                          pb_wall_structure_extruder const* window_extruder,
                                                          void* door_extruder_param,
                                                          void* window_extruder_param) {
+    pb_extruded_floor* out = NULL;
+    pb_extruded_room** rooms_out = NULL;
+    pb_shape3D** walls_out = NULL;
+    size_t* wall_counts = NULL;
+
+    pb_vector doors_out;
+    pb_vector windows_out;
+
+    doors_out.items = NULL;
+    doors_out.size = 0;
+
+    windows_out.items = NULL;
+    windows_out.size = 0;
+
+    int doors_init_result = f->num_doors != 0 ? pb_vector_init(&doors_out, sizeof(pb_shape3D), f->num_doors) : 0;
+    int windows_init_result = f->num_windows != 0 ? pb_vector_init(&windows_out, sizeof(pb_shape3D), f->num_windows) : 0;
+
+    out = malloc(sizeof(pb_extruded_room));
+    rooms_out = malloc(sizeof(pb_extruded_room*) * f->num_rooms);
+    walls_out = calloc(sizeof(pb_shape3D*), f->shape.points.size);
+    wall_counts = malloc(sizeof(size_t) * f->shape.points.size);
+
+    if (!out || !rooms_out || !walls_out || !wall_counts ||
+            (f->num_doors != 0 && doors_init_result == -1) ||
+            (f->num_windows != 0 && windows_init_result == -1)) {
+        free(out);
+        free(rooms_out);
+        free(walls_out);
+        free(wall_counts);
+        pb_vector_free(&doors_out);
+        pb_vector_free(&windows_out);
+        return NULL;
+    }
+
+    if (f->num_doors != 0) {
+        qsort(f->doors, f->num_doors, sizeof(pb_wall_structure), wall_structure_cmp);
+    }
+
+    if (f->num_windows != 0) {
+        qsort(f->windows, f->num_windows, sizeof(pb_wall_structure), wall_structure_cmp);
+    }
+
+    pb_point2D* room_points = (pb_point2D*)f->shape.points.items;
+    size_t cur_wall;
+    size_t cur_door = 0;
+    size_t cur_window = 0;
+
+    /* We use this when freeing, so it needs to be initialised to 0 to avoid accidentally freeing uninitialised rooms */
+    /* Would be nicer to put it by the actual loop that uses it though */
+    size_t cur_room = 0;
+
+    for (cur_wall = 0; cur_wall < f->shape.points.size; ++cur_wall) {
+        /* Find the list of doors and windows for this wall, if any */
+        while(cur_door < f->num_doors && f->doors[cur_door].wall < cur_wall) ++cur_door;
+        while(cur_window < f->num_windows && f->windows[cur_window].wall < cur_wall) ++ cur_door;
+
+        size_t door_list_end = cur_door;
+        size_t window_list_end = cur_window;
+
+        if (cur_door < f->num_doors && f->doors[cur_door].wall == cur_wall) {
+            while(door_list_end < f->num_doors && f->doors[door_list_end].wall == cur_wall) ++door_list_end;
+        }
+        if (cur_window < f->num_windows && f->windows[cur_window].wall == cur_wall) {
+            while(window_list_end < f->num_windows && f->windows[window_list_end].wall == cur_wall) ++window_list_end;
+        }
+
+        pb_shape3D* door_shapes;
+        size_t num_door_shapes;
+        pb_shape3D* window_shapes;
+        size_t num_window_shapes;
+
+        pb_point2D* point0 = room_points + cur_wall;
+        pb_point2D* point1 = room_points + ((cur_wall + 1) % f->shape.points.size);
+
+        /* The wall's start and end have to be flipped to correctly generate UVs */
+        pb_line2D wall_line = {*point0, *point1};
+        pb_line2D wall_normal_line = {*point1, *point0};
+
+        pb_point2D normal = pb_line2D_get_normal(&wall_normal_line);
+
+        size_t num_doors = cur_door == f->num_doors ? 0 : door_list_end - cur_door + 1;
+        size_t num_windows = cur_window == f->num_windows ? 0 : window_list_end - cur_window + 1;
+
+        int wall_result = pb_extrude_wall(&wall_line,
+                                          num_doors ? f->doors + cur_door : NULL, num_doors,
+                                          num_windows ? f->windows + cur_window : NULL, num_windows,
+                                          bottom_floor_centre, &normal,
+                                          start_height, floor_height, door_height, window_height,
+                                          door_extruder, window_extruder, door_extruder_param, window_extruder_param,
+                                          walls_out + cur_wall, wall_counts + cur_wall,
+                                          &door_shapes, &num_door_shapes,
+                                          &window_shapes, &num_window_shapes);
+
+        if (wall_result == -1) {
+            goto err_return;
+        }
+
+        /* Copy the doors and windows to our own arrays and free the other ones. Probably should just pass
+         * an already allocated array to push on to like how walls are passed... */
+        int push_back_err = 0;
+        size_t j;
+        for (j = 0; j < num_door_shapes; ++j) {
+            if (!push_back_err && pb_vector_push_back(&doors_out, door_shapes + j) == -1) {
+                push_back_err = 1;
+            }
+            if (push_back_err) {
+                pb_shape3D_free(door_shapes + j);
+            }
+        }
+        free(door_shapes);
+
+        for (j = 0; j < num_window_shapes; ++j) {
+            if (!push_back_err && pb_vector_push_back(&windows_out, window_shapes + j) == -1) {
+                push_back_err = 1;
+            }
+            if (push_back_err) {
+                pb_shape3D_free(window_shapes + j);
+            }
+        }
+        free(window_shapes);
+
+        if (push_back_err) {
+            goto err_return;
+        }
+    }
+
+    for (cur_room = 0; cur_room < f->num_rooms; ++cur_room) {
+        pb_extruded_room* room_out = pb_extrude_room(f->rooms + cur_room,
+                                                     bottom_floor_centre,
+                                                     start_height, floor_height, door_height, window_height,
+                                                     door_extruder, window_extruder,
+                                                     door_extruder_param, window_extruder_param);
+        if (!room_out) {
+            goto err_return;
+        }
+        rooms_out[cur_room] = room_out;
+    }
+
+    out->walls = walls_out;
+    out->wall_counts = wall_counts;
+    out->doors = (pb_shape3D*)doors_out.items;
+    out->num_doors = doors_out.size;
+    out->windows = (pb_shape3D*)windows_out.items;
+    out->num_windows = windows_out.size;
+    out->rooms = rooms_out;
+    out->num_rooms = f->num_rooms;
+
+    return out;
+
+err_return:
+{
+    size_t i, j;
+    for (i = 0; i < cur_wall; ++i) {
+        for (j = 0; j < wall_counts[i]; ++j) {
+            pb_shape3D_free(walls_out[i] + j);
+        }
+        free(walls_out[i]);
+    }
+    free(walls_out);
+
+    pb_shape3D *door_shapes = (pb_shape3D *) doors_out.items;
+    for (i = 0; i < doors_out.size; ++i) {
+        pb_shape3D_free(door_shapes + i);
+    }
+    pb_vector_free(&doors_out);
+
+    pb_shape3D *window_shapes = (pb_shape3D *) windows_out.items;
+    for (i = 0; i < windows_out.size; ++i) {
+        pb_shape3D_free(window_shapes + i);
+    }
+    pb_vector_free(&windows_out);
+
+    for (i = 0; i < cur_room; ++i) {
+        pb_extruded_room_free(rooms_out[i]);
+    }
+    free(rooms_out);
+
     return NULL;
+}
 }
 
 PB_DECLSPEC pb_extruded_floor** PB_CALL pb_extrude_building(pb_building* building,

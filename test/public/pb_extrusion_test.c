@@ -203,14 +203,17 @@ START_TEST(extrude_wall_exterior_simple_yaxis)
     for (i = 0; i < num_walls; ++i) {
         pb_shape3D_free(walls + i);
     }
+    free(walls);
 
     for (i = 0; i < num_doors; ++i) {
         pb_shape3D_free(doors + i);
     }
+    free(doors);
 
     for (i = 0; i < num_windows; ++i) {
         pb_shape3D_free(windows + i);
     }
+    free(windows);
 }
 END_TEST
 
@@ -407,14 +410,17 @@ START_TEST(extrude_wall_exterior_simple_xaxis)
     for (i = 0; i < num_walls; ++i) {
         pb_shape3D_free(walls + i);
     }
+    free(walls);
 
     for (i = 0; i < num_doors; ++i) {
         pb_shape3D_free(doors + i);
     }
+    free(doors);
 
     for (i = 0; i < num_windows; ++i) {
         pb_shape3D_free(windows + i);
     }
+    free(windows);
 }
 END_TEST
 
@@ -1891,14 +1897,17 @@ START_TEST(extrude_wall_interior_simple_yaxis)
     for (i = 0; i < num_walls; ++i) {
         pb_shape3D_free(walls + i);
     }
+    free(walls);
 
     for (i = 0; i < num_doors; ++i) {
         pb_shape3D_free(doors + i);
     }
+    free(doors);
 
     for (i = 0; i < num_windows; ++i) {
         pb_shape3D_free(windows + i);
     }
+    free(windows);
 }
 END_TEST
 
@@ -2095,14 +2104,17 @@ START_TEST(extrude_wall_interior_simple_xaxis)
     for (i = 0; i < num_walls; ++i) {
         pb_shape3D_free(walls + i);
     }
+    free(walls);
 
     for (i = 0; i < num_doors; ++i) {
         pb_shape3D_free(doors + i);
     }
+    free(doors);
 
     for (i = 0; i < num_windows; ++i) {
         pb_shape3D_free(windows + i);
     }
+    free(windows);
 }
 END_TEST
 
@@ -3632,7 +3644,6 @@ END_TEST
 
 Suite *make_pb_extrusion_suite(void)
 {
-
     Suite* s;
     TCase* tc_extrude_exterior_wall;
     TCase* tc_extrude_interior_wall;
