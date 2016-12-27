@@ -26,8 +26,11 @@ typedef struct {
     pb_shape3D* doors;
     size_t num_doors;
 
-    pb_shape3D* ground;
+    pb_shape3D* floor;
+    size_t num_floor_shapes;
+
     pb_shape3D* ceiling;
+    size_t num_ceiling_shapes;
 } pb_extruded_room;
 
 /**
@@ -145,6 +148,26 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
                                         pb_shape3D** walls_out, size_t* num_walls_out,
                                         pb_shape3D** doors_out, size_t* num_doors_out,
                                         pb_shape3D** windows_out, size_t* num_windows_out);
+
+/**
+ * Extrudes the floor and ceiling for the given room.
+ *
+ * @param room                   The room for which the floor and ceiling should be extruded.
+ * @param bottom_floor_centre    The bottom floor's centre point.
+ * @param start_height           The height at which this floor starts.
+ * @param floor_height           The height of the current floor (in the house, not the room's floor).
+ * @param floor_shapes_out       The list of shapes making up this room's floor. NULL if there is no floor.
+ * @param num_floor_shapes_out   The number of shapes in the floor_shapes list.
+ * @param ceiling_shapes_out     The list of shapes making up this room's ceiling. NULL if there is no ceiling.
+ * @param num_ceiling_shapes_out The number of shapes in the ceiling_shapes list.
+ * @return 0 on success, -1 on failure (out of memory). On failure, anything allocated in this function will have been
+ *         freed, and the out params may or may not contain garbage.
+ */
+PB_DECLSPEC int PB_CALL pb_extrude_room_floor_ceiling(pb_room const* room,
+                                                      pb_point2D const* bottom_floor_centre,
+                                                      float start_height, float floor_height,
+                                                      pb_shape3D** floor_shapes_out, size_t* num_floor_shapes_out,
+                                                      pb_shape3D** ceiling_shapes_out, size_t* num_ceiling_shapes_out);
 
 /**
  * Extrudes a room to a set of 3D shapes.

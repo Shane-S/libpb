@@ -6,6 +6,8 @@
 #include <pb/util/geom/shape_utils.h>
 #include <pb/util/geom/line_utils.h>
 #include <string.h>
+#include <pb/util/geom/triangulate.h>
+#include <pb/util/geom/rect_utils.h>
 
 /* Assumes that the points are actually on the line, and thus that the t values
  * for x and y are interchangeable (unless one of them is INFINITY). */
@@ -465,6 +467,120 @@ err_return:
     return -1;
 }
 
+PB_DECLSPEC int PB_CALL pb_extrude_room_floor_ceiling(pb_room const* room,
+                                                      pb_point2D const* bottom_floor_centre,
+                                                      float start_height, float floor_height,
+                                                      pb_shape3D** floor_shapes_out, size_t* num_floor_shapes_out,
+                                                      pb_shape3D** ceiling_shapes_out, size_t* num_ceiling_shapes_out) {
+    if (room->has_floor || room->has_ceiling) {
+        pb_point2D const* room_points = (pb_point2D*)room->shape.points.items;
+
+        size_t* floor_indices = pb_triangulate(&room->shape);
+        if (!floor_indices) {
+            return -1;
+        }
+
+        size_t num_tris = pb_shape2D_get_num_tris(&room->shape);
+        size_t num_verts = num_tris * 3;
+
+        pb_shape3D* floor_shape = NULL;
+        pb_shape3D* ceiling_shape = NULL;
+
+        if (room->has_floor) {
+            floor_shape = pb_shape3D_create((unsigned int)num_tris);
+        }
+
+        if (room->has_ceiling) {
+            ceiling_shape = pb_shape3D_create((unsigned int)num_tris);
+        }
+
+        if ((room->has_floor && floor_shape == NULL) || (room->has_ceiling && ceiling_shape == NULL)) {
+            free(floor_indices);
+            if (floor_shape) {
+                pb_shape3D_free(floor_shape);
+                free(floor_shape);
+            }
+            if (ceiling_shape) {
+                pb_shape3D_free(ceiling_shape);
+                free(ceiling_shape);
+            }
+            return -1;
+        }
+
+        pb_rect room_bounding;
+        pb_shape2D_get_bounding_rect(&room->shape, &room_bounding);
+
+        // Get the room's centre point so that we can offset things properly
+        size_t i;
+        pb_point2D room_centre = {0.f, 0.f};
+        for (i = 0; i < room->shape.points.size; ++i) {
+            room_centre.x += room_points[i].x;
+            room_centre.y += room_points[i].y;
+        }
+        room_centre.x /= room->shape.points.size;
+        room_centre.y /= room->shape.points.size;
+
+        if (room->has_floor) {
+            pb_point2D start = {room_bounding.bottom_left.x, room_bounding.bottom_left.y + room_bounding.h};
+            pb_point2D dist = {room_bounding.w, room_bounding.h * -1.f};
+
+            for (i = 0; i < num_verts; ++i) {
+                size_t idx = floor_indices[i];
+                floor_shape->tris[i].x = room_points[idx].x - room_centre.x;
+                floor_shape->tris[i].y = 0.f;
+                floor_shape->tris[i].z = room_centre.y - room_points[idx].y;
+                floor_shape->tris[i].nx = 0.f;
+                floor_shape->tris[i].ny = 1.f;
+                floor_shape->tris[i].nz = 0.f;
+                floor_shape->tris[i].u = (room_points[idx].x - start.x) / dist.x;
+                floor_shape->tris[i].v = (room_points[idx].y - start.y) / dist.y;
+            }
+
+            floor_shape->pos.x = room_centre.x - bottom_floor_centre->x;
+            floor_shape->pos.y = start_height;
+            floor_shape->pos.z = bottom_floor_centre->y - room_centre.y;
+        }
+
+        if (room->has_ceiling) {
+            pb_point2D start = {room_bounding.bottom_left.x + room_bounding.w,
+                                room_bounding.bottom_left.y + room_bounding.h};
+            pb_point2D dist = {room_bounding.w * -1.f, room_bounding.h * -1.f};
+
+            for (i = num_verts; i > 0; --i) {
+                size_t idx = floor_indices[i - 1];
+                size_t ceil_idx = num_verts - i;
+                ceiling_shape->tris[ceil_idx].x = room_points[idx].x - room_centre.x;
+                ceiling_shape->tris[ceil_idx].y = 0.f;
+                ceiling_shape->tris[ceil_idx].z = room_centre.y - room_points[idx].y;
+                ceiling_shape->tris[ceil_idx].nx = 0.f;
+                ceiling_shape->tris[ceil_idx].ny = 1.f;
+                ceiling_shape->tris[ceil_idx].nz = 0.f;
+                floor_shape->tris[i].u = (room_points[idx].x - start.x) / dist.x;
+                floor_shape->tris[i].v = (room_points[idx].y - start.y) / dist.y;
+            }
+
+            ceiling_shape->pos.x = room_centre.x - bottom_floor_centre->x;
+            ceiling_shape->pos.y = start_height + floor_height;
+            ceiling_shape->pos.z = bottom_floor_centre->y - room_centre.y;
+        }
+
+        *floor_shapes_out = floor_shape;
+        *num_floor_shapes_out = (size_t)room->has_floor;
+
+        *ceiling_shapes_out = ceiling_shape;
+        *num_ceiling_shapes_out = (size_t)room->has_ceiling;
+
+    } else {
+        *floor_shapes_out = NULL;
+        *num_floor_shapes_out = 0;
+
+        *ceiling_shapes_out = NULL;
+        *num_ceiling_shapes_out = 0;
+    }
+
+    return 0;
+}
+
 static int wall_structure_cmp(void const* s1, void const* s2) {
     pb_wall_structure* s1_struct = (pb_wall_structure*)s1;
     pb_wall_structure* s2_struct = (pb_wall_structure*)s2;
@@ -609,23 +725,12 @@ PB_DECLSPEC pb_extruded_room* PB_CALL pb_extrude_room(pb_room const* room,
         }
     }
 
-    /* Once that's done, and assuming it didn't fail */
-    /* If there's a floor, allocate a shape with num_tris = get_num_tris */
-    /* Triangulate it using ear clipping */
-    /* Copy the vertices into the correct positions */
-    /* Get the shape's bounding rectangle */
-    /* Loop over the shape's points and get the centre point */
-    /* For each vertex in the new shape */
-    /* Calculate its relation to the bottom-right corner of the rectangle and assign that as the UV */
-    /* Assign (0, 1, 0) as the normal */
-    /* Assign x = x - centre.x */
-    /* Assign y = centre.y - y */
-
-    /* If there's a ceiling */
-    /* Allocate a shape with the same number of tris */
-    /* Copy the whole set of triangles */
-    /* For each triangle, switch the first and last vertices */
-    /* TODO: Figure out if UVs also need to be adjusted when doing this */
+    if (pb_extrude_room_floor_ceiling(room,
+                                      bottom_floor_centre, start_height, floor_height,
+                                      &out->floor, &out->num_floor_shapes,
+                                      &out->ceiling, &out->num_ceiling_shapes) == -1) {
+        goto err_return;
+    }
 
     out->walls = walls_out;
     out->wall_counts = wall_counts;
@@ -660,8 +765,8 @@ err_return:
     }
     pb_vector_free(&windows_out);
 
-    /* Free the ceiling and ground */
-
+    /* Don't need to free the ceiling and ground - they're done after all other operations that might fail
+     * and have already been freed by this point */
     return NULL;
 };
 }
@@ -724,7 +829,7 @@ PB_DECLSPEC pb_extruded_floor** PB_CALL pb_extrude_building(pb_building* buildin
     }
 }
 
-PB_DECLSPEC void pb_extruded_room_free(pb_extruded_room* r) {
+PB_DECLSPEC void PB_CALL pb_extruded_room_free(pb_extruded_room* r) {
     size_t i;
     for (i = 0; i < r->num_walls; ++i) {
         pb_shape3D_free(r->walls[i]);
@@ -740,9 +845,19 @@ PB_DECLSPEC void pb_extruded_room_free(pb_extruded_room* r) {
         pb_shape3D_free(r->windows + i);
     }
     free(r->windows);
+
+    for (i = 0; i < r->num_floor_shapes; ++i) {
+        pb_shape3D_free(r->floor + i);
+    }
+    free(r->floor);
+
+    for (i = 0; i < r->num_ceiling_shapes; ++i) {
+        pb_shape3D_free(r->ceiling + i);
+    }
+    free(r->ceiling);
 }
 
-PB_DECLSPEC void pb_extruded_floor_free(pb_extruded_floor* f) {
+PB_DECLSPEC void PB_CALL pb_extruded_floor_free(pb_extruded_floor* f) {
     size_t i;
     for (i = 0; i < f->num_rooms; ++i) {
         pb_extruded_room_free(f->rooms[i]);
