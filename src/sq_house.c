@@ -24,6 +24,36 @@ PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec,
 
     /* A single room in the house - just place doors + windows and exit */
     if (b->num_floors == 1 && b->floors[0].num_rooms == 1) {
+        pb_room* first_room = b->floors[0].rooms;
+
+        first_room->shape.points.items = NULL;
+        first_room->walls.items = NULL;
+
+        if (pb_rect_to_pb_shape2D(floor_rects, &b->floors[0].rooms[0].shape) == -1 ||
+                pb_vector_init(&b->floors[0].rooms[0].walls, sizeof(int), 4) == -1) {
+            
+            pb_shape2D_free(&b->floors[0].rooms[0].shape);
+            pb_vector_free(&b->floors[0].rooms[0].walls);
+            free(b->floors[0].rooms[0].doors);
+
+            pb_shape2D_free(&b->floors[0].shape);
+            
+            free(b);
+            free(floor_rects);
+            return NULL;
+        }
+        int* r0_walls = (int*)first_room->walls.items;
+        r0_walls[0] = 1;
+        r0_walls[1] = 1;
+        r0_walls[2] = 1;
+        r0_walls[3] = 1;
+        first_room->walls.size = 4;
+
+        first_room->has_ceiling = 1;
+        first_room->has_floor = 1;
+        first_room->name = room_list[0];
+        first_room->data = NULL;
+
         if (pb_sq_house_place_doors(b->floors, house_spec, NULL, 1) == -1) {
             pb_shape2D_free(&b->floors[0].rooms[0].shape);
             pb_vector_free(&b->floors[0].rooms[0].walls);
@@ -33,6 +63,7 @@ PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec,
             free(b->floors[0].doors);
 
             free(b);
+            free(floor_rects);
             return NULL;
         } else if (pb_sq_house_place_windows(b->floors, house_spec, 1) == -1) {
             pb_shape2D_free(&b->floors[0].rooms[0].shape);
@@ -45,9 +76,11 @@ PB_DECLSPEC pb_building* PB_CALL pb_sq_house(pb_sq_house_house_spec* house_spec,
             free(b->floors[0].windows);
 
             free(b);
+            free(floor_rects);
             return NULL;
         }
 
+        free(floor_rects);
         return b;
     }
 
