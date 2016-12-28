@@ -4,9 +4,7 @@ Building libpb
 *   Install CMake (at least version 3.0)
 *   Download the project
 *   Create a directory to contain the build files
-*   Run CMake in that directory, pointing to libpb. E.g. from command line, run
-    cmake <libpb directory> -G"Visual Studio 14 2015"
-    to generate build files for Visual Studio 2015.
+*   Run CMake in that directory, pointing to libpb. E.g. from command line, run cmake &lt;libpb directory&gt; -G"Visual Studio 14 2015" to generate build files for Visual Studio 2015.
 *   Run the install command (in Visual Studio, the INSTALL target; for Make, sudo make install). You should
     now be able to use this from other projects using find_package(libpb), which will add the pb and pb_util
     targets to your project.
