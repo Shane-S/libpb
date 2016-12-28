@@ -3,27 +3,31 @@
 
 /* Stolen from SDL2 (and modified to check for _WIN32). Defines exports and calling convention for functions in the library. */
 #ifndef PB_DECLSPEC
-# if defined(_WIN32) || defined(__WINRT__)
-#   ifdef __BORLANDC__
-#     ifdef BUILD_LIBPB
-#       define PB_DECLSPEC
-#     else
-#       define PB_DECLSPEC    __declspec(dllimport)
-#     endif
-#  else
-#    ifdef pb_EXPORTS
-#      define PB_DECLSPEC __declspec(dllexport)
+#  if PB_BUILD_SHARED_LIBS
+#    if defined(_WIN32) || defined(__WINRT__)
+#      ifdef __BORLANDC__
+#        ifdef BUILD_LIBPB
+#          define PB_DECLSPEC
+#        else
+#          define PB_DECLSPEC    __declspec(dllimport)
+#        endif
+#      else
+#        ifdef pb_EXPORTS
+#          define PB_DECLSPEC __declspec(dllexport)
+#        else
+#          define PB_DECLSPEC __declspec(dllimport)
+#        endif
+#      endif
 #    else
-#      define PB_DECLSPEC __declspec(dllimport)
+#      if defined(__GNUC__) && __GNUC__ >= 4
+#        define PB_DECLSPEC __attribute__ ((visibility("default")))
+#      else
+#        define PB_DECLSPEC
+#      endif
 #    endif
-#  endif
-# else
-#  if defined(__GNUC__) && __GNUC__ >= 4
-#   define PB_DECLSPEC __attribute__ ((visibility("default")))
 #  else
-#   define PB_DECLSPEC
+#    define PB_DECLSPEC
 #  endif
-# endif
 #endif
 
 /* Use the C calling convention */

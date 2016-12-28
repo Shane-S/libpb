@@ -3,6 +3,10 @@
 #include <pb/util/geom/types.h>
 #include <stddef.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Returns the number of triangles that the triangulation of
  * shape will contain.
@@ -42,3 +46,7 @@ PB_UTIL_DECLSPEC size_t* PB_UTIL_CALL pb_triangulate(pb_shape2D const* shape);
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_tri_contains_point(pb_point2D* const t0, pb_point2D* const t1,
                                                         pb_point2D* const t2, pb_point2D* const p);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,16 +1,18 @@
 #include <pb/sq_house.h>
+#include <pb/floor_plan.h>
+#include <pb/extrusion.h>
 #include <pb/simple_extruder.h>
+#include <pb/util/hashmap/hash_utils.h>
+
+#include "../test_util.h"
 #include <check.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifndef _WIN32
 #include <time.h>
-#include <pb/util/hashmap/hash_utils.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <pb/extrusion.h>
-#include <pb/floor_plan.h>
-
 #else
+#include <Windows.h>
 #endif
 
 START_TEST(sq_house_performance_test)
@@ -140,14 +142,20 @@ START_TEST(sq_house_performance_test)
     hspec.width = 15.f;
     hspec.height = 10.f;
 
-    size_t const iters = 10000;
+#ifdef _WIN32
+    LARGE_INTEGER freq;
+    QueryPerformanceFrequency(&freq);
+#endif
+
+    size_t const iters = 300;
     float ms_sum = 0.f;
     for (i = 0; i < iters; ++i) {
 #ifndef _WIN32
         struct timespec start;
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
 #else
-        /* Query performance timer */
+        LARGE_INTEGER start;
+        QueryPerformanceCounter(&start);
 #endif
         pb_building* b = pb_sq_house(&hspec, room_specs);
         pb_extruded_floor** floors = pb_extrude_building(b,
@@ -162,7 +170,13 @@ START_TEST(sq_house_performance_test)
         struct timespec diff = {end.tv_sec - start.tv_sec, end.tv_nsec - start.tv_nsec};
         ms_sum += (diff.tv_sec * 1000.f) + (diff.tv_nsec / 1000000.f);
 #else
-        /* Query performance timer */
+        LARGE_INTEGER end;
+        QueryPerformanceCounter(&end);
+
+        float diff = end.QuadPart - start.QuadPart;
+        diff /= freq.QuadPart;
+
+        ms_sum += diff * 1000;
 #endif
 
         pb_extruded_building_free(floors, b->num_floors);

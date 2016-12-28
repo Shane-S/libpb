@@ -4,7 +4,7 @@
 /* Check seems to link against libcompat, but it doesn't provide a replacement for pid_t 
  * outside of libcompat.h */
 #ifdef _MSC_VER
-typedef int pid_t;
+#define pid_t int
 #endif
 
 #include <check.h>

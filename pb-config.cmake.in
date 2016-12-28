@@ -1,0 +1,20 @@
+# Windows: install to <prefix>/CMake
+# Linux/Mac: install to <prefix>/share/cmake
+
+add_library(pb @PB_LIB_TYPE@ IMPORTED)
+set_target_properties(pb PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "@PB_INSTALLED_INCLUDE_PATH@")
+set_target_properties(pb PROPERTIES IMPORTED_LOCATION "@PB_INSTALL_PATH@")
+
+add_library(pb_util STATIC IMPORTED)
+set_target_properties(pb_util PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "@PB_INSTALLED_INCLUDE_PATH@")
+set_target_properties(pb_util PROPERTIES IMPORTED_LOCATION "@PB_UTIL_INSTALL_PATH@")
+
+set(PB_LINK_LIBRARIES pb_util)
+set(PB_UTIL_LINK_LIBRARIES "")
+if (UNIX)
+    list(APPEND PB_UTIL_LINK_LIBRARIES -lm)
+    list(APPEND PB_LINK_LIBRARIES -lm)
+endif (UNIX)
+
+set_property(TARGET pb_util PROPERTY INTERFACE_LINK_LIBRARIES ${PB_UTIL_LINK_LIBRARIES})
+set_property(TARGET pb PROPERTY INTERFACE_LINK_LIBRARIES ${PB_LINK_LIBRARIES})

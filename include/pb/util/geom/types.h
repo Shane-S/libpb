@@ -3,6 +3,10 @@
 #include <pb/util/util_exports.h>
 #include <pb/util/vector/vector.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
     float x;
     float y;
@@ -61,3 +65,7 @@ typedef struct {
     /* This shape's position relative to some origin. */
     pb_point3D pos;
 } pb_shape3D;
+
+#ifdef __cplusplus
+}
+#endif

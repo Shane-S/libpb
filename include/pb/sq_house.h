@@ -9,6 +9,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* Names indicating a room for stairs and a hallway "room" in a house. These cannot be used as room names by client code. */
 #define PB_SQ_HOUSE_STAIRS "Stairs"
 #define PB_SQ_HOUSE_HALLWAY "Hallway"
@@ -23,10 +27,6 @@ typedef enum side {
     SQ_HOUSE_RIGHT = 2,
     SQ_HOUSE_TOP = 3,
 } side;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct {
     char const* name;

@@ -2,7 +2,11 @@
 #define PB_EXTRUSION_H
 
 #include <pb/util/geom/types.h>
-#include "floor_plan.h"
+#include <pb/floor_plan.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * A room corresponding to a pb_room specified in a floor plan.
@@ -75,10 +79,10 @@ typedef struct {
  * @param num_structures The number of wall structure shapes that will be allocated by the function. Allows things like
  *                       the creation of double doors if the wall is big enough.
  */
-typedef void (*pb_wall_structure_count_func)(pb_line2D const* wall, pb_line2D const* wall_structure, pb_point2D const* normal,
-                                             pb_point2D const* bottom_floor_centre, float floor_height,
-                                             float struct_height, float start_height,
-                                             void* param, size_t* num_walls, size_t* num_structures);
+typedef void (PB_CALL * pb_wall_structure_count_func)(pb_line2D const* wall, pb_line2D const* wall_structure, pb_point2D const* normal,
+                                                      pb_point2D const* bottom_floor_centre, float floor_height,
+                                                      float struct_height, float start_height,
+                                                      void* param, size_t* num_walls, size_t* num_structures);
 /**
  * Extrudes the given wall structure (door/window) to a 3D shape.
  *
@@ -94,10 +98,10 @@ typedef void (*pb_wall_structure_count_func)(pb_line2D const* wall, pb_line2D co
  *
  * @return 0 on success, -1 on failure.
  */
-typedef int (*pb_wall_structure_extrusion_func)(pb_line2D const* wall, pb_line2D const* wall_structure, pb_point2D const* normal,
-                                                pb_point2D const* bottom_floor_centre, float floor_height,
-                                                float struct_height, float start_height,
-                                                void* param, pb_shape3D** walls_out, pb_shape3D** structures_out);
+typedef int (PB_CALL * pb_wall_structure_extrusion_func)(pb_line2D const* wall, pb_line2D const* wall_structure, pb_point2D const* normal,
+                                                         pb_point2D const* bottom_floor_centre, float floor_height,
+                                                         float struct_height, float start_height,
+                                                         void* param, pb_shape3D** walls_out, pb_shape3D** structures_out);
 
 typedef struct {
     pb_wall_structure_count_func count;

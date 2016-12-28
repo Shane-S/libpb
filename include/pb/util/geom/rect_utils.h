@@ -4,6 +4,10 @@
 #include <pb/util/vector/vector.h>
 #include <pb/util/geom/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Converts a pb_rect to a pb_shape2D.
  * Note that this function will assign a new array to shape->points, so either free any existing
@@ -47,3 +51,7 @@ PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_shape2D_get_bounding_rect(pb_shape2D const*
  * @return Non-zero if the point is contained, 0 if not.
  */
 PB_UTIL_DECLSPEC int PB_UTIL_CALL pb_rect_contains_point(pb_rect const* rect, pb_point2D const* point);
+
+#ifdef __cplusplus
+}
+#endif

@@ -1,6 +1,10 @@
 #pragma once
 #include <pb/util/geom/types.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Allocates a new shape with the given number of points.
  *
@@ -48,3 +52,7 @@ PB_UTIL_DECLSPEC int pb_shape3D_init(pb_shape3D* shape, unsigned int num_points)
  * @param shape The shape to free. Note that the shape itself won't be freed, just its internal arrays.
  */
 PB_UTIL_DECLSPEC void PB_UTIL_CALL pb_shape3D_free(pb_shape3D* shape);
+
+#ifdef __cplusplus
+}
+#endif

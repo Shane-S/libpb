@@ -1,11 +1,11 @@
-#include <pb/extrusion.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
+#include <pb/extrusion.h>
 #include <pb/floor_plan.h>
 #include <pb/util/geom/types.h>
 #include <pb/util/geom/shape_utils.h>
 #include <pb/util/geom/line_utils.h>
-#include <string.h>
 #include <pb/util/geom/triangulate.h>
 #include <pb/util/geom/rect_utils.h>
 
@@ -159,7 +159,9 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
 
     size_t i;
     for (i = 0; i < num_doors; ++i) {
-        pb_line2D door = {doors[i].start, doors[i].end};
+        pb_line2D door;
+        door.start = doors[i].start;
+        door.end = doors[i].end;
 
         size_t cur_door_walls;
         size_t cur_door_shapes;
@@ -174,7 +176,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
     }
 
     for (i = 0; i < num_windows; ++i)  {
-        pb_line2D window = {windows[i].start, windows[i].end};
+        pb_line2D window;
+        window.start = windows[i].start;
+        window.end = windows[i].end;
+
         size_t cur_window_walls;
         size_t cur_window_shapes;
 
@@ -286,7 +291,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
                 goto err_return;
             }
 
-            pb_line2D sub_wall = {wall_start, wall_end};
+            pb_line2D sub_wall;
+            sub_wall.start = wall_start;
+            sub_wall.end = wall_end;
+
             extrude_wall_internal(wall, &sub_wall, bottom_floor_centre, start_height, floor_height, normal, cur_wall);
             cur_wall_count++;
 
@@ -349,7 +357,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
                 goto err_return;
             }
 
-            pb_line2D sub_wall = {wall_start, wall_end};
+            pb_line2D sub_wall;
+            sub_wall.start = wall_start;
+            sub_wall.end = wall_end;
+
             extrude_wall_internal(wall, &sub_wall, bottom_floor_centre, start_height, floor_height, normal, cur_wall);
             cur_wall_count++;
 
@@ -358,7 +369,9 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
             pb_shape3D* door_walls;
             pb_shape3D* door_shapes;
 
-            pb_line2D door_line = {doors[cur_door].start, doors[cur_door].end};
+            pb_line2D door_line;
+            door_line.start = doors[cur_door].start;
+            door_line.end = doors[cur_door].end;
 
             door_extruder->count(wall, &door_line, normal, bottom_floor_centre,
                                  floor_height, window_height, start_height,
@@ -391,7 +404,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
                 goto err_return;
             }
 
-            pb_line2D sub_wall = {wall_start, wall_end};
+            pb_line2D sub_wall;
+            sub_wall.start = wall_start;
+            sub_wall.end = wall_end;
+
             extrude_wall_internal(wall, &sub_wall, bottom_floor_centre, start_height, floor_height, normal, cur_wall);
             cur_wall_count++;
 
@@ -400,7 +416,9 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
             pb_shape3D* window_walls;
             pb_shape3D* window_shapes;
 
-            pb_line2D window_line = {windows[cur_window].start, windows[cur_window].end};
+            pb_line2D window_line;
+            window_line.start = windows[cur_window].start;
+            window_line.end = windows[cur_window].end;
 
             window_extruder->count(wall, &window_line, normal, bottom_floor_centre,
                                    floor_height, window_height, start_height,
@@ -428,7 +446,10 @@ PB_DECLSPEC int PB_CALL pb_extrude_wall(pb_line2D const* wall,
         }
     }
 
-    pb_line2D last_wall = {wall_start, wall->end};
+    pb_line2D last_wall;
+    last_wall.start = wall_start;
+    last_wall.end = wall->end;
+
     pb_shape3D* last_wall_shape = wall_list + cur_wall_count; /* cur_wall_count should at this point be walls_list_size - 1 */
     if (pb_shape3D_init(last_wall_shape, 2) == -1) {
         goto err_return;
@@ -677,8 +698,13 @@ PB_DECLSPEC pb_extruded_room* PB_CALL pb_extrude_room(pb_room const* room,
             pb_point2D* point1 = room_points + ((cur_wall + 1) % room->shape.points.size);
 
             /* The wall's start and end have to be flipped to correctly generate UVs */
-            pb_line2D wall_line = {*point1, *point0};
-            pb_line2D wall_normal_line = {*point0, *point1};
+            pb_line2D wall_line;
+            pb_line2D wall_normal_line;
+
+            wall_line.start = *point1;
+            wall_line.end = *point0;
+            wall_normal_line.start = *point0;
+            wall_normal_line.end = *point1;
 
             pb_point2D normal = pb_line2D_get_normal(&wall_normal_line);
 
@@ -864,8 +890,13 @@ PB_DECLSPEC pb_extruded_floor* PB_CALL pb_extrude_floor(pb_floor const* f,
         pb_point2D* point1 = room_points + ((cur_wall + 1) % f->shape.points.size);
 
         /* The wall's start and end have to be flipped to correctly generate UVs */
-        pb_line2D wall_line = {*point0, *point1};
-        pb_line2D wall_normal_line = {*point1, *point0};
+        pb_line2D wall_line;
+        pb_line2D wall_normal_line;
+
+        wall_line.start = *point0;
+        wall_line.end = *point1;
+        wall_normal_line.start = *point1;
+        wall_normal_line.end = *point0;
 
         pb_point2D normal = pb_line2D_get_normal(&wall_normal_line);
 

@@ -2,6 +2,10 @@
 #include <pb/util/geom/types.h>
 #include <math.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * Gets the t values for x and y for the given along the given line.
  *
@@ -21,3 +25,7 @@ pb_point2D pb_line2D_get_t(pb_line2D const* line, pb_point2D const* point);
  * @return The normalised normal vector for vector line->start to line->end.
  */
 pb_point2D pb_line2D_get_normal(pb_line2D const* line);
+
+#ifdef __cplusplus
+}
+#endif
