@@ -9,11 +9,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#ifndef _WIN32
-#include <time.h>
-#else
+#ifdef _WIN32
 #include <Windows.h>
-#endif
+#else
+#include <time.h>
+#include <sys/time.h>
+#
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif /* __MACH__ */
+#
+#endif /* _WIN32 */
 
 START_TEST(sq_house_performance_test)
 {
@@ -145,6 +152,10 @@ START_TEST(sq_house_performance_test)
 #ifdef _WIN32
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
+#elif defined(__MACH__)
+    clock_serv_t cclock;
+    mach_timespec_t mts;
+    host_get_clock_service(mach_host_self(), SYSTEM_CLOCK, &cclock);
 #endif
 
     size_t const iters = 300;
@@ -152,7 +163,15 @@ START_TEST(sq_house_performance_test)
     for (i = 0; i < iters; ++i) {
 #ifndef _WIN32
         struct timespec start;
+#ifdef __MACH__
+        /* Thanks StackOverflow */
+        clock_get_time(cclock, &mts);
+        start.tv_sec = mts.tv_sec;
+        start.tv_nsec = mts.tv_nsec;
+#else
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &start);
+#endif /* __MACH__ */
+
 #else
         LARGE_INTEGER start;
         QueryPerformanceCounter(&start);
@@ -165,9 +184,14 @@ START_TEST(sq_house_performance_test)
 
 #ifndef _WIN32
         struct timespec end;
+#ifdef __MACH__
+        clock_get_time(cclock, &mts);
+        end.tv_sec = mts.tv_sec;
+        end.tv_nsec = mts.tv_nsec;
+#else
         clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &end);
-
-        struct timespec diff = {end.tv_sec - start.tv_sec, end.tv_nsec - start.tv_nsec};
+#endif /* __MACH__ */
+        struct timespec diff = { end.tv_sec - start.tv_sec, end.tv_nsec - start.tv_nsec };
         ms_sum += (diff.tv_sec * 1000.f) + (diff.tv_nsec / 1000000.f);
 #else
         LARGE_INTEGER end;
@@ -186,6 +210,10 @@ START_TEST(sq_house_performance_test)
     float avg_ms = ms_sum / iters;
     printf("Average number of milliseconds: %.4f\n", avg_ms);
     pb_hashmap_free(room_specs);
+
+#ifdef __MACH__
+    mach_port_deallocate(mach_task_self(), cclock);
+#endif /* __MACH__ */
 }
 END_TEST
 
