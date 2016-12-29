@@ -3985,22 +3985,22 @@ Suite *make_pb_sq_house_graph_suite(void)
     tcase_add_test(tc_sq_house_internal_graph, internal_graph_simple);
     tcase_add_test(tc_sq_house_internal_graph, internal_graph_multiple_overlap);
 
-    tc_sq_house_find_hallways = tcase_create("Hallway finding tests");
-    suite_add_tcase(s, tc_sq_house_find_hallways);
-    tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_simple);
-    tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_one_wall_overlaps);
-    tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_one_wall_small);
-    tcase_add_test(tc_sq_house_find_hallways, get_hallways_single_disconnected);
+    //tc_sq_house_find_hallways = tcase_create("Hallway finding tests");
+    //suite_add_tcase(s, tc_sq_house_find_hallways);
+    //tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_simple);
+    //tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_one_wall_overlaps);
+    //tcase_add_test(tc_sq_house_find_hallways, get_hallways_room0_disconnected_one_wall_small);
+    //tcase_add_test(tc_sq_house_find_hallways, get_hallways_single_disconnected);
 
-    tc_sq_house_place_hallways = tcase_create("Hallway placement tests");
-    suite_add_tcase(s, tc_sq_house_place_hallways);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_simple);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_corner);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_2_corners_opposite_sides);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_2_corners_same_side);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_t_intersection_y_axis);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_t_intersection_x_axis);
-    tcase_add_test(tc_sq_house_place_hallways, place_hallways_4_way_intersection);
+    //tc_sq_house_place_hallways = tcase_create("Hallway placement tests");
+    //suite_add_tcase(s, tc_sq_house_place_hallways);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_simple);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_corner);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_2_corners_opposite_sides);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_2_corners_same_side);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_t_intersection_y_axis);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_t_intersection_x_axis);
+    //tcase_add_test(tc_sq_house_place_hallways, place_hallways_4_way_intersection);
 
     tc_sq_house_place_doors = tcase_create("Door placement tests");
     suite_add_tcase(s, tc_sq_house_place_doors);

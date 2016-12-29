@@ -249,8 +249,7 @@ START_TEST(layout_stairs_three_floors)
         size_t j = 0;
         pb_floor* f = house.floors + i;
         pb_room* r = &f->rooms[0];
-        for (; j < f->num_rooms && r->shape.points.items; ++j) {
-            r = f->rooms + j;
+        for (; j < f->num_rooms && r->shape.points.items; ++j, r = f->rooms + j) {
             pb_shape2D_free(&r->shape);
             pb_vector_free(&r->walls);
         }
