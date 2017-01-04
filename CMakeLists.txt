@@ -46,10 +46,4 @@ configure_file(${CMAKE_SOURCE_DIR}/pb-config.cmake.in ${CMAKE_BINARY_DIR}/pb-con
 file (GENERATE OUTPUT ${CMAKE_BINARY_DIR}/pb-config.cmake
       INPUT ${CMAKE_BINARY_DIR}/pb-config.cmake.at_configured)
 
-if (WIN32)
-    set(CMAKE_CONFIG_INSTALL_DIR CMake)
-else (WIN32)
-    set(CMAKE_CONFIG_INSTALL_DIR share/cmake)
-endif (WIN32)
-
-install(FILES ${CMAKE_BINARY_DIR}/pb-config.cmake DESTINATION ${CMAKE_CONFIG_INSTALL_DIR})
+install(FILES ${CMAKE_BINARY_DIR}/pb-config.cmake DESTINATION cmake)
